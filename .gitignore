@@ -1,0 +1,12 @@
+# Credenciais
+scripts/.env
+.env
+
+# Dados de pacientes — não versionar
+knowledge_base/
+scripts/mining_progress.json
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
