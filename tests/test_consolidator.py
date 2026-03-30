@@ -61,3 +61,29 @@ def test_system_prompt_created(tmp_path):
     prompt = (tmp_path / "system_prompt.md").read_text()
     assert "Ana" in prompt  # Nome do agente
     assert len(prompt) > 200
+
+def test_consolidate_handles_empty_results(tmp_path):
+    c = Consolidator(output_dir=tmp_path)
+    c.consolidate([])  # must not raise
+
+    faq = json.loads((tmp_path / "faq.json").read_text(encoding="utf-8"))
+    assert faq == []
+    remarketing = json.loads((tmp_path / "remarketing.json").read_text(encoding="utf-8"))
+    assert remarketing == []
+
+def test_remarketing_avg_interest_calculated_correctly(tmp_path):
+    results = [
+        {"intent": "preco", "questions": [], "objections": [],
+         "outcome": "nao_fechou", "interest_score": 4, "language_notes": "",
+         "behavioral_signals": ["pediu_preco"]},
+        {"intent": "preco", "questions": [], "objections": [],
+         "outcome": "nao_fechou", "interest_score": 2, "language_notes": "",
+         "behavioral_signals": ["pediu_preco"]},
+    ]
+    c = Consolidator(output_dir=tmp_path)
+    c.consolidate(results)
+
+    remarketing = json.loads((tmp_path / "remarketing.json").read_text(encoding="utf-8"))
+    assert len(remarketing) == 1
+    assert remarketing[0]["count"] == 2
+    assert remarketing[0]["avg_interest"] == 3.0

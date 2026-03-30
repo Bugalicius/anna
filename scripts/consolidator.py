@@ -41,9 +41,9 @@ class Consolidator:
     def _write_remarketing(self, results: list[dict]) -> None:
         cold_leads = [
             {
-                "outcome": r["outcome"],
-                "interest_score": r["interest_score"],
-                "intent": r["intent"],
+                "outcome": r.get("outcome", "em_aberto"),
+                "interest_score": r.get("interest_score", 0),
+                "intent": r.get("intent", ""),
                 "objections": r.get("objections", []),
                 "behavioral_signals": r.get("behavioral_signals", []),
             }
@@ -78,11 +78,11 @@ class Consolidator:
         ]
         content = "# Guia de Tom e Linguagem — Agente Ana\n\n"
         content += "## Vocabulário e Expressões das Pacientes\n\n"
-        for note in set(notes[:50]):
+        for note in dict.fromkeys(notes[:50]):
             if note.strip():
                 content += f"- {note}\n"
         content += "\n## Padrões em Conversas que Converteram\n\n"
-        for note in set(conversion_notes[:20]):
+        for note in dict.fromkeys(conversion_notes[:20]):
             if note.strip():
                 content += f"- {note}\n"
         (self.output_dir / "tone_guide.md").write_text(content, encoding="utf-8")
