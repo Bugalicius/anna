@@ -30,13 +30,21 @@ class CheckpointManager:
 
     def mark_done(self, chat_id: str, result: dict) -> None:
         self._data[chat_id] = result
-        self._path.write_text(json.dumps(self._data, ensure_ascii=False), encoding="utf-8")
+        tmp = self._path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(self._data, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(tmp, self._path)
 
     def get_results(self) -> list[dict]:
         return list(self._data.values())
 
 
 def main():
+    required_vars = ["EVOLUTION_API_URL", "EVOLUTION_API_KEY", "GEMINI_API_KEY"]
+    missing = [v for v in required_vars if not os.environ.get(v)]
+    if missing:
+        logger.error(f"Variáveis de ambiente ausentes: {', '.join(missing)}. Verifique scripts/.env")
+        raise SystemExit(1)
+
     base_dir = Path(__file__).parent.parent
     checkpoint_path = Path(__file__).parent / "mining_progress.json"
     output_dir = base_dir / "knowledge_base"
@@ -64,6 +72,9 @@ def main():
     already_done = sum(1 for c in chats if checkpoint.is_done(c["id"]))
     logger.info(f"Já processados (checkpoint): {already_done}")
 
+    consecutive_errors = 0
+    MAX_CONSECUTIVE_ERRORS = 5
+
     for i, chat in enumerate(chats):
         if checkpoint.is_done(chat["id"]):
             continue
@@ -76,6 +87,7 @@ def main():
                 checkpoint.mark_done(chat["id"], {"intent": "tirar_duvida", "outcome": "em_aberto",
                     "questions": [], "objections": [], "interest_score": 1,
                     "language_notes": "", "behavioral_signals": [], "_skipped": True})
+                consecutive_errors = 0  # reset on success
                 continue
 
             pseudonymized = pseudonymizer.pseudonymize(chat["remoteJid"], messages)
@@ -83,10 +95,15 @@ def main():
             checkpoint.mark_done(chat["id"], result)
 
             # Rate limit gentil para a API do Gemini
+            consecutive_errors = 0  # reset on success
             time.sleep(0.5)
 
         except Exception as e:
             logger.error(f"Erro no chat {chat['id']}: {e}")
+            consecutive_errors += 1
+            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                logger.error(f"Abortando: {MAX_CONSECUTIVE_ERRORS} erros consecutivos. Verifique credenciais.")
+                raise SystemExit(1)
             time.sleep(2)  # Espera maior em caso de erro
 
     logger.info("Consolidando knowledge base...")
