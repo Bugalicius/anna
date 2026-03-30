@@ -1,4 +1,5 @@
 # scripts/analyzer.py
+import copy
 import json
 import logging
 
@@ -52,9 +53,12 @@ class ConversationAnalyzer:
         try:
             response = self._model.generate_content(prompt)
             data = json.loads(response.text)
-        except (json.JSONDecodeError, Exception) as e:
-            logger.warning(f"Análise falhou para {conversation['contact_id']}: {e}")
-            return {**DEFAULT_RESULT}
+        except json.JSONDecodeError as e:
+            logger.warning(f"Gemini retornou JSON inválido para {conversation.get('contact_id', 'unknown')}: {e}")
+            return copy.deepcopy(DEFAULT_RESULT)
+        except Exception as e:
+            logger.error(f"Erro inesperado ao analisar {conversation.get('contact_id', 'unknown')}: {e}")
+            return copy.deepcopy(DEFAULT_RESULT)
 
         # Validar e sanitizar
         data.setdefault("intent", "tirar_duvida")
@@ -69,5 +73,11 @@ class ConversationAnalyzer:
             data["interest_score"] = max(1, min(5, int(round(float(score)))))
         except (ValueError, TypeError):
             data["interest_score"] = 1
+        if not isinstance(data.get("questions"), list):
+            data["questions"] = []
+        if not isinstance(data.get("objections"), list):
+            data["objections"] = []
+        if not isinstance(data.get("language_notes"), str):
+            data["language_notes"] = ""
 
         return data
