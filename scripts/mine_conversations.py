@@ -5,7 +5,7 @@ import os
 import time
 from pathlib import Path
 
-import google.generativeai as genai
+import anthropic
 from dotenv import load_dotenv
 
 from scripts.evolution_client import EvolutionClient
@@ -39,7 +39,7 @@ class CheckpointManager:
 
 
 def main():
-    required_vars = ["EVOLUTION_API_URL", "EVOLUTION_API_KEY", "GEMINI_API_KEY"]
+    required_vars = ["EVOLUTION_API_URL", "EVOLUTION_API_KEY", "ANTHROPIC_API_KEY"]
     missing = [v for v in required_vars if not os.environ.get(v)]
     if missing:
         logger.error(f"Variáveis de ambiente ausentes: {', '.join(missing)}. Verifique scripts/.env")
@@ -56,12 +56,23 @@ def main():
     )
     pseudonymizer = Pseudonymizer()
 
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-    model = genai.GenerativeModel(
-        "gemini-2.0-flash",
-        generation_config=genai.GenerationConfig(response_mime_type="application/json"),
-    )
-    analyzer = ConversationAnalyzer(model=model)
+    class _HaikuAdapter:
+        """Adapta o cliente Anthropic à interface esperada pelo ConversationAnalyzer."""
+        def __init__(self, client):
+            self._client = client
+
+        def generate_content(self, prompt: str):
+            msg = self._client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=1024,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            class _Resp:
+                text = msg.content[0].text
+            return _Resp()
+
+    haiku_client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    analyzer = ConversationAnalyzer(model=_HaikuAdapter(haiku_client))
 
     checkpoint = CheckpointManager(checkpoint_path)
 
@@ -94,17 +105,28 @@ def main():
             result = analyzer.analyze(pseudonymized)
             checkpoint.mark_done(chat["id"], result)
 
-            # Rate limit gentil para a API do Gemini
+            # Rate limit Anthropic API: ~50 req/min → 1.2s entre requests
             consecutive_errors = 0  # reset on success
-            time.sleep(0.5)
+            time.sleep(1.2)
 
         except Exception as e:
-            logger.error(f"Erro no chat {chat['id']}: {e}")
-            consecutive_errors += 1
-            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
-                logger.error(f"Abortando: {MAX_CONSECUTIVE_ERRORS} erros consecutivos. Verifique credenciais.")
-                raise SystemExit(1)
-            time.sleep(2)  # Espera maior em caso de erro
+            err_str = str(e)
+            if "429" in err_str or "quota" in err_str.lower() or "rate" in err_str.lower():
+                # Rate limit — aguarda e continua sem contar como erro consecutivo
+                import re
+                wait = 60
+                m = re.search(r"retry in (\d+(?:\.\d+)?)s", err_str, re.IGNORECASE)
+                if m:
+                    wait = int(float(m.group(1))) + 5
+                logger.warning(f"Rate limit atingido. Aguardando {wait}s...")
+                time.sleep(wait)
+            else:
+                logger.error(f"Erro no chat {chat['id']}: {e}")
+                consecutive_errors += 1
+                if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                    logger.error(f"Abortando: {MAX_CONSECUTIVE_ERRORS} erros consecutivos. Verifique credenciais.")
+                    raise SystemExit(1)
+                time.sleep(2)
 
     logger.info("Consolidando knowledge base...")
     results = [r for r in checkpoint.get_results() if not r.get("_skipped")]

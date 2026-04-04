@@ -52,7 +52,13 @@ class ConversationAnalyzer:
 
         try:
             response = self._model.generate_content(prompt)
-            data = json.loads(response.text)
+            raw = response.text.strip()
+            # Strip markdown code blocks (```json ... ``` ou ``` ... ```)
+            if raw.startswith("```"):
+                raw = "\n".join(raw.split("\n")[1:])
+                if raw.endswith("```"):
+                    raw = raw[: raw.rfind("```")]
+            data = json.loads(raw)
         except json.JSONDecodeError as e:
             logger.warning(f"Gemini retornou JSON inválido para {conversation.get('contact_id', 'unknown')}: {e}")
             return copy.deepcopy(DEFAULT_RESULT)
