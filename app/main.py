@@ -1,0 +1,36 @@
+import logging
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from app.webhook import router as webhook_router
+from app.remarketing import create_scheduler
+from app.retry import _retry_failed_messages
+from app.database import engine, Base
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    Base.metadata.create_all(bind=engine)  # Fallback se Alembic não rodou
+
+    scheduler = create_scheduler()
+    # Adicionar job de retry
+    scheduler.add_job(
+        _retry_failed_messages, "interval", minutes=5,
+        id="retry_processor", replace_existing=True
+    )
+    scheduler.start()
+    app.state.scheduler = scheduler
+    yield
+    # Shutdown
+    scheduler.shutdown(wait=False)
+
+
+app = FastAPI(title="Agente Ana — Nutri Thaynara", lifespan=lifespan)
+app.include_router(webhook_router)
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
