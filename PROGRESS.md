@@ -4,10 +4,11 @@
 
 **Fase 1 — COMPLETA** ✅
 **Fase 2 — Infraestrutura COMPLETA** ✅ (59/59 testes, Docker rodando)
+**Fase 3 — Multi-agentes COMPLETA** ✅ (104/104 testes)
 
 ## Próxima tarefa a executar
 
-**Agente 3 — Worker Dietbox** (iniciar imediatamente)
+**Configurar credenciais reais no `.env` e testar com sandbox Meta**
 
 ---
 
@@ -140,14 +141,14 @@ Remarketing + lembretes de consulta + remarcação/cancelamento.
 ## Ordem de execução das próximas tarefas
 
 - [x] Agente 3: `app/agents/dietbox_worker.py` + testes (11/11 passando)
-- [ ] Agente 4: `app/agents/rede_worker.py` + testes
-- [ ] `app/knowledge_base.py` + base de conhecimento completa
-- [ ] `app/tags.py`
-- [ ] `app/escalation.py`
-- [ ] `app/media_handler.py`
-- [ ] Agente 0: `app/agents/orchestrator.py`
-- [ ] Agente 1: `app/agents/atendimento.py`
-- [ ] Agente 2: `app/agents/retencao.py`
-- [ ] Refatorar `app/main.py` para usar nova arquitetura
-- [ ] Testes de integração end-to-end
-- [ ] Commit final + atualizar PROGRESS.md
+- [x] Agente 4: `app/agents/rede_worker.py` + testes — modo portal apenas, sem transação transparente (18/18)
+- [x] `app/knowledge_base.py` + base de conhecimento completa
+- [x] `app/tags.py`
+- [x] `app/escalation.py`
+- [x] `app/media_handler.py`
+- [x] Agente 0: `app/agents/orchestrator.py`
+- [x] Agente 1: `app/agents/atendimento.py`
+- [x] Agente 2: `app/agents/retencao.py`
+- [x] Refatorar `app/router.py` para usar nova arquitetura
+- [x] Testes de integração end-to-end (`tests/test_integration.py` — 12 testes)
+- [x] 104/104 testes passando

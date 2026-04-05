@@ -31,7 +31,7 @@ def test_slots_exclui_ocupados():
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {
-        "Data": [{"inicio": f"{ocupado_dt}:00+00:00", "desmarcada": False}]
+        "Data": [{"inicio": f"{ocupado_dt}:00-03:00", "desmarcada": False}]
     }
 
     with patch("app.agents.dietbox_worker._headers", return_value={}), \
