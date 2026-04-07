@@ -1,0 +1,207 @@
+# Codebase Structure
+
+**Analysis Date:** 2026-04-07
+
+## Directory Layout
+
+```
+agente/                          # Project root
+├── app/                         # Main application package
+│   ├── agents/                  # Agent FSM modules (one file per agent)
+│   │   ├── __init__.py
+│   │   ├── orchestrator.py      # Agent 0 — intent classification
+│   │   ├── atendimento.py       # Agent 1 — new patient booking funnel
+│   │   ├── retencao.py          # Agent 2 — rescheduling, cancellation, remarketing
+│   │   ├── dietbox_worker.py    # Agent 3 — Dietbox API + Playwright login
+│   │   └── rede_worker.py       # Agent 4 — Rede payment link via Playwright
+│   ├── __init__.py
+│   ├── main.py                  # FastAPI app factory + lifespan + scheduler startup
+│   ├── webhook.py               # POST /webhook handler (Meta Cloud API)
+│   ├── router.py                # Central message router + _AGENT_STATE dict
+│   ├── database.py              # SQLAlchemy engine + SessionLocal
+│   ├── models.py                # ORM models: Contact, Conversation, Message, RemarketingQueue
+│   ├── knowledge_base.py        # KnowledgeBase singleton (plans, prices, policies, FAQ)
+│   ├── meta_api.py              # MetaAPIClient (async httpx, send_text, send_template)
+│   ├── escalation.py            # Human escalation to nutritionist's private number
+│   ├── remarketing.py           # APScheduler jobs + RemarketingQueue helpers
+│   ├── retry.py                 # Message retry job with exponential backoff
+│   ├── tags.py                  # Contact stage/tag FSM with valid transition enforcement
+│   ├── flows.py                 # Legacy static flow responses (mostly superseded by agents)
+│   ├── ai_engine.py             # Older LLM wrapper (pre-agent architecture)
+│   ├── media_handler.py         # Incoming media message handling
+│   ├── test_chat.py             # Dev-only test chat HTTP endpoint
+│   └── static/                  # Static files served for test chat UI
+├── tests/                       # Pytest test suite (co-located, not inside app/)
+│   ├── __init__.py
+│   ├── test_webhook.py
+│   ├── test_router.py
+│   ├── test_models.py
+│   ├── test_flows.py
+│   ├── test_meta_api.py
+│   ├── test_remarketing.py
+│   ├── test_retry.py
+│   ├── test_ai_engine.py
+│   ├── test_dietbox_worker.py
+│   ├── test_rede_worker.py
+│   ├── test_integration.py
+│   └── (scripts test files)
+├── knowledge_base/              # Business knowledge loaded by KnowledgeBase singleton
+│   ├── faq.json                 # Mined FAQ (auto-generated in Phase 1)
+│   ├── objections.json          # Common objections with suggested responses
+│   ├── remarketing.json         # Remarketing message variants
+│   ├── system_prompt.md         # Base system prompt for LLM agents
+│   └── tone_guide.md            # Tone and style guidelines
+├── scripts/                     # Data mining and migration utilities (not part of app)
+│   ├── __init__.py
+│   ├── evolution_client.py      # Evolution API client (legacy WhatsApp gateway)
+│   ├── mine_conversations.py    # Phase 1 conversation mining
+│   ├── analyzer.py              # Conversation analysis
+│   ├── consolidator.py          # Knowledge base consolidation
+│   ├── pseudonymizer.py         # PII removal from exported conversations
+│   └── migrate_contacts.py      # DB migration utility
+├── docs/                        # Media assets sent to patients during booking
+│   ├── superpowers/             # Project planning docs (plans/, specs/)
+│   ├── COMO-SE-PREPARAR---ONLINE.jpg
+│   ├── COMO-SE-PREPARAR---presencial.jpg
+│   ├── Guia - Circunferências Corporais - Homens.pdf
+│   ├── Guia - Circunferências Corporais - Mulheres.pdf
+│   ├── Thaynara - Nutricionista.pdf   # Sent as media kit in Step 3 of booking
+│   └── regras_remarcacao.md
+├── nginx/                       # Nginx reverse proxy config
+├── historico/                   # Exported raw conversation history (Phase 1 input)
+├── Dockerfile
+├── docker-compose.yml           # app + postgres + redis + nginx services
+├── requirements.txt
+├── pytest.ini
+├── PROGRESS.md                  # Living implementation tracker
+└── CLAUDE.md                    # Claude Code session instructions
+```
+
+## Directory Purposes
+
+**`app/`:**
+- Purpose: All runtime application code; the Docker container runs this package
+- Key files: `main.py` (entry point), `router.py` (dispatch hub), `agents/` (domain logic)
+
+**`app/agents/`:**
+- Purpose: One file per numbered agent; each agent is self-contained with its own FSM class and helper functions
+- Key files: `orchestrator.py` (classification), `atendimento.py` (booking), `retencao.py` (retention), `dietbox_worker.py` (EHR integration), `rede_worker.py` (payment)
+
+**`knowledge_base/`:**
+- Purpose: Runtime business data read by `KnowledgeBase` at startup; mounted read-only in Docker (`./knowledge_base:/app/knowledge_base:ro`)
+- Generated: `faq.json`, `objections.json`, `remarketing.json` are generated by `scripts/` in Phase 1
+- Committed: Yes (all files committed)
+
+**`scripts/`:**
+- Purpose: Offline utilities for Phase 1 data mining; not imported by the app at runtime
+- Generated: No — run manually by developer
+- Committed: Yes
+
+**`docs/`:**
+- Purpose: Media assets dispatched to patients during booking confirmation step; mounted read-only in Docker (`./docs:/app/docs:ro`); served at `/media` by FastAPI `StaticFiles`
+- Generated: No — manually curated
+- Committed: Yes
+
+**`tests/`:**
+- Purpose: Pytest test suite mirroring `app/` module structure; covers webhook, router, models, agents, and integration
+- Run command: `python -m pytest tests/ -q`
+
+## Key File Locations
+
+**Entry Points:**
+- `app/main.py`: FastAPI app, lifespan hooks, router mounts, scheduler startup
+- `app/webhook.py`: `POST /webhook` and `GET /webhook` (Meta verification)
+
+**Configuration:**
+- `docker-compose.yml`: Service definitions, environment file reference (`.env`)
+- `app/database.py`: `DATABASE_URL` env var; SQLAlchemy engine and session factory
+- `app/knowledge_base.py`: All business rules and pricing as Python dicts (no config file)
+
+**Core Logic:**
+- `app/router.py`: `route_message()` — single function that orchestrates every inbound message
+- `app/agents/orchestrator.py`: `rotear()` — intent classification, routing decision
+- `app/agents/atendimento.py`: `AgenteAtendimento` — 10-step booking FSM
+- `app/agents/retencao.py`: `AgenteRetencao` — rescheduling/cancellation FSM
+
+**External Integration:**
+- `app/agents/dietbox_worker.py`: All Dietbox API calls + Playwright token acquisition
+- `app/agents/rede_worker.py`: Payment link generation via Rede portal automation
+- `app/meta_api.py`: `MetaAPIClient` — all outbound WhatsApp messages
+
+**Testing:**
+- `tests/test_integration.py`: End-to-end flow tests
+- `tests/test_dietbox_worker.py`: Dietbox API interaction tests
+- `tests/test_rede_worker.py`: Rede payment worker tests
+
+## Naming Conventions
+
+**Files:**
+- Snake case for all Python modules: `knowledge_base.py`, `rede_worker.py`
+- Test files: `test_<module_name>.py` mirroring the module under test
+
+**Classes:**
+- PascalCase: `AgenteAtendimento`, `AgenteRetencao`, `KnowledgeBase`, `MetaAPIClient`
+
+**Functions:**
+- Snake case: `route_message()`, `rotear()`, `consultar_slots_disponiveis()`
+- Private helpers prefixed with `_`: `_despachar()`, `_extrair_nome()`, `_gerar_resposta_llm()`
+
+**Constants:**
+- UPPER_SNAKE_CASE: `DIETBOX_API`, `HORARIOS_POR_DIA`, `REMARKETING_SEQ`, `MSG_BOAS_VINDAS`
+
+**Agents:**
+- Numbered conceptually (Agent 0 = orchestrator, Agent 1 = atendimento, etc.) but files named by role, not number
+
+## Where to Add New Code
+
+**New booking funnel step:**
+- Add stage name to `ETAPAS` list in `app/agents/atendimento.py`
+- Add `_etapa_<nome>()` method to `AgenteAtendimento`
+- Wire it into `_despachar()` dispatch block
+
+**New intent type:**
+- Add to `IntencaoType` literal and `_PROMPT_CLASSIFICACAO` options in `app/agents/orchestrator.py`
+- Add routing branch in `app/router.py` `route_message()`
+
+**New external integration:**
+- Create `app/agents/<service>_worker.py` following the pattern in `dietbox_worker.py`
+- Use `ThreadPoolExecutor` if the client is synchronous (Playwright) or uses `requests`
+- Import and call from the relevant agent FSM
+
+**New API endpoint:**
+- Add to `app/main.py` as a new `APIRouter` or inline route
+- Tests go in `tests/test_<module>.py`
+
+**New business rule / pricing change:**
+- Update `PLANOS`, `POLITICAS`, or `CONTATOS` dicts in `app/knowledge_base.py`
+- Mirror any pricing changes in `VALORES_PLANOS_PIX` and `PARCELA_PLANOS` in `app/agents/rede_worker.py`
+
+**Utilities / helpers:**
+- Module-level helpers in the same file as the class that uses them (private: prefix with `_`)
+- Shared cross-module helpers: add to `app/knowledge_base.py` if business-logic, or create a new `app/<name>.py` module
+
+## Special Directories
+
+**`.planning/`:**
+- Purpose: GSD planning artifacts (codebase maps, phase plans)
+- Generated: Yes — by GSD tools
+- Committed: Yes
+
+**`historico/`:**
+- Purpose: Raw WhatsApp conversation exports used as input for Phase 1 mining scripts
+- Generated: No — exported manually from Evolution API
+- Committed: Yes (anonymized)
+
+**`nginx/`:**
+- Purpose: Nginx reverse proxy configuration for TLS termination in production
+- Generated: No
+- Committed: Yes
+
+**`.claude/worktrees/`:**
+- Purpose: Claude Code worktree snapshots (older scripts version)
+- Generated: Yes — by Claude Code
+- Committed: No (gitignored implicitly by tool)
+
+---
+
+*Structure analysis: 2026-04-07*
