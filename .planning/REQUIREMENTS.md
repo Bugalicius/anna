@@ -1,0 +1,110 @@
+# Requirements: Agente Ana
+
+**Defined:** 2026-04-07
+**Core Value:** A Ana deve interpretar corretamente a intenção do paciente e conduzir o fluxo certo — sem travar, sem dar resposta errada, sem perder o contexto da conversa.
+
+## v1 Requirements
+
+### Inteligência Conversacional
+
+- [ ] **INTL-01**: Agente interpreta contexto da conversa e adapta o fluxo quando paciente muda de assunto ou dá informação fora de ordem
+- [ ] **INTL-02**: Agente envia "Um instante, por favor 💚" antes de operações demoradas (consulta Dietbox, busca de horários, geração de link)
+- [ ] **INTL-03**: Quando não souber responder, agente envia dúvida com contexto para 31 99205-9211 (interno), aguarda resposta, e repassa ao paciente
+- [ ] **INTL-04**: Agente nunca expõe o número 31 99205-9211 diretamente ao paciente
+- [ ] **INTL-05**: Comportamento do agente alinhado com documentação oficial (agente-ana-documentacao-final.docx) — tom, fluxo de etapas, mensagens fixas
+
+### Remarcação
+
+- [ ] **REMC-01**: Agente comunica "até 7 dias" ao paciente, mas oferece horários da semana seguinte inteira (seg-sex)
+- [ ] **REMC-02**: Horários oferecidos seguem prioridade: 1) mais próximo da preferência do paciente, 2) próximo mais próximo, 3) mais distante disponível
+- [ ] **REMC-03**: Agente distingue remarcação de retorno (já pagou, prazo de 7 dias) de nova consulta (sem restrição de prazo)
+- [ ] **REMC-04**: Ao confirmar remarcação, agente altera data/hora no Dietbox (não apenas envia confirmação)
+- [ ] **REMC-05**: Se nenhum horário encaixar, agente informa que paciente perde o retorno (último recurso, após tentar negociar)
+- [ ] **REMC-06**: Agente pode sugerir outros horários e negociar flexivelmente com o paciente
+
+### Remarketing
+
+- [ ] **RMKT-01**: Sistema dispara follow-up automático após 24h sem resposta do lead
+- [ ] **RMKT-02**: Sistema dispara segundo follow-up após 7 dias sem resposta
+- [ ] **RMKT-03**: Sistema dispara terceiro follow-up após 30 dias sem resposta
+- [ ] **RMKT-04**: Máximo de 3 tentativas de remarketing por lead — após isso, para de enviar
+- [ ] **RMKT-05**: Mensagens de remarketing seguem templates da documentação (seção 6)
+- [ ] **RMKT-06**: Se lead informa que não vai marcar, mover para "lead perdido" e parar remarketing
+
+### Meta Cloud API
+
+- [ ] **META-01**: Webhook recebe e valida mensagens do Meta Cloud API (verificação de assinatura HMAC)
+- [ ] **META-02**: Agente envia mensagens de texto via Meta Cloud API
+- [ ] **META-03**: Agente envia arquivos (PDF, imagens) via Meta Cloud API
+- [ ] **META-04**: Deduplicação de mensagens (webhook at-least-once) para evitar processamento duplicado
+
+## v2 Requirements
+
+### Inteligência Avançada
+
+- **INTL-06**: FAQ inline durante fluxo ativo — responder perguntas incidentais sem resetar etapa atual
+- **INTL-07**: Guard contra alucinação — agente nunca inventa informações clínicas ou de preço
+
+### Automação
+
+- **AUTO-01**: Lembrete automático 24h antes da consulta
+- **AUTO-02**: Detecção de comprovante de pagamento por análise de imagem (não apenas heurística de tamanho)
+
+### Pagamento
+
+- **PGTO-01**: Migrar geração de links de Playwright/Rede para API REST (Asaas ou alternativa)
+- **PGTO-02**: Geração de links funciona em VPS sem display server
+
+### UX
+
+- **UX-01**: Desconto família detectado automaticamente ("quero agendar para mim e minha filha")
+- **UX-02**: Check de satisfação 24h após consulta
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Orientações nutricionais/clínicas | Fora do escopo da Ana — risco legal e ético |
+| Atendimento a gestantes/menores de 16 | Política da clínica |
+| Oferta proativa do Formulário | Thaynara não quer — só quando paciente perguntar |
+| Multi-nutricionista (SaaS) | Projeto exclusivo para Thaynara |
+| WhatsApp Pay nativo | Pouco adotado no Brasil; PIX + comprovante funciona melhor |
+| Reembolso automatizado | Requer julgamento humano; risco de fraude |
+| Histórico de conversa > 30 dias | Custo de storage + risco LGPD |
+| App mobile | Atendimento exclusivo via WhatsApp |
+| Botões interativos do WhatsApp | Requer aprovação Meta Business; texto com opções numeradas funciona |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| INTL-01 | — | Pending |
+| INTL-02 | — | Pending |
+| INTL-03 | — | Pending |
+| INTL-04 | — | Pending |
+| INTL-05 | — | Pending |
+| REMC-01 | — | Pending |
+| REMC-02 | — | Pending |
+| REMC-03 | — | Pending |
+| REMC-04 | — | Pending |
+| REMC-05 | — | Pending |
+| REMC-06 | — | Pending |
+| RMKT-01 | — | Pending |
+| RMKT-02 | — | Pending |
+| RMKT-03 | — | Pending |
+| RMKT-04 | — | Pending |
+| RMKT-05 | — | Pending |
+| RMKT-06 | — | Pending |
+| META-01 | — | Pending |
+| META-02 | — | Pending |
+| META-03 | — | Pending |
+| META-04 | — | Pending |
+
+**Coverage:**
+- v1 requirements: 21 total
+- Mapped to phases: 0
+- Unmapped: 21 ⚠️
+
+---
+*Requirements defined: 2026-04-07*
+*Last updated: 2026-04-07 after initial definition*
