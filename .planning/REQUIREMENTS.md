@@ -78,33 +78,33 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INTL-01 | — | Pending |
-| INTL-02 | — | Pending |
-| INTL-03 | — | Pending |
-| INTL-04 | — | Pending |
-| INTL-05 | — | Pending |
-| REMC-01 | — | Pending |
-| REMC-02 | — | Pending |
-| REMC-03 | — | Pending |
-| REMC-04 | — | Pending |
-| REMC-05 | — | Pending |
-| REMC-06 | — | Pending |
-| RMKT-01 | — | Pending |
-| RMKT-02 | — | Pending |
-| RMKT-03 | — | Pending |
-| RMKT-04 | — | Pending |
-| RMKT-05 | — | Pending |
-| RMKT-06 | — | Pending |
-| META-01 | — | Pending |
-| META-02 | — | Pending |
-| META-03 | — | Pending |
-| META-04 | — | Pending |
+| INTL-01 | Phase 1 | Pending |
+| INTL-02 | Phase 1 | Pending |
+| INTL-03 | Phase 1 | Pending |
+| INTL-04 | Phase 1 | Pending |
+| INTL-05 | Phase 1 | Pending |
+| REMC-01 | Phase 2 | Pending |
+| REMC-02 | Phase 2 | Pending |
+| REMC-03 | Phase 2 | Pending |
+| REMC-04 | Phase 2 | Pending |
+| REMC-05 | Phase 2 | Pending |
+| REMC-06 | Phase 2 | Pending |
+| RMKT-01 | Phase 3 | Pending |
+| RMKT-02 | Phase 3 | Pending |
+| RMKT-03 | Phase 3 | Pending |
+| RMKT-04 | Phase 3 | Pending |
+| RMKT-05 | Phase 3 | Pending |
+| RMKT-06 | Phase 3 | Pending |
+| META-01 | Phase 4 | Pending |
+| META-02 | Phase 4 | Pending |
+| META-03 | Phase 4 | Pending |
+| META-04 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 21 total
-- Mapped to phases: 0
-- Unmapped: 21 ⚠️
+- Mapped to phases: 21
+- Unmapped: 0 (complete)
 
 ---
 *Requirements defined: 2026-04-07*
-*Last updated: 2026-04-07 after initial definition*
+*Last updated: 2026-04-07 after roadmap creation — traceability complete*
