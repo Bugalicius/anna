@@ -27,6 +27,10 @@ class Contact(Base):
     remarketing_count: Mapped[int] = mapped_column(Integer, default=0)
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    # Perfil permanente do paciente (D-13) — nunca expira, salvo no PostgreSQL
+    first_name: Mapped[str | None] = mapped_column(String(100))
+    last_name: Mapped[str | None] = mapped_column(String(100))
+    dietbox_patient_id: Mapped[int | None] = mapped_column(Integer)
 
     conversations: Mapped[list["Conversation"]] = relationship(back_populates="contact")
     remarketing_queue: Mapped[list["RemarketingQueue"]] = relationship(back_populates="contact")
@@ -82,3 +86,27 @@ class RemarketingQueue(Base):
     counts_toward_limit: Mapped[bool] = mapped_column(Boolean, default=True)
 
     contact: Mapped["Contact"] = relationship(back_populates="remarketing_queue")
+
+
+class PendingEscalation(Base):
+    """
+    Registra perguntas pendentes de resposta do Breno (escalações internas).
+
+    Ciclo de vida: aguardando → respondido | timeout
+    Número 31 99205-9211 NUNCA exposto ao paciente — armazenado apenas para roteamento interno.
+    """
+
+    __tablename__ = "pending_escalations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    phone_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    phone_e164: Mapped[str] = mapped_column(String(20), nullable=False)
+    pergunta_original: Mapped[str] = mapped_column(Text)
+    contexto: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default="aguardando")
+    # status: aguardando | respondido | timeout
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resposta_breno: Mapped[str | None] = mapped_column(Text)
+    next_reminder_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    reminder_count: Mapped[int] = mapped_column(Integer, default=0)
