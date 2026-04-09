@@ -121,8 +121,42 @@ class AgenteRetencao:
         self.nome = nome or "paciente"
         self.modalidade = modalidade
         self.etapa: str = "inicio"
+        self.motivo: str | None = None
+        self.consulta_atual: dict | None = None
+        self.novo_slot: dict | None = None
         self._slots_oferecidos: list[dict] = []
         self.historico: list[dict] = []
+
+    # ── serialização ─────────────────────────────────────────────────────────
+
+    def to_dict(self) -> dict:
+        """Serializa o estado do agente para dict armazenável no Redis."""
+        return {
+            "_tipo": "retencao",
+            "telefone": self.telefone,
+            "nome": self.nome,
+            "modalidade": self.modalidade,
+            "etapa": self.etapa,
+            "motivo": self.motivo,
+            "consulta_atual": self.consulta_atual,
+            "novo_slot": self.novo_slot,
+            "historico": self.historico[-20:],  # T-01-01: máx 20 entradas
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "AgenteRetencao":
+        """Restaura instância a partir de dict serializado."""
+        agent = cls(
+            telefone=data["telefone"],
+            nome=data.get("nome"),
+            modalidade=data.get("modalidade", "presencial"),
+        )
+        agent.etapa = data.get("etapa", "inicio")
+        agent.motivo = data.get("motivo")
+        agent.consulta_atual = data.get("consulta_atual")
+        agent.novo_slot = data.get("novo_slot")
+        agent.historico = data.get("historico", [])
+        return agent
 
     def processar_remarcacao(self, mensagem: str) -> list[str]:
         self.historico.append({"role": "user", "content": mensagem})

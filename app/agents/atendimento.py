@@ -522,6 +522,49 @@ class AgenteAtendimento:
         return [confirmacao]
 
 
+    # ── serialização ─────────────────────────────────────────────────────────
+
+    def to_dict(self) -> dict:
+        """Serializa o estado do agente para dict armazenável no Redis."""
+        return {
+            "_tipo": "atendimento",
+            "telefone": self.telefone,
+            "phone_hash": self.phone_hash,
+            "etapa": self.etapa,
+            "nome": self.nome,
+            "status_paciente": self.status_paciente,
+            "objetivo": self.objetivo,
+            "plano_escolhido": self.plano_escolhido,
+            "modalidade": self.modalidade,
+            "upsell_oferecido": self.upsell_oferecido,
+            "slot_escolhido": self.slot_escolhido,
+            "forma_pagamento": self.forma_pagamento,
+            "pagamento_confirmado": self.pagamento_confirmado,
+            "id_paciente_dietbox": self.id_paciente_dietbox,
+            "id_agenda_dietbox": self.id_agenda_dietbox,
+            "historico": self.historico[-20:],  # T-01-01: máx 20 entradas
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "AgenteAtendimento":
+        """Restaura instância a partir de dict serializado."""
+        agent = cls(telefone=data["telefone"], phone_hash=data["phone_hash"])
+        agent.etapa = data.get("etapa", "boas_vindas")
+        agent.nome = data.get("nome")
+        agent.status_paciente = data.get("status_paciente")
+        agent.objetivo = data.get("objetivo")
+        agent.plano_escolhido = data.get("plano_escolhido")
+        agent.modalidade = data.get("modalidade")
+        agent.upsell_oferecido = data.get("upsell_oferecido", False)
+        agent.slot_escolhido = data.get("slot_escolhido")
+        agent.forma_pagamento = data.get("forma_pagamento")
+        agent.pagamento_confirmado = data.get("pagamento_confirmado", False)
+        agent.id_paciente_dietbox = data.get("id_paciente_dietbox")
+        agent.id_agenda_dietbox = data.get("id_agenda_dietbox")
+        agent.historico = data.get("historico", [])
+        return agent
+
+
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def _extrair_nome(msg: str) -> str | None:
