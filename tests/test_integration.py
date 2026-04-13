@@ -182,11 +182,14 @@ def test_fluxo_remarcacao_completo(mock_pac, mock_agenda, mock_lanc, mock_slots)
     assert len(agente._slots_oferecidos) >= 1
 
     # Escolhe opção 3 (código usa "terceiro", masculino)
-    r3 = agente.processar_remarcacao("pode ser o terceiro horário")
-    # Após escolha, etapa avança para aguardando_confirmacao_dietbox (Plan 02-03 implementa Dietbox)
+    # Plan 02-03: após escolha, etapa vai para aguardando_confirmacao_dietbox
+    # e retorna mensagem de espera (Dietbox ainda não foi chamado)
+    with patch("app.agents.retencao.alterar_agendamento", return_value=True):
+        r3 = agente.processar_remarcacao("pode ser o terceiro horário")
     assert agente.etapa == "aguardando_confirmacao_dietbox"
     texto3 = " ".join(r3)
-    assert "remarcada" in texto3.lower() or "Remarcada" in texto3
+    # Retorna indicador de espera antes de chamar Dietbox
+    assert "instante" in texto3.lower() or "💚" in texto3
 
 
 # ── 5. Retenção — remarcação sem slots disponíveis ───────────────────────────

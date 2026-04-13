@@ -350,3 +350,110 @@ def test_msg_inicio_remarcacao_nao_cita_data_calculada():
     # Não deve conter padrão de data ISO (YYYY-MM-DD) embutida no template
     import re
     assert not re.search(r'\d{4}-\d{2}-\d{2}', MSG_INICIO_REMARCACAO)
+
+
+# ── Etapa aguardando_confirmacao_dietbox ──────────────────────────────────────
+
+def _agent_aguardando_confirmacao(id_agenda: str = "ID-999") -> "AgenteRetencao":
+    """Cria AgenteRetencao já em etapa 'aguardando_confirmacao_dietbox' com novo_slot."""
+    from app.agents.retencao import AgenteRetencao
+    agent = AgenteRetencao(telefone="5531999990000", nome="Ana")
+    agent.etapa = "aguardando_confirmacao_dietbox"
+    agent.id_agenda_original = id_agenda
+    agent.modalidade = "presencial"
+    agent.novo_slot = {
+        "datetime": "2026-04-21T09:00:00",
+        "data_fmt": "segunda, 21/04",
+        "hora": "9h",
+    }
+    agent.consulta_atual = {"inicio": "2026-04-14T09:00:00"}
+    return agent
+
+
+def test_escolha_slot_muda_etapa_para_aguardando_confirmacao():
+    """Paciente escolhe slot válido → etapa 'aguardando_confirmacao_dietbox', novo_slot salvo, retorna espera."""
+    from app.agents.retencao import AgenteRetencao
+    agent = AgenteRetencao(telefone="5531999990000", nome="Ana")
+    agent.etapa = "oferecendo_slots"
+    agent.id_agenda_original = "ID-999"
+    agent._slots_pool = [_make_slot(0, 9), _make_slot(1, 10), _make_slot(2, 14)]
+    agent._slots_oferecidos = agent._slots_pool[:3]
+
+    respostas = agent.processar_remarcacao("1")
+
+    assert agent.etapa == "aguardando_confirmacao_dietbox"
+    assert agent.novo_slot is not None
+    assert "instante" in " ".join(respostas).lower() or "💚" in " ".join(respostas)
+
+
+def test_aguardando_confirmacao_sucesso_dietbox_retorna_confirmacao():
+    """Na etapa aguardando_confirmacao_dietbox com alterar_agendamento=True → etapa concluido, retorna confirmação."""
+    agent = _agent_aguardando_confirmacao()
+
+    with patch("app.agents.retencao.alterar_agendamento", return_value=True):
+        respostas = agent.processar_remarcacao("qualquer msg")
+
+    assert agent.etapa == "concluido"
+    texto = " ".join(respostas)
+    assert "remarcada" in texto.lower() or "sucesso" in texto.lower()
+
+
+def test_aguardando_confirmacao_falha_dietbox_retorna_erro():
+    """Na etapa aguardando_confirmacao_dietbox com alterar_agendamento=False → etapa erro_remarcacao, sem confirmação falsa."""
+    agent = _agent_aguardando_confirmacao()
+
+    with patch("app.agents.retencao.alterar_agendamento", return_value=False):
+        respostas = agent.processar_remarcacao("qualquer msg")
+
+    assert agent.etapa == "erro_remarcacao"
+    texto = " ".join(respostas)
+    # Não deve conter "✅" (confirmação falsa)
+    assert "✅" not in texto
+    # Deve informar sobre o problema técnico
+    assert "problema" in texto.lower() or "técnico" in texto.lower() or "dificuldade" in texto.lower()
+
+
+def test_aguardando_confirmacao_sem_id_agenda_retorna_erro():
+    """Na etapa aguardando_confirmacao_dietbox com id_agenda_original=None → trata como erro, retorna MSG_ERRO_REMARCACAO_DIETBOX."""
+    from app.agents.retencao import AgenteRetencao
+    agent = AgenteRetencao(telefone="5531999990000", nome="Ana")
+    agent.etapa = "aguardando_confirmacao_dietbox"
+    agent.id_agenda_original = None
+    agent.novo_slot = {
+        "datetime": "2026-04-21T09:00:00",
+        "data_fmt": "segunda, 21/04",
+        "hora": "9h",
+    }
+
+    # Quando id_agenda_original é None, chama alterar_agendamento com "" → retorna False
+    with patch("app.agents.retencao.alterar_agendamento", return_value=False):
+        respostas = agent.processar_remarcacao("qualquer msg")
+
+    assert agent.etapa == "erro_remarcacao"
+    assert "✅" not in " ".join(respostas)
+
+
+def test_aguardando_confirmacao_sucesso_contem_data_hora_slot():
+    """MSG_CONFIRMACAO_REMARCACAO retornada contém data_fmt e hora do slot escolhido (não hardcoded)."""
+    agent = _agent_aguardando_confirmacao()
+
+    with patch("app.agents.retencao.alterar_agendamento", return_value=True):
+        respostas = agent.processar_remarcacao("qualquer msg")
+
+    texto = " ".join(respostas)
+    assert "21/04" in texto or "segunda" in texto.lower()
+    assert "9h" in texto
+
+
+def test_etapa_erro_remarcacao_retorna_orientacao():
+    """Na etapa erro_remarcacao com qualquer mensagem → retorna orientação para contato direto."""
+    from app.agents.retencao import AgenteRetencao
+    agent = AgenteRetencao(telefone="5531999990000", nome="Ana")
+    agent.etapa = "erro_remarcacao"
+
+    respostas = agent.processar_remarcacao("o que aconteceu?")
+
+    texto = " ".join(respostas)
+    assert len(texto) > 0
+    # Deve orientar o paciente a entrar em contato
+    assert "thaynara" in texto.lower() or "contato" in texto.lower() or "dificuldade" in texto.lower()

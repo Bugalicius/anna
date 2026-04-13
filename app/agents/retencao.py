@@ -16,6 +16,7 @@ from datetime import date, datetime, timedelta, timezone
 import anthropic
 
 from app.agents.dietbox_worker import (
+    alterar_agendamento,
     buscar_paciente_por_telefone,
     consultar_agendamento_ativo,
     consultar_slots_disponiveis,
@@ -125,6 +126,18 @@ MSG_CONFIRMACAO_REMARCACAO = (
     "📅 *Nova data:* {data} às {hora}\n"
     "📍 *Modalidade:* {modalidade}\n\n"
     "Qualquer dúvida, é só me chamar aqui 💚"
+)
+
+MSG_ERRO_REMARCACAO_DIETBOX = (
+    "Ops! Tive um problema técnico ao tentar confirmar a remarcação no sistema 😔\n\n"
+    "Vou acionar a Thaynara para resolver isso manualmente. "
+    "Você receberá uma confirmação assim que estiver tudo certo 💚"
+)
+
+MSG_ERRO_REMARCACAO_RETRY = (
+    "Ainda estou com dificuldade técnica para confirmar no sistema 😔\n\n"
+    "Por favor, entre em contato diretamente com a Thaynara para garantir sua remarcação. "
+    "Me desculpe o inconveniente! 💚"
 )
 
 MSG_SEGUNDA_RODADA = (
@@ -413,12 +426,10 @@ class AgenteRetencao:
         if self.etapa == "oferecendo_slots":
             slot = _extrair_escolha_slot(msg, self._slots_oferecidos)
             if slot:
+                self.novo_slot = slot
                 self.etapa = "aguardando_confirmacao_dietbox"
-                return [MSG_CONFIRMACAO_REMARCACAO.format(
-                    data=slot["data_fmt"],
-                    hora=slot["hora"],
-                    modalidade=self.modalidade,
-                )]
+                # Indicador de espera antes de chamar Dietbox (per comportamento Fase 1)
+                return ["Um instante, por favor 💚"]
 
             # Rejeição: calcula próximo batch
             slots_oferecidos_dts = {s["datetime"] for s in self._slots_oferecidos}
@@ -439,7 +450,56 @@ class AgenteRetencao:
             )
             return [MSG_SEGUNDA_RODADA.format(opcoes=opcoes)]
 
-        # Etapa 4: perda de retorno — qualquer mensagem redireciona para atendimento
+        # Etapa 4: chamar Dietbox para alterar agendamento e confirmar ao paciente (per D-20/D-21)
+        if self.etapa == "aguardando_confirmacao_dietbox":
+            if not self.novo_slot:
+                # Estado inconsistente — não deveria acontecer
+                logger.error(
+                    "aguardando_confirmacao_dietbox sem novo_slot: telefone=%s",
+                    self.telefone[-4:],
+                )
+                self.etapa = "erro_remarcacao"
+                return [MSG_ERRO_REMARCACAO_DIETBOX]
+
+            from datetime import datetime as _dt
+            novo_dt = _dt.fromisoformat(self.novo_slot["datetime"])
+
+            # Monta observação per D-23
+            data_original = ""
+            if self.consulta_atual:
+                inicio_original = self.consulta_atual.get("inicio", "")
+                if inicio_original:
+                    try:
+                        dt_orig = _dt.fromisoformat(inicio_original)
+                        data_original = dt_orig.strftime("%d/%m/%Y")
+                    except ValueError:
+                        data_original = inicio_original[:10]
+            data_nova = novo_dt.strftime("%d/%m/%Y")
+            observacao = (
+                f"Remarcado do dia {data_original} para {data_nova}"
+                if data_original
+                else f"Remarcado para {data_nova}"
+            )
+
+            id_agenda = self.id_agenda_original or ""
+            sucesso = alterar_agendamento(id_agenda, novo_dt, observacao)
+
+            if sucesso:
+                self.etapa = "concluido"
+                return [MSG_CONFIRMACAO_REMARCACAO.format(
+                    data=self.novo_slot["data_fmt"],
+                    hora=self.novo_slot["hora"],
+                    modalidade=self.modalidade,
+                )]
+            else:
+                self.etapa = "erro_remarcacao"
+                return [MSG_ERRO_REMARCACAO_DIETBOX]
+
+        # Etapa 5: erro técnico — orientar paciente a contatar a Thaynara
+        if self.etapa == "erro_remarcacao":
+            return [MSG_ERRO_REMARCACAO_RETRY]
+
+        # Etapa 6: perda de retorno — qualquer mensagem redireciona para atendimento
         if self.etapa == "perda_retorno":
             self.etapa = "redirecionando_atendimento"
             return ["Claro! Vou te encaminhar para o fluxo de agendamento normal 💚"]
