@@ -183,7 +183,8 @@ def test_fluxo_remarcacao_completo(mock_pac, mock_agenda, mock_lanc, mock_slots)
 
     # Escolhe opção 3 (código usa "terceiro", masculino)
     r3 = agente.processar_remarcacao("pode ser o terceiro horário")
-    assert agente.etapa == "concluido"
+    # Após escolha, etapa avança para aguardando_confirmacao_dietbox (Plan 02-03 implementa Dietbox)
+    assert agente.etapa == "aguardando_confirmacao_dietbox"
     texto3 = " ".join(r3)
     assert "remarcada" in texto3.lower() or "Remarcada" in texto3
 

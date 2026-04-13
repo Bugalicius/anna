@@ -127,6 +127,27 @@ MSG_CONFIRMACAO_REMARCACAO = (
     "Qualquer dúvida, é só me chamar aqui 💚"
 )
 
+MSG_SEGUNDA_RODADA = (
+    "Entendo 😊 Vou buscar mais opções pra você:\n\n"
+    "{opcoes}\n\n"
+    "Alguma dessas funciona?"
+)
+
+MSG_PERDA_RETORNO = (
+    "Infelizmente não conseguimos encontrar um horário que funcione para você "
+    "dentro do prazo de remarcação 😔\n\n"
+    "Como o prazo se encerra em breve, o retorno não poderá mais ser remarcado.\n\n"
+    "Mas posso te ajudar a agendar uma consulta nova! Quer que eu verifique os "
+    "planos disponíveis para você? 💚"
+)
+
+MSG_SEM_MAIS_SLOTS = (
+    "Não há mais horários disponíveis na janela de remarcação 😔\n\n"
+    "Como o prazo se encerra em breve, o retorno não poderá mais ser remarcado.\n\n"
+    "Mas posso te ajudar a agendar uma consulta nova! Quer que eu verifique os "
+    "planos disponíveis para você? 💚"
+)
+
 MSG_INICIO_CANCELAMENTO = (
     "Tudo bem, {nome}. Vou registrar o cancelamento da sua consulta.\n\n"
     "Só para saber: o que aconteceu? Ficou alguma dúvida ou podemos ajudar de outra forma?"
@@ -388,21 +409,40 @@ class AgenteRetencao:
             msgs_ret.append(MSG_OPCOES_REMARCACAO.format(opcoes=opcoes))
             return msgs_ret
 
-        # Etapa 3: paciente escolheu um slot
+        # Etapa 3: paciente escolheu um slot (com negociação em 2 rodadas — T-02-02-02)
         if self.etapa == "oferecendo_slots":
             slot = _extrair_escolha_slot(msg, self._slots_oferecidos)
             if slot:
-                self.etapa = "concluido"
+                self.etapa = "aguardando_confirmacao_dietbox"
                 return [MSG_CONFIRMACAO_REMARCACAO.format(
                     data=slot["data_fmt"],
                     hora=slot["hora"],
                     modalidade=self.modalidade,
                 )]
+
+            # Rejeição: calcula próximo batch
+            slots_oferecidos_dts = {s["datetime"] for s in self._slots_oferecidos}
+            next_batch = [s for s in self._slots_pool if s["datetime"] not in slots_oferecidos_dts]
+
+            # Condição de perda: sem mais slots OU já na rodada 1 (máx 2 rodadas)
+            if not next_batch or self.rodada_negociacao >= 1:
+                self.etapa = "perda_retorno"
+                msg_perda = MSG_SEM_MAIS_SLOTS if not next_batch else MSG_PERDA_RETORNO
+                return [msg_perda]
+
+            # Segunda rodada: oferece mais 3 do pool restante
+            self.rodada_negociacao += 1
+            self._slots_oferecidos = _priorizar_slots(next_batch, None, None)
             opcoes = "\n".join(
                 f"{i+1}. {s['data_fmt']} às {s['hora']}"
                 for i, s in enumerate(self._slots_oferecidos)
             )
-            return [f"Pode escolher uma das opções abaixo 😊\n\n{opcoes}"]
+            return [MSG_SEGUNDA_RODADA.format(opcoes=opcoes)]
+
+        # Etapa 4: perda de retorno — qualquer mensagem redireciona para atendimento
+        if self.etapa == "perda_retorno":
+            self.etapa = "redirecionando_atendimento"
+            return ["Claro! Vou te encaminhar para o fluxo de agendamento normal 💚"]
 
         return [_gerar_resposta_llm_retencao(self.historico, self.etapa)]
 

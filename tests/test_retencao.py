@@ -262,3 +262,91 @@ def test_priorizar_slots_retorna_max_3():
     resultado = _priorizar_slots(pool, dia_preferido=None, hora_preferida=None)
 
     assert len(resultado) <= 3
+
+
+# ── Fluxo de negociação — 2 rodadas + perda de retorno ───────────────────────
+
+def _agent_com_slots(num_slots: int = 6) -> "AgenteRetencao":
+    """Cria AgenteRetencao já em etapa 'oferecendo_slots' com pool pré-preenchido."""
+    from app.agents.retencao import AgenteRetencao
+    agent = AgenteRetencao(telefone="5531999990000", nome="Ana")
+    agent.etapa = "oferecendo_slots"
+    # Cria pool de slots em dias variados
+    agent._slots_pool = [_make_slot(i % 5, 9 + (i % 3)) for i in range(num_slots)]
+    # Slots oferecidos = os 3 primeiros do pool
+    agent._slots_oferecidos = agent._slots_pool[:3]
+    return agent
+
+
+def test_rejeicao_primeira_rodada_oferece_segunda_rodada():
+    """Rejeição com rodada_negociacao=0 e pool com mais slots → rodada 2 com novos 3 slots."""
+    agent = _agent_com_slots(num_slots=6)
+    assert agent.rodada_negociacao == 0
+
+    # Mensagem sem número ou data válida = rejeição
+    respostas = agent.processar_remarcacao("nenhum desses me serve")
+
+    assert agent.rodada_negociacao == 1
+    assert agent.etapa == "oferecendo_slots"
+    # Resposta deve conter a segunda rodada
+    texto = " ".join(respostas)
+    assert any(c.isdigit() for c in texto)  # contém opções numeradas
+
+
+def test_rejeicao_segunda_rodada_declara_perda_retorno():
+    """Rejeição com rodada_negociacao=1 → etapa 'perda_retorno' e MSG_PERDA_RETORNO."""
+    agent = _agent_com_slots(num_slots=6)
+    agent.rodada_negociacao = 1
+
+    respostas = agent.processar_remarcacao("não gostei de nenhum")
+
+    assert agent.etapa == "perda_retorno"
+    texto = " ".join(respostas)
+    assert "prazo" in texto.lower() or "retorno" in texto.lower()
+
+
+def test_etapa_perda_retorno_oferece_nova_consulta():
+    """Na etapa 'perda_retorno', qualquer msg → redirecionando_atendimento."""
+    from app.agents.retencao import AgenteRetencao
+    agent = AgenteRetencao(telefone="5531999990000", nome="Ana")
+    agent.etapa = "perda_retorno"
+
+    respostas = agent.processar_remarcacao("ok, quero agendar nova consulta")
+
+    assert agent.etapa == "redirecionando_atendimento"
+    texto = " ".join(respostas)
+    assert len(texto) > 0
+
+
+def test_pool_com_so_3_slots_rejeicao_declara_perda_direto():
+    """Pool com apenas 3 slots — rejeição → sem next_batch → perda_retorno direta."""
+    agent = _agent_com_slots(num_slots=3)
+    assert agent.rodada_negociacao == 0
+
+    respostas = agent.processar_remarcacao("nenhum desses funciona pra mim")
+
+    assert agent.etapa == "perda_retorno"
+
+
+def test_escolha_valida_segunda_rodada_confirma_normalmente():
+    """Paciente escolhe slot na rodada 2 → etapa vai para aguardando_confirmacao_dietbox ou concluido."""
+    agent = _agent_com_slots(num_slots=6)
+    agent.rodada_negociacao = 1
+
+    respostas = agent.processar_remarcacao("1")
+
+    # Escolheu → não deve declarar perda de retorno
+    assert agent.etapa != "perda_retorno"
+    texto = " ".join(respostas)
+    assert len(texto) > 0
+
+
+def test_msg_inicio_remarcacao_nao_cita_data_calculada():
+    """MSG_INICIO_REMARCACAO contém '7 dias' e 'prazo máximo' mas não cita data ISO."""
+    from app.agents.retencao import MSG_INICIO_REMARCACAO
+
+    assert "7 dias" in MSG_INICIO_REMARCACAO
+    assert "prazo máximo" in MSG_INICIO_REMARCACAO
+    # Não deve conter padrão de data ISO (YYYY-MM-DD) embutida no template
+    import re
+    assert not re.search(r'\d{4}-\d{2}-\d{2}', MSG_INICIO_REMARCACAO)
