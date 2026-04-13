@@ -480,6 +480,47 @@ def agendar_consulta(
     return str(id_agenda)
 
 
+# ── Alterar agendamento ───────────────────────────────────────────────────────
+
+def alterar_agendamento(
+    id_agenda: str,
+    novo_dt_inicio: datetime,
+    observacao: str,
+    duracao_minutos: int = 60,
+) -> bool:
+    """
+    Altera a data/hora de um agendamento existente no Dietbox (per D-22).
+    Adiciona observacao ao campo Observacao do agendamento (per D-23).
+    Retorna True se bem-sucedido, False em qualquer falha (nunca propaga exceção).
+    """
+    if novo_dt_inicio.tzinfo is None:
+        novo_dt_inicio = novo_dt_inicio.replace(tzinfo=BRT)
+    novo_dt_fim = novo_dt_inicio + timedelta(minutes=duracao_minutos)
+
+    payload = {
+        "Start": novo_dt_inicio.isoformat(),
+        "End": novo_dt_fim.isoformat(),
+        "Observacao": observacao,
+    }
+    try:
+        resp = requests.patch(
+            f"{DIETBOX_API}/agenda/{id_agenda}",
+            headers=_headers(),
+            json=payload,
+            timeout=20,
+        )
+        resp.raise_for_status()
+        logger.info(
+            "Agendamento alterado: id=%s, novo_inicio=%s",
+            id_agenda,
+            novo_dt_inicio.isoformat(),
+        )
+        return True
+    except Exception as e:
+        logger.error("Falha ao alterar agendamento %s: %s", id_agenda, e)
+        return False
+
+
 # ── Financeiro ────────────────────────────────────────────────────────────────
 
 def lancar_financeiro(

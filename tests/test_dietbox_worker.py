@@ -360,3 +360,102 @@ def test_verificar_lancamento_financeiro_excecao_retorna_false():
         result = verificar_lancamento_financeiro(id_agenda="AGENDA-ABC")
 
     assert result is False
+
+
+# ── alterar_agendamento ───────────────────────────────────────────────────────
+
+def test_alterar_agendamento_sucesso_retorna_true():
+    """alterar_agendamento com mock status 200 → retorna True."""
+    from datetime import datetime, timedelta, timezone
+    BRT = timezone(timedelta(hours=-3))
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"Data": {"id": "ID-123"}}
+    mock_resp.raise_for_status = MagicMock()
+
+    novo_dt = datetime(2026, 4, 14, 9, 0, tzinfo=BRT)
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.patch", return_value=mock_resp):
+        from app.agents.dietbox_worker import alterar_agendamento
+        result = alterar_agendamento("ID-123", novo_dt, "Remarcado do dia 10/04 para 14/04")
+
+    assert result is True
+
+
+def test_alterar_agendamento_http_error_retorna_false():
+    """alterar_agendamento quando requests.patch levanta HTTPError → retorna False, não propaga."""
+    import requests as _req
+    from datetime import datetime, timedelta, timezone
+    BRT = timezone(timedelta(hours=-3))
+
+    novo_dt = datetime(2026, 4, 14, 9, 0, tzinfo=BRT)
+
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status.side_effect = _req.HTTPError("400 Bad Request")
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.patch", return_value=mock_resp):
+        from app.agents.dietbox_worker import alterar_agendamento
+        result = alterar_agendamento("ID-123", novo_dt, "Remarcado")
+
+    assert result is False
+
+
+def test_alterar_agendamento_timeout_retorna_false():
+    """alterar_agendamento quando requests.patch levanta Timeout → retorna False."""
+    import requests as _req
+    from datetime import datetime, timedelta, timezone
+    BRT = timezone(timedelta(hours=-3))
+
+    novo_dt = datetime(2026, 4, 14, 9, 0, tzinfo=BRT)
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.patch", side_effect=_req.Timeout("timeout")):
+        from app.agents.dietbox_worker import alterar_agendamento
+        result = alterar_agendamento("ID-123", novo_dt, "Remarcado")
+
+    assert result is False
+
+
+def test_alterar_agendamento_payload_correto():
+    """alterar_agendamento envia payload com Start, End e Observacao corretos."""
+    from datetime import datetime, timedelta, timezone
+    BRT = timezone(timedelta(hours=-3))
+
+    novo_dt = datetime(2026, 4, 14, 9, 0, tzinfo=BRT)
+    observacao = "Remarcado do dia 10/04 para 14/04"
+
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status = MagicMock()
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.patch", return_value=mock_resp) as mock_patch:
+        from app.agents.dietbox_worker import alterar_agendamento
+        alterar_agendamento("ID-123", novo_dt, observacao)
+
+    call_kwargs = mock_patch.call_args
+    payload = call_kwargs[1]["json"] if "json" in call_kwargs[1] else call_kwargs[0][1]
+    assert "Start" in payload
+    assert "End" in payload
+    assert "Observacao" in payload
+    assert payload["Observacao"] == observacao
+
+
+def test_alterar_agendamento_url_correta():
+    """alterar_agendamento usa URL DIETBOX_API/agenda/{id_agenda} com PATCH."""
+    from datetime import datetime, timedelta, timezone
+    BRT = timezone(timedelta(hours=-3))
+
+    novo_dt = datetime(2026, 4, 14, 9, 0, tzinfo=BRT)
+
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status = MagicMock()
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.patch", return_value=mock_resp) as mock_patch:
+        from app.agents.dietbox_worker import alterar_agendamento, DIETBOX_API
+        alterar_agendamento("ID-123", novo_dt, "Remarcado")
+
+    url_chamada = mock_patch.call_args[0][0]
+    assert url_chamada == f"{DIETBOX_API}/agenda/ID-123"
