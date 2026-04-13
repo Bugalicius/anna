@@ -11,16 +11,39 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import anthropic
 
-from app.agents.dietbox_worker import consultar_slots_disponiveis
+from app.agents.dietbox_worker import (
+    buscar_paciente_por_telefone,
+    consultar_agendamento_ativo,
+    consultar_slots_disponiveis,
+    verificar_lancamento_financeiro,
+)
 from app.knowledge_base import kb
 
 logger = logging.getLogger(__name__)
 
 BRT = timezone(timedelta(hours=-3))
+
+
+# ── Cálculo de janela de remarcação ───────────────────────────────────────────
+
+def calcular_fim_janela(data_consulta: date) -> date:
+    """
+    Retorna a sexta-feira da semana SEGUINTE à semana do agendamento original.
+
+    Algoritmo (per D-05):
+      - Semana começa na segunda (weekday 0).
+      - "Semana seguinte" = adiciona 7 dias à data, depois ajusta para a segunda dessa semana.
+      - Ex: qualquer dia da semana 13-17/abr → prox segunda = 20/abr → sexta = 24/abr.
+    """
+    dia_da_semana = data_consulta.weekday()  # 0=seg … 6=dom
+    # Dias até a próxima segunda: se já for segunda, avança 7 (força semana seguinte)
+    dias_ate_prox_segunda = (7 - dia_da_semana) % 7 or 7
+    prox_segunda = data_consulta + timedelta(days=dias_ate_prox_segunda)
+    return prox_segunda + timedelta(days=4)  # segunda + 4 = sexta
 
 # ── Sequência de remarketing ──────────────────────────────────────────────────
 
@@ -29,30 +52,34 @@ REMARKETING_SEQ: list[dict] = [
         "posicao": 1,
         "delay_horas": 24,
         "mensagem": (
-            "Oi {nome}! 💚 Aqui é a Ana, da nutricionista Thaynara Teixeira.\n\n"
-            "Notei que você ainda não agendou sua consulta. "
-            "Será que ficou alguma dúvida? Me conta, posso te ajudar!"
+            "Oi, {nome}! Tudo bem? 💚\n\n"
+            "Sei que decidir investir em saúde às vezes gera aquele frio na barriga... "
+            "será que é o momento certo? Será que vai funcionar pra mim? É completamente normal.\n\n"
+            "Mas vou te falar uma coisa: a maioria das pacientes da Thaynara já pensaram assim antes de começar. "
+            "Me conta com sinceridade: o que está travando sua decisão? "
+            "Preço, horário, dúvida sobre o método? Me fala pra gente tentar resolver 💚"
         ),
     },
     {
         "posicao": 2,
         "delay_horas": 24 * 7,
         "mensagem": (
-            "Olá, {nome}! 🌿\n\n"
-            "Passaram alguns dias desde nosso último contato. "
-            "A Thaynara ainda tem horários disponíveis e adoraria te receber.\n\n"
-            "Que tal a gente encontrar um horário que funcione pra você? 😊"
+            "Oi, {nome}! Tudo bem?\n\n"
+            "Passando só pra saber se você conseguiu ver as informações que te enviei "
+            "sobre os atendimentos com a Nutri Thaynara 💚\n\n"
+            "Se ficou alguma dúvida ou quiser conversar melhor sobre o que se encaixa no seu momento, "
+            "estou por aqui pra te ajudar. "
+            "Você gostaria que eu te lembrasse mais pra frente ou prefere já garantir sua vaga agora?"
         ),
     },
     {
         "posicao": 3,
         "delay_horas": 24 * 30,
         "mensagem": (
-            "Oi {nome}! 💚\n\n"
-            "Faz um tempo que não nos falamos. "
-            "Qualquer que seja o seu objetivo — perda de peso, saúde, energia — "
-            "a Thaynara pode te ajudar a chegar lá com segurança.\n\n"
-            "Quando quiser retomar, é só me chamar aqui! 🌱"
+            "Oi, {nome}!\n\n"
+            "No mês passado você fez contato comigo e percebi que nossa conversa ficou em aberto "
+            "e queria entender se ainda posso te ajudar com o agendamento. "
+            "Só me avisa pra eu não te incomodar, tá bom?"
         ),
     },
 ]
@@ -78,20 +105,26 @@ _COMPLEMENTO_ONLINE = (
 # ── Mensagens de remarcação / cancelamento ────────────────────────────────────
 
 MSG_INICIO_REMARCACAO = (
-    "Sem problemas, {nome}! Vou verificar os horários disponíveis para você remarcar 📅"
+    "Tudo bem, {nome}. Podemos remarcar sim, sem problema 😊\n\n"
+    "Só queria te orientar que no momento a agenda da Thaynara está bem cheia. "
+    "Se você conseguir fazer um esforço para manter o horário agendado, "
+    "seria ótimo para não prejudicar seu acompanhamento.\n\n"
+    "Caso realmente não consiga, conseguimos realizar o agendamento dentro dos próximos 7 dias, "
+    "que é o prazo máximo para a remarcação.\n\n"
+    "Quais são os melhores horários e dias para você? 📅"
 )
 
 MSG_OPCOES_REMARCACAO = (
-    "Tenho estas opções disponíveis nos próximos dias:\n\n"
+    "Ótimo! Encontrei estas opções disponíveis:\n\n"
     "{opcoes}\n\n"
-    "Qual horário funciona melhor?"
+    "Qual funciona melhor pra você?"
 )
 
 MSG_CONFIRMACAO_REMARCACAO = (
-    "✅ Consulta remarcada!\n\n"
-    "Nova data: *{data}* às *{hora}*\n"
-    "Modalidade: {modalidade}\n\n"
-    "Pode contar comigo para qualquer dúvida 💚"
+    "✅ *Consulta remarcada com sucesso!*\n\n"
+    "📅 *Nova data:* {data} às {hora}\n"
+    "📍 *Modalidade:* {modalidade}\n\n"
+    "Qualquer dúvida, é só me chamar aqui 💚"
 )
 
 MSG_INICIO_CANCELAMENTO = (
@@ -118,14 +151,21 @@ class AgenteRetencao:
 
     def __init__(self, telefone: str, nome: str | None, modalidade: str = "presencial") -> None:
         self.telefone = telefone
-        self.nome = nome or "paciente"
+        self.nome = nome  # pode ser None — vamos perguntar se necessário
         self.modalidade = modalidade
         self.etapa: str = "inicio"
         self.motivo: str | None = None
         self.consulta_atual: dict | None = None
         self.novo_slot: dict | None = None
         self._slots_oferecidos: list[dict] = []
+        self._preferencia_horario: str = ""
         self.historico: list[dict] = []
+        # ── Campos Phase 2 ────────────────────────────────────────────────────
+        self.tipo_remarcacao: str | None = None      # "retorno" | "nova_consulta"
+        self.id_agenda_original: str | None = None
+        self.fim_janela: date | None = None          # sexta da semana seguinte ao agendamento
+        self.rodada_negociacao: int = 0
+        self._slots_pool: list[dict] = []            # pool completo (não apenas os 3 oferecidos)
 
     # ── serialização ─────────────────────────────────────────────────────────
 
@@ -141,11 +181,21 @@ class AgenteRetencao:
             "consulta_atual": self.consulta_atual,
             "novo_slot": self.novo_slot,
             "historico": self.historico[-20:],  # T-01-01: máx 20 entradas
+            # ── Phase 2 ──────────────────────────────────────────────────────
+            "tipo_remarcacao": self.tipo_remarcacao,
+            "id_agenda_original": self.id_agenda_original,
+            "fim_janela": self.fim_janela.isoformat() if self.fim_janela else None,
+            "rodada_negociacao": self.rodada_negociacao,
+            "_slots_pool": self._slots_pool,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "AgenteRetencao":
-        """Restaura instância a partir de dict serializado."""
+        """Restaura instância a partir de dict serializado.
+
+        Usa .get(campo, default) para todos os campos — compatível com estados
+        Phase 1 que não possuem os campos novos (T-02-01-01).
+        """
         agent = cls(
             telefone=data["telefone"],
             nome=data.get("nome"),
@@ -155,7 +205,16 @@ class AgenteRetencao:
         agent.motivo = data.get("motivo")
         agent.consulta_atual = data.get("consulta_atual")
         agent.novo_slot = data.get("novo_slot")
+        agent._slots_oferecidos = data.get("_slots_oferecidos", [])
+        agent._preferencia_horario = data.get("_preferencia_horario", "")
         agent.historico = data.get("historico", [])
+        # ── Phase 2 — default seguro para estados Phase 1 ────────────────────
+        agent.tipo_remarcacao = data.get("tipo_remarcacao")
+        agent.id_agenda_original = data.get("id_agenda_original")
+        fim_janela_str = data.get("fim_janela")
+        agent.fim_janela = date.fromisoformat(fim_janela_str) if fim_janela_str else None
+        agent.rodada_negociacao = data.get("rodada_negociacao", 0)
+        agent._slots_pool = data.get("_slots_pool", [])
         return agent
 
     def processar_remarcacao(self, mensagem: str) -> list[str]:
@@ -172,37 +231,182 @@ class AgenteRetencao:
             self.historico.append({"role": "assistant", "content": r})
         return respostas
 
+    # ── detecção retorno / nova consulta ──────────────────────────────────────
+
+    def _detectar_tipo_remarcacao(self) -> str:
+        """
+        Determina se o paciente está fazendo remarcação de retorno (já pagou) ou
+        nova consulta (sem agendamento/lançamento ativo).
+
+        Retorna "retorno" | "nova_consulta" e salva self.tipo_remarcacao.
+        Per D-03, D-04, D-25.
+        """
+        paciente = buscar_paciente_por_telefone(self.telefone)
+        if not paciente:
+            logger.info("Paciente não encontrado no Dietbox (%s) — nova_consulta", self.telefone[-4:])
+            self.tipo_remarcacao = "nova_consulta"
+            return "nova_consulta"
+
+        id_paciente = paciente.get("id")
+        agenda = consultar_agendamento_ativo(id_paciente=int(id_paciente))
+        if not agenda:
+            logger.info("Sem agendamento ativo para paciente %s — nova_consulta", self.telefone[-4:])
+            self.tipo_remarcacao = "nova_consulta"
+            return "nova_consulta"
+
+        tem_lancamento = verificar_lancamento_financeiro(id_agenda=agenda["id"])
+        if not tem_lancamento:
+            logger.info("Agendamento sem lançamento financeiro (%s) — nova_consulta", agenda["id"])
+            self.tipo_remarcacao = "nova_consulta"
+            return "nova_consulta"
+
+        # Retorno confirmado: salva estado
+        self.tipo_remarcacao = "retorno"
+        self.id_agenda_original = agenda["id"]
+        # Calcula janela a partir da data do agendamento original (per D-05)
+        try:
+            dt_consulta = date.fromisoformat(agenda["inicio"][:10])
+            self.fim_janela = calcular_fim_janela(dt_consulta)
+        except Exception as e:
+            logger.error("Erro ao calcular fim_janela: %s", e)
+            self.fim_janela = calcular_fim_janela(date.today())
+
+        logger.info("Tipo remarcação detectado: retorno (agenda=%s)", agenda["id"])
+        return "retorno"
+
     # ── remarcação ────────────────────────────────────────────────────────────
 
     def _fluxo_remarcacao(self, msg: str) -> list[str]:
+        # Etapa 0: se não temos o nome, pedir primeiro
+        if self.etapa == "inicio" and not self.nome:
+            self.etapa = "coletando_nome"
+            return ["Claro! Para eu verificar seu agendamento, pode me informar seu nome completo? 😊"]
+
+        if self.etapa == "coletando_nome":
+            self.nome = _extrair_nome_simples(msg)
+            self.etapa = "inicio"
+            # cai no próximo bloco
+
+        # Etapa 1: detecta tipo de remarcação e apresenta política
         if self.etapa == "inicio":
+            tipo = self._detectar_tipo_remarcacao()
+            if tipo == "nova_consulta":
+                self.etapa = "redirecionando_atendimento"
+                return [
+                    "Não localizei um agendamento já confirmado para você 😊\n"
+                    "Vou te passar para o fluxo de agendamento normal — me conta o que você está procurando!"
+                ]
+            self.etapa = "coletando_preferencia"
+            return [MSG_INICIO_REMARCACAO.format(nome=self.nome or "")]
+
+        # Etapa 2: recebeu preferência → buscar slots compatíveis
+        if self.etapa == "coletando_preferencia":
+            self._preferencia_horario = msg
             self.etapa = "oferecendo_slots"
+
+            msg_lower = msg.lower()
+
+            # Parse do dia da semana preferido
+            dia_preferido: int | None = None
+            _DIAS = [
+                ("segunda", 0), ("terça", 1), ("terca", 1),
+                ("quarta", 2), ("quinta", 3), ("sexta", 4),
+                ("sábado", 5), ("sabado", 5),
+            ]
+            for palavra, idx in _DIAS:
+                if palavra in msg_lower:
+                    dia_preferido = idx
+                    break
+
+            # Parse da hora preferida (aceita "8h", "8H", "8:00", "08", "9h", etc.)
+            import re as _re
+            hora_preferida: int | None = None
+            m = _re.search(r'\b(\d{1,2})[hH:]', msg)
+            if not m:
+                m = _re.search(r'\b(\d{1,2})\b', msg)
+            if m:
+                h = int(m.group(1))
+                if 6 <= h <= 20:
+                    hora_preferida = h
+
+            hoje_d = date.today()
+
+            # Janela correta (per D-05, D-06):
+            # - início: amanhã (nunca hoje)
+            # - fim: sexta da semana seguinte ao agendamento original
+            data_inicio_busca = hoje_d + timedelta(days=1)
+            data_fim_janela = self.fim_janela or calcular_fim_janela(hoje_d)
+            dias_a_frente = max(1, (data_fim_janela - hoje_d).days)
+
             try:
-                slots = consultar_slots_disponiveis(
+                todos_slots = consultar_slots_disponiveis(
                     modalidade=self.modalidade,
-                    dias_a_frente=7,
+                    dias_a_frente=dias_a_frente,
+                    data_inicio=data_inicio_busca,
                 )
             except Exception as e:
-                logger.error("Erro ao consultar slots para remarcação: %s", e)
-                slots = []
+                logger.error("Erro ao consultar slots: %s", e)
+                todos_slots = []
 
-            if not slots:
+            # Salva pool completo para uso futuro (negociação de rodadas)
+            self._slots_pool = todos_slots
+
+            if not todos_slots:
+                self.etapa = "sem_horarios"
                 return [
-                    MSG_INICIO_REMARCACAO.format(nome=self.nome),
-                    "Infelizmente não encontrei horários nos próximos 7 dias. "
-                    "Vou verificar com a Thaynara e te retorno em breve 🔍",
+                    "Infelizmente não encontrei horários disponíveis nos próximos 7 dias. "
+                    "Vou verificar com a Thaynara e te retorno em breve 🔍"
                 ]
 
-            self._slots_oferecidos = slots[:3]
+            # ── Tenta respeitar preferência; se não achar, usa todos os slots disponíveis ──
+            aviso: str | None = None
+            _NOMES_DIAS = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
+            pool = todos_slots
+
+            if dia_preferido is not None:
+                dia_nome = _NOMES_DIAS[dia_preferido]
+                slots_dia = [
+                    s for s in pool
+                    if datetime.fromisoformat(s["datetime"]).weekday() == dia_preferido
+                ]
+                if not slots_dia:
+                    aviso = (
+                        f"Não tenho {dia_nome}-feira disponível nos próximos 7 dias, "
+                        f"mas veja o que temos:"
+                    )
+                    # pool permanece com todos os slots — mostra o que tem
+                else:
+                    if hora_preferida is not None:
+                        slots_hora = [s for s in slots_dia if _hora_int(s) == hora_preferida]
+                        if not slots_hora:
+                            aviso = (
+                                f"Não tenho {dia_nome}-feira às {hora_preferida}h disponível, "
+                                f"mas veja as opções que temos:"
+                            )
+                            # usa todos slots disponíveis (não só sexta)
+                        else:
+                            pool = slots_hora
+                    else:
+                        pool = slots_dia
+            elif hora_preferida is not None:
+                slots_hora = [s for s in pool if _hora_int(s) == hora_preferida]
+                if slots_hora:
+                    pool = slots_hora
+
+            self._slots_oferecidos = _selecionar_slots_dias_diferentes(pool)
+
             opcoes = "\n".join(
                 f"{i+1}. {s['data_fmt']} às {s['hora']}"
                 for i, s in enumerate(self._slots_oferecidos)
             )
-            return [
-                MSG_INICIO_REMARCACAO.format(nome=self.nome),
-                MSG_OPCOES_REMARCACAO.format(opcoes=opcoes),
-            ]
 
+            msgs_ret = []
+            if aviso:
+                msgs_ret.append(aviso)
+            msgs_ret.append(MSG_OPCOES_REMARCACAO.format(opcoes=opcoes))
+            return msgs_ret
+
+        # Etapa 3: paciente escolheu um slot
         if self.etapa == "oferecendo_slots":
             slot = _extrair_escolha_slot(msg, self._slots_oferecidos)
             if slot:
@@ -216,17 +420,27 @@ class AgenteRetencao:
                 f"{i+1}. {s['data_fmt']} às {s['hora']}"
                 for i, s in enumerate(self._slots_oferecidos)
             )
-            return [f"Pode escolher uma das opções:\n{opcoes}"]
+            return [f"Pode escolher uma das opções abaixo 😊\n\n{opcoes}"]
 
         return [_gerar_resposta_llm_retencao(self.historico, self.etapa)]
 
     # ── cancelamento ──────────────────────────────────────────────────────────
 
     def _fluxo_cancelamento(self, msg: str) -> list[str]:
+        # Pede nome se não temos
+        if self.etapa == "inicio" and not self.nome:
+            self.etapa = "coletando_nome_cancel"
+            return ["Claro! Para eu localizar seu agendamento, pode me informar seu nome completo? 😊"]
+
+        if self.etapa == "coletando_nome_cancel":
+            self.nome = _extrair_nome_simples(msg)
+            self.etapa = "inicio"
+            # cai no próximo bloco
+
         if self.etapa == "inicio":
             self.etapa = "aguardando_motivo"
             return [
-                MSG_INICIO_CANCELAMENTO.format(nome=self.nome),
+                MSG_INICIO_CANCELAMENTO.format(nome=self.nome or ""),
                 f"_Política de cancelamento: {MSG_POLITICA_CANCELAMENTO}_",
             ]
 
@@ -265,6 +479,37 @@ def montar_lembrete_consulta(
 
 
 # ── helpers internos ──────────────────────────────────────────────────────────
+
+def _hora_int(slot: dict) -> int:
+    """Extrai a hora do slot como inteiro (ex: '9h' → 9, '14:00' → 14)."""
+    import re as _re
+    hora_str = slot.get("hora", "0")
+    m = _re.search(r'(\d{1,2})', hora_str)
+    return int(m.group(1)) if m else 0
+
+
+def _selecionar_slots_dias_diferentes(slots: list[dict]) -> list[dict]:
+    """Seleciona até 3 slots garantindo que sejam em dias diferentes."""
+    dias_usados: set[str] = set()
+    selecionados: list[dict] = []
+    for slot in slots:
+        dia = slot.get("data_fmt", "")
+        if dia not in dias_usados:
+            selecionados.append(slot)
+            dias_usados.add(dia)
+        if len(selecionados) >= 3:
+            break
+    return selecionados
+
+
+def _extrair_nome_simples(msg: str) -> str:
+    """Extrai o primeiro nome da mensagem."""
+    import re
+    limpo = re.sub(r"^(oi|olá|ola|bom dia|boa tarde|sou|me chamo|meu nome é|meu nome e)[,!.\s]*",
+                   "", msg.strip(), flags=re.IGNORECASE)
+    partes = [p.strip(",.!?") for p in limpo.split() if len(p.strip(",.!?")) > 2]
+    return partes[0].capitalize() if partes else msg.split()[0].capitalize()
+
 
 def _extrair_escolha_slot(msg: str, slots: list[dict]) -> dict | None:
     msg_lower = msg.lower()
