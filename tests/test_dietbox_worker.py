@@ -243,3 +243,120 @@ def test_processar_agendamento_erro_retorna_falha():
 
     assert result["sucesso"] is False
     assert "erro" in result
+
+
+# ── consultar_agendamento_ativo ───────────────────────────────────────────────
+
+def test_consultar_agendamento_ativo_retorna_dict():
+    """consultar_agendamento_ativo com 1 agenda futura válida retorna dict com chaves esperadas."""
+    from datetime import date, timedelta
+    amanha = date.today() + timedelta(days=1)
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "Data": [
+            {
+                "id": "AGENDA-ABC",
+                "inicio": f"{amanha.isoformat()}T09:00:00",
+                "fim": f"{amanha.isoformat()}T10:00:00",
+                "idServico": "SVC-001",
+                "desmarcada": False,
+            }
+        ]
+    }
+    mock_resp.raise_for_status = MagicMock()
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.get", return_value=mock_resp):
+        from app.agents.dietbox_worker import consultar_agendamento_ativo
+        result = consultar_agendamento_ativo(id_paciente=123)
+
+    assert result is not None
+    assert result["id"] == "AGENDA-ABC"
+    assert "inicio" in result
+    assert "fim" in result
+
+
+def test_consultar_agendamento_ativo_lista_vazia_retorna_none():
+    """consultar_agendamento_ativo quando Dietbox retorna lista vazia → None."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"Data": []}
+    mock_resp.raise_for_status = MagicMock()
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.get", return_value=mock_resp):
+        from app.agents.dietbox_worker import consultar_agendamento_ativo
+        result = consultar_agendamento_ativo(id_paciente=123)
+
+    assert result is None
+
+
+def test_consultar_agendamento_ativo_todas_desmarcadas_retorna_none():
+    """Quando todas as agendas têm desmarcada=True → retorna None."""
+    from datetime import date, timedelta
+    amanha = date.today() + timedelta(days=1)
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "Data": [
+            {
+                "id": "AGENDA-XYZ",
+                "inicio": f"{amanha.isoformat()}T09:00:00",
+                "fim": f"{amanha.isoformat()}T10:00:00",
+                "desmarcada": True,
+            }
+        ]
+    }
+    mock_resp.raise_for_status = MagicMock()
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.get", return_value=mock_resp):
+        from app.agents.dietbox_worker import consultar_agendamento_ativo
+        result = consultar_agendamento_ativo(id_paciente=123)
+
+    assert result is None
+
+
+# ── verificar_lancamento_financeiro ───────────────────────────────────────────
+
+def test_verificar_lancamento_financeiro_com_lancamento_retorna_true():
+    """Quando Dietbox retorna lançamento com pago=True → retorna True."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "Data": [{"id": "TRANS-001", "pago": True, "valor": 345.0}]
+    }
+    mock_resp.raise_for_status = MagicMock()
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.get", return_value=mock_resp):
+        from app.agents.dietbox_worker import verificar_lancamento_financeiro
+        result = verificar_lancamento_financeiro(id_agenda="AGENDA-ABC")
+
+    assert result is True
+
+
+def test_verificar_lancamento_financeiro_lista_vazia_retorna_false():
+    """Quando Dietbox retorna lista vazia → retorna False."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"Data": []}
+    mock_resp.raise_for_status = MagicMock()
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.get", return_value=mock_resp):
+        from app.agents.dietbox_worker import verificar_lancamento_financeiro
+        result = verificar_lancamento_financeiro(id_agenda="AGENDA-ABC")
+
+    assert result is False
+
+
+def test_verificar_lancamento_financeiro_excecao_retorna_false():
+    """Quando requests.get lança exceção HTTP → retorna False, nunca propaga."""
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.get", side_effect=Exception("timeout")):
+        from app.agents.dietbox_worker import verificar_lancamento_financeiro
+        result = verificar_lancamento_financeiro(id_agenda="AGENDA-ABC")
+
+    assert result is False

@@ -60,7 +60,19 @@ def _salvar_token(token: str, expires_in: int = 3600) -> None:
 
 
 def _login_playwright() -> str:
-    """Faz login no Dietbox via Playwright (Azure AD B2C) e retorna access token."""
+    """Faz login no Dietbox via Playwright (Azure AD B2C) e retorna access token.
+
+    Playwright sync API não funciona dentro do asyncio loop do FastAPI.
+    Delegamos para um thread separado com ThreadPoolExecutor.
+    """
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(_login_playwright_sync)
+        return future.result(timeout=90)
+
+
+def _login_playwright_sync() -> str:
+    """Executa o login no Playwright em um thread sem asyncio loop."""
     from playwright.sync_api import sync_playwright
 
     email = os.environ["DIETBOX_EMAIL"]
@@ -189,26 +201,28 @@ def id_local_para_modalidade(modalidade: str) -> str | None:
 
 def consultar_slots_disponiveis(
     modalidade: str = "presencial",
-    dias_a_frente: int = 14,
+    dias_a_frente: int = 21,
+    data_inicio: "date | None" = None,
 ) -> list[dict]:
     """
-    Retorna lista de slots livres nos próximos dias_a_frente dias.
-    Cada slot: {"datetime": "2026-04-10T09:00:00", "data_fmt": "sexta, 10/04", "hora": "09h"}
+    Retorna lista de slots livres.
+    data_inicio: data de início da busca (padrão: amanhã).
+    Cada slot: {"datetime": "2026-04-10T09:00:00", "data_fmt": "sexta, 10/04", "hora": "9h"}
     """
     id_local = id_local_para_modalidade(modalidade)
     hoje = date.today()
-    amanha = hoje + timedelta(days=1)  # mínimo 1 dia útil de antecedência
+    inicio = data_inicio if data_inicio else hoje + timedelta(days=1)
     fim = hoje + timedelta(days=dias_a_frente)
 
-    # Busca agenda ocupada no período
-    start_str = f"{amanha.isoformat()}T00:00:00"
+    # Busca TODA a agenda do período (consultas + bloqueios)
+    start_str = f"{inicio.isoformat()}T00:00:00"
     end_str = f"{fim.isoformat()}T23:59:59"
 
     try:
         resp = requests.get(
             f"{DIETBOX_API}/agenda",
             headers=_headers(),
-            params={"Start": start_str, "End": end_str, "IdLocalAtendimento": id_local},
+            params={"Start": start_str, "End": end_str},  # sem filtro de local: pega tudo
             timeout=20,
         )
         resp.raise_for_status()
@@ -218,23 +232,24 @@ def consultar_slots_disponiveis(
         ocupados_raw = []
 
     # Constrói set de datetimes ocupados
+    # API retorna horários sem timezone (já em BRT) — nunca converter com astimezone
     ocupados: set[str] = set()
     for item in ocupados_raw:
         if item.get("desmarcada"):
             continue
-        inicio = item.get("inicio", "")
-        if inicio:
+        inicio_item = item.get("inicio", "")
+        if inicio_item:
             try:
-                dt = datetime.fromisoformat(inicio).astimezone(BRT)
-                ocupados.add(dt.strftime("%Y-%m-%dT%H:%M"))
+                dt_str = inicio_item[:16]  # "2026-04-10T09:00"
+                ocupados.add(dt_str)
             except Exception:
                 pass
 
-    # Gera slots livres
+    # Gera slots livres dentro do período
     DIAS_PT = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
     slots: list[dict] = []
-    current = amanha
-    while current <= fim and len(slots) < 9:  # máx 9 opções
+    current = inicio
+    while current <= fim:
         dia_semana = current.weekday()
         horarios = HORARIOS_POR_DIA.get(dia_semana, [])
         for h in horarios:
@@ -305,21 +320,28 @@ def cadastrar_paciente(dados: dict) -> int:
     _carregar_locais()
     id_local = _ID_LOCAL_PRESENCIAL or os.environ.get("DIETBOX_ID_LOCAL_PRESENCIAL", "")
 
-    telefone = "".join(filter(str.isdigit, dados.get("telefone", "")))
+    # Formata telefone em E.164 (+5531...)
+    digitos = "".join(filter(str.isdigit, dados.get("telefone", "")))
+    if not digitos.startswith("55"):
+        digitos = "55" + digitos
+    telefone = "+" + digitos
+
+    # Birthdate é obrigatório no Dietbox; usa placeholder se não informado
+    birthdate = dados.get("data_nascimento") or "1990-01-01T00:00:00"
 
     payload = {
         "Name": dados["nome"],
-        "Birthdate": dados.get("data_nascimento"),
+        "Birthdate": birthdate,
         "MobilePhone": telefone,
-        "Email": dados.get("email", ""),
+        "Email": dados.get("email") or None,
         "IsMale": dados.get("sexo", "F").upper() == "M",
-        "Occupation": dados.get("profissao"),
-        "ZipCode": dados.get("cep"),
-        "Observation": dados.get("instagram", ""),
+        "Occupation": dados.get("profissao") or None,
+        "ZipCode": dados.get("cep") or None,
+        "Observation": dados.get("instagram") or None,
         "IsActive": True,
         "ServiceLocationId": id_local,
     }
-    # Remove campos None
+    # Remove campos None e strings vazias
     payload = {k: v for k, v in payload.items() if v is not None}
 
     resp = requests.post(
@@ -419,8 +441,9 @@ def agendar_consulta(
         dt_inicio = dt_inicio.replace(tzinfo=BRT)
     dt_fim = dt_inicio + timedelta(minutes=duracao_minutos)
 
-    payload = {
-        "Type": "Consulta",
+    # Estrutura correta: {Agenda: {CreateAppointmentDTO}, Lancamento: null}
+    agenda_dto: dict = {
+        "Type": 1,  # 1=Consulta (ETipoAgenda enum)
         "Start": dt_inicio.isoformat(),
         "End": dt_fim.isoformat(),
         "Timezone": "America/Sao_Paulo",
@@ -431,8 +454,11 @@ def agendar_consulta(
         "IsVideoConference": modalidade == "online",
         "Alert": True,
         "Confirmed": False,
+        "AllDay": False,
     }
-    payload = {k: v for k, v in payload.items() if v is not None}
+    agenda_dto = {k: v for k, v in agenda_dto.items() if v is not None}
+
+    payload = {"Agenda": agenda_dto, "Lancamento": None}
 
     resp = requests.post(
         f"{DIETBOX_API}/agenda",
@@ -471,13 +497,16 @@ def lancar_financeiro(
     descricao = f"Pagamento via {'PIX' if forma_pagamento == 'pix' else 'Cartão'} — Agente Ana"
 
     payload = {
-        "data": datetime.now(BRT).strftime("%Y-%m-%dT%H:%M:%S"),
+        "data": datetime.now(BRT).isoformat(),
         "descricao": descricao,
+        "observacao": "Gerado automaticamente pelo Agente Ana (WhatsApp)",
         "idPatient": id_paciente,
         "idAgenda": id_agenda,
-        "tipo": "Receita",
+        "tipo": 1,  # 1=Entrada (ETipoLancamento)
         "pago": pago,
         "valor": valor,
+        "idCategoria": "89867901-A5B8-4B61-89DA-5A24BAE39952",  # Consultas
+        "idConta": "71D0DE53-96C5-4AFA-A144-98039B264031",  # Conta padrão
     }
 
     resp = requests.post(
@@ -548,6 +577,76 @@ def processar_agendamento(
     except Exception as e:
         logger.error(f"Erro no processamento do agendamento: {e}")
         return {"sucesso": False, "erro": str(e)}
+
+
+# ── Consulta de agendamento ativo e financeiro ────────────────────────────────
+
+def consultar_agendamento_ativo(id_paciente: int) -> dict | None:
+    """
+    Busca o próximo agendamento ativo (não desmarcado) do paciente no Dietbox.
+
+    Retorna dict com {id, inicio, fim, id_servico} ou None se não encontrado.
+    Nunca propaga exceção para o chamador.
+    """
+    hoje = date.today()
+    fim = hoje + timedelta(days=180)
+    start_str = f"{hoje.isoformat()}T00:00:00"
+    end_str = f"{fim.isoformat()}T23:59:59"
+    try:
+        resp = requests.get(
+            f"{DIETBOX_API}/agenda",
+            headers=_headers(),
+            params={
+                "IdPaciente": id_paciente,
+                "Start": start_str,
+                "End": end_str,
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        items = data.get("Data") or []
+        agora_str = datetime.now().isoformat()
+        ativos = [
+            i for i in items
+            if not i.get("desmarcada") and i.get("inicio", "") >= agora_str[:16]
+        ]
+        if not ativos:
+            return None
+        ativos.sort(key=lambda i: i.get("inicio", ""))
+        primeiro = ativos[0]
+        return {
+            "id": str(primeiro.get("id") or primeiro.get("Id") or ""),
+            "inicio": str(primeiro.get("inicio", "")),
+            "fim": str(primeiro.get("fim", "")),
+            "id_servico": str(primeiro.get("idServico") or primeiro.get("id_servico") or "") or None,
+        }
+    except Exception as e:
+        logger.error("Erro ao consultar agendamento ativo (paciente=%s): %s", id_paciente, e)
+        return None
+
+
+def verificar_lancamento_financeiro(id_agenda: str) -> bool:
+    """
+    Verifica se existe lançamento financeiro para a agenda informada.
+
+    Retorna True se houver qualquer lançamento, False se vazio ou em caso de erro.
+    Nunca propaga exceção para o chamador.
+    """
+    try:
+        resp = requests.get(
+            f"{DIETBOX_API}/finance/transactions",
+            headers=_headers(),
+            params={"IdAgenda": id_agenda},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        items = data.get("Data") or data.get("data") or []
+        return len(items) > 0
+    except Exception as e:
+        logger.error("Erro ao verificar lançamento financeiro (agenda=%s): %s", id_agenda, e)
+        return False
 
 
 def confirmar_pagamento(id_transacao: str) -> bool:
