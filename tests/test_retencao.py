@@ -135,3 +135,130 @@ def test_detectar_tipo_remarcacao_paciente_com_lancamento_retorna_retorno():
     assert agent.tipo_remarcacao == "retorno"
     assert agent.id_agenda_original == "AGENDA-001"
     assert agent.fim_janela is not None
+
+
+# ── _priorizar_slots ──────────────────────────────────────────────────────────
+
+def _make_slot(weekday: int, hora: int, semana_offset: int = 0) -> dict:
+    """Cria um slot de teste com a data correta para o weekday/hora dados."""
+    from datetime import date, timedelta
+    # Encontra a próxima data com o weekday dado a partir de 2026-04-20 (segunda)
+    base = date(2026, 4, 20) + timedelta(weeks=semana_offset)
+    delta = (weekday - base.weekday()) % 7
+    d = base + timedelta(days=delta)
+    _NOMES_DIAS = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
+    return {
+        "datetime": f"{d.isoformat()}T{hora:02d}:00:00",
+        "data_fmt": f"{_NOMES_DIAS[weekday]}, {d.strftime('%d/%m')}",
+        "hora": f"{hora}h",
+    }
+
+
+def test_priorizar_slots_com_preferencia_dia_e_hora():
+    """Pool tem segunda às 9h → opção 1 é essa segunda; opções 2 e 3 em dias diferentes."""
+    from app.agents.retencao import _priorizar_slots
+
+    pool = [
+        _make_slot(0, 9),    # segunda 9h ← preferência
+        _make_slot(1, 10),   # terça 10h
+        _make_slot(2, 14),   # quarta 14h
+        _make_slot(3, 8),    # quinta 8h
+    ]
+
+    resultado = _priorizar_slots(pool, dia_preferido=0, hora_preferida=9)
+
+    assert len(resultado) == 3
+    # primeira opção deve ser segunda às 9h
+    from datetime import datetime
+    assert datetime.fromisoformat(resultado[0]["datetime"]).weekday() == 0
+    assert _make_slot(0, 9)["hora"] == resultado[0]["hora"]
+    # os outros 2 devem ser em dias diferentes da opção 1 e entre si
+    dias = [datetime.fromisoformat(s["datetime"]).weekday() for s in resultado]
+    assert dias[0] != dias[1]
+    assert dias[0] != dias[2]
+
+
+def test_priorizar_slots_com_preferencia_so_dia():
+    """Sem hora → opção 1 é qualquer slot de segunda; opções 2 e 3 em outros dias."""
+    from app.agents.retencao import _priorizar_slots
+    from datetime import datetime
+
+    pool = [
+        _make_slot(0, 14),   # segunda 14h ← preferência de dia
+        _make_slot(1, 10),   # terça
+        _make_slot(2, 8),    # quarta
+    ]
+
+    resultado = _priorizar_slots(pool, dia_preferido=0, hora_preferida=None)
+
+    assert len(resultado) == 3
+    assert datetime.fromisoformat(resultado[0]["datetime"]).weekday() == 0
+
+
+def test_priorizar_slots_sem_slot_da_preferencia():
+    """Sem slot de segunda no pool → retorna 3 primeiros disponíveis em dias diferentes."""
+    from app.agents.retencao import _priorizar_slots
+    from datetime import datetime
+
+    pool = [
+        _make_slot(1, 9),    # terça
+        _make_slot(2, 10),   # quarta
+        _make_slot(3, 14),   # quinta
+    ]
+
+    resultado = _priorizar_slots(pool, dia_preferido=0, hora_preferida=9)
+
+    assert len(resultado) == 3
+    # segunda não está no pool — deve retornar sem mencionar segunda
+    dias = [datetime.fromisoformat(s["datetime"]).weekday() for s in resultado]
+    assert 0 not in dias  # segunda ausente
+
+
+def test_priorizar_slots_pool_vazio():
+    """Pool vazio → retorna []."""
+    from app.agents.retencao import _priorizar_slots
+
+    resultado = _priorizar_slots([], dia_preferido=None, hora_preferida=None)
+
+    assert resultado == []
+
+
+def test_priorizar_slots_todos_mesmo_dia():
+    """Pool com 5 slots todos na terça → retorna até 3 slots (da terça)."""
+    from app.agents.retencao import _priorizar_slots
+
+    pool = [_make_slot(1, h) for h in [8, 9, 10, 14, 15]]
+
+    resultado = _priorizar_slots(pool, dia_preferido=None, hora_preferida=None)
+
+    assert len(resultado) == 3  # retorna 3 mesmo que todos no mesmo dia
+
+
+def test_priorizar_slots_4_dias_diferentes():
+    """Pool com slots em 4 dias diferentes → retorna exatamente 3 slots em dias diferentes."""
+    from app.agents.retencao import _priorizar_slots
+    from datetime import datetime
+
+    pool = [
+        _make_slot(1, 9),   # terça
+        _make_slot(2, 10),  # quarta
+        _make_slot(3, 14),  # quinta
+        _make_slot(4, 8),   # sexta
+    ]
+
+    resultado = _priorizar_slots(pool, dia_preferido=None, hora_preferida=None)
+
+    assert len(resultado) == 3
+    dias = [datetime.fromisoformat(s["datetime"]).weekday() for s in resultado]
+    assert len(set(dias)) == 3  # todos em dias diferentes
+
+
+def test_priorizar_slots_retorna_max_3():
+    """Pool grande → retorna no máximo 3 slots."""
+    from app.agents.retencao import _priorizar_slots
+
+    pool = [_make_slot(i % 5, 9 + (i % 3)) for i in range(10)]
+
+    resultado = _priorizar_slots(pool, dia_preferido=None, hora_preferida=None)
+
+    assert len(resultado) <= 3

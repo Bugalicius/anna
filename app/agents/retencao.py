@@ -358,15 +358,14 @@ class AgenteRetencao:
                     "Vou verificar com a Thaynara e te retorno em breve 🔍"
                 ]
 
-            # ── Tenta respeitar preferência; se não achar, usa todos os slots disponíveis ──
+            # ── Aviso se a preferência de dia não está disponível (per D-12) ──
             aviso: str | None = None
             _NOMES_DIAS = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
-            pool = todos_slots
 
             if dia_preferido is not None:
                 dia_nome = _NOMES_DIAS[dia_preferido]
                 slots_dia = [
-                    s for s in pool
+                    s for s in todos_slots
                     if datetime.fromisoformat(s["datetime"]).weekday() == dia_preferido
                 ]
                 if not slots_dia:
@@ -374,26 +373,9 @@ class AgenteRetencao:
                         f"Não tenho {dia_nome}-feira disponível nos próximos 7 dias, "
                         f"mas veja o que temos:"
                     )
-                    # pool permanece com todos os slots — mostra o que tem
-                else:
-                    if hora_preferida is not None:
-                        slots_hora = [s for s in slots_dia if _hora_int(s) == hora_preferida]
-                        if not slots_hora:
-                            aviso = (
-                                f"Não tenho {dia_nome}-feira às {hora_preferida}h disponível, "
-                                f"mas veja as opções que temos:"
-                            )
-                            # usa todos slots disponíveis (não só sexta)
-                        else:
-                            pool = slots_hora
-                    else:
-                        pool = slots_dia
-            elif hora_preferida is not None:
-                slots_hora = [s for s in pool if _hora_int(s) == hora_preferida]
-                if slots_hora:
-                    pool = slots_hora
 
-            self._slots_oferecidos = _selecionar_slots_dias_diferentes(pool)
+            # _priorizar_slots faz toda a seleção com preferência embutida
+            self._slots_oferecidos = _priorizar_slots(todos_slots, dia_preferido, hora_preferida)
 
             opcoes = "\n".join(
                 f"{i+1}. {s['data_fmt']} às {s['hora']}"
@@ -488,18 +470,93 @@ def _hora_int(slot: dict) -> int:
     return int(m.group(1)) if m else 0
 
 
-def _selecionar_slots_dias_diferentes(slots: list[dict]) -> list[dict]:
-    """Seleciona até 3 slots garantindo que sejam em dias diferentes."""
-    dias_usados: set[str] = set()
+def _priorizar_slots(
+    pool: list[dict],
+    dia_preferido: int | None,
+    hora_preferida: int | None,
+) -> list[dict]:
+    """
+    Seleciona até 3 slots com priorização (per D-09 a D-13):
+      - Opção 1: slot que melhor corresponde à preferência (dia + hora)
+      - Opções 2 e 3: próximos disponíveis em dias diferentes da opção 1
+      - Se sem preferência: 3 primeiros em dias diferentes
+      - D-13: slots em dias diferentes são preferidos — nunca 3 no mesmo dia se houver alternativa
+
+    Valida que cada slot tem chave 'datetime' antes de usar (T-02-02-01).
+    """
+    # T-02-02-01: filtrar slots inválidos
+    pool = [s for s in pool if s.get("datetime")]
+
+    if not pool:
+        return []
+
     selecionados: list[dict] = []
-    for slot in slots:
-        dia = slot.get("data_fmt", "")
-        if dia not in dias_usados:
-            selecionados.append(slot)
-            dias_usados.add(dia)
-        if len(selecionados) >= 3:
+
+    if dia_preferido is not None:
+        # Tenta encontrar slot correspondente à preferência
+        slots_dia_pref = [
+            s for s in pool
+            if datetime.fromisoformat(s["datetime"]).weekday() == dia_preferido
+        ]
+
+        slot_escolhido: dict | None = None
+        if slots_dia_pref:
+            if hora_preferida is not None:
+                slots_exatos = [s for s in slots_dia_pref if _hora_int(s) == hora_preferida]
+                slot_escolhido = slots_exatos[0] if slots_exatos else slots_dia_pref[0]
+            else:
+                slot_escolhido = slots_dia_pref[0]
+
+        if slot_escolhido:
+            selecionados = [slot_escolhido]
+            dia_slot_escolhido = datetime.fromisoformat(slot_escolhido["datetime"]).weekday()
+            dias_usados: set[int] = {dia_slot_escolhido}
+
+            # Preencher posições 2 e 3 com dias diferentes do slot escolhido
+            for s in pool:
+                if s is slot_escolhido:
+                    continue
+                dia_s = datetime.fromisoformat(s["datetime"]).weekday()
+                if dia_s not in dias_usados:
+                    selecionados.append(s)
+                    dias_usados.add(dia_s)
+                if len(selecionados) >= 3:
+                    break
+
+            # Se ainda faltam slots (pool com só 1-2 dias diferentes), completa com qualquer slot
+            if len(selecionados) < 3:
+                for s in pool:
+                    if s not in selecionados:
+                        selecionados.append(s)
+                    if len(selecionados) >= 3:
+                        break
+
+            return selecionados
+
+    # Modo sem preferência (ou preferência não encontrada):
+    # Percorrer pool priorizando dias diferentes
+    dias_usados_nd: set[int] = set()
+    resultado: list[dict] = []
+    restantes: list[dict] = []
+
+    for s in pool:
+        dia_s = datetime.fromisoformat(s["datetime"]).weekday()
+        if dia_s not in dias_usados_nd and len(resultado) < 3:
+            resultado.append(s)
+            dias_usados_nd.add(dia_s)
+        else:
+            restantes.append(s)
+        if len(resultado) >= 3:
             break
-    return selecionados
+
+    # Se não há 3 dias diferentes, completa com próximos slots
+    if len(resultado) < 3:
+        for s in restantes:
+            resultado.append(s)
+            if len(resultado) >= 3:
+                break
+
+    return resultado[:3]
 
 
 def _extrair_nome_simples(msg: str) -> str:
