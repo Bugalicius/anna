@@ -33,8 +33,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01-PLAN.md — Redis state persistence + agent serialization (to_dict/from_dict) + Contact/PendingEscalation models
-- [ ] 01-02-PLAN.md — Redis integration no router + context-aware orchestrator + interrupt detection + reconhecimento por nome
-- [ ] 01-03-PLAN.md — Escalation relay 3 caminhos + waiting indicator + FAQ aprendido + alinhamento de tom
+- [x] 01-02-PLAN.md — Redis integration no router + context-aware orchestrator + interrupt detection + reconhecimento por nome
+- [x] 01-03-PLAN.md — Escalation relay 3 caminhos + waiting indicator + FAQ aprendido + alinhamento de tom
 
 ### Phase 2: Fluxo de Remarcação
 **Goal**: Regras de remarcação de retorno funcionam corretamente — prazo comunicado, horários priorizados, Dietbox atualizado antes da confirmação, fallback para "perda de retorno" implementado
@@ -93,7 +93,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Inteligência Conversacional | 1/3 | In progress | - |
+| 1. Inteligência Conversacional | 3/3 | Complete | 2026-04-14 |
 | 2. Fluxo de Remarcação | 3/3 | Complete | 2026-04-12 |
 | 3. Remarketing | 0/3 | Not started | - |
 | 4. Meta Cloud API | 0/3 | Not started | - |
