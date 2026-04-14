@@ -281,13 +281,23 @@ _FAKE_ENV = {"WHATSAPP_PHONE_NUMBER_ID": "123456789", "WHATSAPP_TOKEN": "fake-to
 @patch("app.meta_api.MetaAPIClient")
 @patch("app.router.SessionLocal")
 async def test_route_message_atendimento(mock_db_cls, mock_meta_cls, mock_set_tag, mock_rotear):
-    from app.router import route_message, _AGENT_STATE
+    from unittest.mock import AsyncMock as _AsyncMock
+    import app.router as router_module
+    from app.router import route_message
+
+    # Mock do state_mgr (Redis) — sem estado ativo
+    state_mgr = MagicMock()
+    state_mgr.load = _AsyncMock(return_value=None)
+    state_mgr.save = _AsyncMock()
+    state_mgr.delete = _AsyncMock()
+    router_module._state_mgr = state_mgr
 
     # Mock do banco
     mock_contact = MagicMock()
     mock_contact.stage = "new"
     mock_contact.collected_name = None
     mock_contact.push_name = "Teste"
+    mock_contact.first_name = None
     mock_contact.id = 1
 
     mock_session = MagicMock()
@@ -303,9 +313,6 @@ async def test_route_message_atendimento(mock_db_cls, mock_meta_cls, mock_set_ta
 
     phone = "5531999990099"
     phone_hash = "hash_e2e_001"
-
-    # Limpa estado anterior
-    _AGENT_STATE.pop(phone_hash, None)
 
     await route_message(phone, phone_hash, "oi", "msg-001")
 
@@ -327,12 +334,21 @@ async def test_route_message_atendimento(mock_db_cls, mock_meta_cls, mock_set_ta
 @patch("app.meta_api.MetaAPIClient")
 @patch("app.router.SessionLocal")
 async def test_route_message_fora_contexto(mock_db_cls, mock_meta_cls, mock_rotear):
+    from unittest.mock import AsyncMock as _AsyncMock
+    import app.router as router_module
     from app.router import route_message
+
+    state_mgr = MagicMock()
+    state_mgr.load = _AsyncMock(return_value=None)
+    state_mgr.save = _AsyncMock()
+    state_mgr.delete = _AsyncMock()
+    router_module._state_mgr = state_mgr
 
     mock_contact = MagicMock()
     mock_contact.stage = "presenting"
     mock_contact.collected_name = None
     mock_contact.push_name = None
+    mock_contact.first_name = None
     mock_contact.id = 2
 
     mock_session = MagicMock()
@@ -364,12 +380,21 @@ async def test_route_message_fora_contexto(mock_db_cls, mock_meta_cls, mock_rote
 @patch("app.meta_api.MetaAPIClient")
 @patch("app.router.SessionLocal")
 async def test_route_message_escalacao(mock_db_cls, mock_meta_cls, mock_rotear, mock_escalar):
+    from unittest.mock import AsyncMock as _AsyncMock
+    import app.router as router_module
     from app.router import route_message
+
+    state_mgr = MagicMock()
+    state_mgr.load = _AsyncMock(return_value=None)
+    state_mgr.save = _AsyncMock()
+    state_mgr.delete = _AsyncMock()
+    router_module._state_mgr = state_mgr
 
     mock_contact = MagicMock()
     mock_contact.stage = "presenting"
     mock_contact.collected_name = "Joana"
     mock_contact.push_name = None
+    mock_contact.first_name = None
     mock_contact.id = 3
 
     mock_session = MagicMock()

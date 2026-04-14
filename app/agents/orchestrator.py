@@ -68,15 +68,18 @@ _MSG_FORA_CONTEXTO = (
 )
 
 
-def _classificar_intencao(mensagem: str) -> tuple[IntencaoType, float]:
+def _classificar_intencao(mensagem: str, contexto: str = "") -> tuple[IntencaoType, float]:
     """
     Usa Claude Haiku para classificar a intenção da mensagem.
+
+    Parâmetro contexto permite informar ao LLM que há um fluxo em andamento (D-01).
 
     Returns:
         (intencao, confianca)
     """
     client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
-    prompt = _PROMPT_CLASSIFICACAO.format(mensagem=mensagem)
+    mensagem_com_contexto = f"{contexto}\n\nMensagem: {mensagem}" if contexto else mensagem
+    prompt = _PROMPT_CLASSIFICACAO.format(mensagem=mensagem_com_contexto)
 
     try:
         response = client.messages.create(
@@ -115,9 +118,13 @@ def rotear(
     mensagem: str,
     stage_atual: str | None,
     primeiro_contato: bool = False,
+    agente_ativo: str | None = None,  # "atendimento" | "retencao" | None
 ) -> dict:
     """
     Classifica a intenção e retorna instruções de roteamento.
+
+    Parâmetro agente_ativo fornece contexto ao LLM quando há fluxo em andamento,
+    garantindo que a intenção real da mensagem seja classificada mesmo assim (D-01).
 
     Returns:
         {
@@ -137,12 +144,19 @@ def rotear(
             "resposta_padrao": None,
         }
 
+    # Contexto para o LLM quando há fluxo em andamento (D-01)
+    contexto_agente = (
+        f"Contexto: o paciente está no meio de um fluxo de {agente_ativo}. "
+        "Classifique a intenção real da mensagem mesmo assim."
+        if agente_ativo else ""
+    )
+
     try:
-        intencao, confianca = _classificar_intencao(mensagem)
+        intencao, confianca = _classificar_intencao(mensagem, contexto=contexto_agente)
     except Exception as e:
         logger.error("Falha ao classificar intenção: %s — fallback novo_lead", e)
         intencao, confianca = "novo_lead", 0.5
-    logger.info("Intenção classificada: %s (%.2f)", intencao, confianca)
+    logger.info("Intenção classificada: %s (%.2f) agente_ativo=%s", intencao, confianca, agente_ativo)
 
     if intencao in _INTENCOES_AGENTE1:
         return {"agente": "atendimento", "intencao": intencao, "confianca": confianca, "resposta_padrao": None}

@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.webhook import router as webhook_router
@@ -13,6 +14,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 async def lifespan(app: FastAPI):
     # Startup
     Base.metadata.create_all(bind=engine)  # Fallback se Alembic não rodou
+
+    # Inicializa persistência de estado de conversa no Redis
+    from app.router import init_state_manager
+    redis_url = os.environ.get("REDIS_URL", "redis://redis:6379")
+    init_state_manager(redis_url)
 
     scheduler = create_scheduler()
     # Adicionar job de retry
