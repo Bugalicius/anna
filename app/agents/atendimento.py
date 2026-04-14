@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+import random
+from datetime import datetime, date, timedelta, timezone
 
 import anthropic
 
@@ -167,6 +168,14 @@ MSG_FINALIZACAO = (
     "Você receberá uma mensagem de lembrete 24h antes da consulta.\n"
     "Qualquer dúvida, é só me chamar aqui. Até lá! 🌿"
 )
+
+# ── Waiting indicators — exibidos antes de operações demoradas (D-21) ─────────
+
+_WAITING_MESSAGES = [
+    "Um instante, por favor 💚",
+    "Só um minutinho, já verifico pra você 💚",
+    "Aguarda um instante que já te respondo 💚",
+]
 
 MSG_SEM_HORARIOS = (
     "Poxa, não encontrei horários disponíveis nos próximos dias úteis. "
@@ -413,6 +422,9 @@ class AgenteAtendimento:
         return self._iniciar_agendamento()
 
     def _iniciar_agendamento(self) -> list[str]:
+        # D-21: waiting indicator antes de chamar Dietbox
+        waiting = random.choice(_WAITING_MESSAGES)
+
         try:
             slots = consultar_slots_disponiveis(
                 modalidade=self.modalidade or "presencial",
@@ -425,25 +437,37 @@ class AgenteAtendimento:
         if not slots:
             return [MSG_SEM_HORARIOS]
 
-        # guarda 3 slots em dias DIFERENTES para o paciente escolher
+        # D-19: NUNCA oferecer horário no mesmo dia
+        hoje_fmt = date.today().strftime("%d/%m/%Y")
+
+        # guarda 3 slots em dias DIFERENTES (excluindo hoje) para o paciente escolher
         dias_usados: set[str] = set()
         selecionados: list[dict] = []
         for slot in slots:
             dia = slot.get("data_fmt", "")
+            if dia == hoje_fmt:
+                continue  # D-19: não oferecer o dia atual
             if dia not in dias_usados:
                 selecionados.append(slot)
                 dias_usados.add(dia)
             if len(selecionados) >= 3:
                 break
+
+        if not selecionados:
+            return [MSG_SEM_HORARIOS]
+
         self._slots_oferecidos = selecionados
         opcoes = "\n".join(
             f"{i+1}. {s['data_fmt']} às {s['hora']}"
             for i, s in enumerate(self._slots_oferecidos)
         )
-        return [MSG_AGENDAMENTO_OPCOES.format(
-            modalidade=self.modalidade,
-            opcoes=opcoes,
-        )]
+        return [
+            waiting,
+            MSG_AGENDAMENTO_OPCOES.format(
+                modalidade=self.modalidade,
+                opcoes=opcoes,
+            ),
+        ]
 
     def _etapa_agendamento(self, msg: str) -> list[str]:
         slots = getattr(self, "_slots_oferecidos", [])
@@ -512,7 +536,8 @@ class AgenteAtendimento:
                 MSG_PIX_3.format(sinal=valor * 0.5),
             ]
 
-        # cartão — gera link
+        # cartão — D-21: waiting indicator antes de gerar link (operação demorada)
+        waiting = random.choice(_WAITING_MESSAGES)
         link_result = gerar_link_pagamento(
             plano=self.plano_escolhido or "unica",
             modalidade=self.modalidade or "presencial",
@@ -523,11 +548,14 @@ class AgenteAtendimento:
             self.forma_pagamento = "pix"
             return [MSG_ERRO_PAGAMENTO]
 
-        return [MSG_CARTAO.format(
-            link=link_result.url,
-            parcelas=link_result.parcelas,
-            parcela=link_result.parcela_valor,
-        )]
+        return [
+            waiting,
+            MSG_CARTAO.format(
+                link=link_result.url,
+                parcelas=link_result.parcelas,
+                parcela=link_result.parcela_valor,
+            ),
+        ]
 
     def _etapa_pagamento(self, msg: str) -> list[str]:
         """Aguarda confirmação de pagamento (comprovante ou confirmação verbal)."""
@@ -545,10 +573,13 @@ class AgenteAtendimento:
         return ["Aguardo o comprovante de pagamento para confirmar sua consulta 😊"]
 
     def _etapa_cadastro_dietbox(self, _msg: str) -> list[str]:
-        """Cadastra paciente e agenda no Dietbox."""
+        """Cadastra paciente e agenda no Dietbox. D-21: waiting indicator antes da operação."""
         if not self.slot_escolhido:
             self.etapa = "agendamento"
             return self._iniciar_agendamento()
+
+        # D-21: waiting indicator antes de chamar Dietbox (operação demorada)
+        waiting = random.choice(_WAITING_MESSAGES)
 
         try:
             dt_str = self.slot_escolhido["datetime"]
@@ -580,7 +611,9 @@ class AgenteAtendimento:
             logger.error("Erro no cadastro Dietbox: %s", e)
 
         self.etapa = "confirmacao"
-        return self._etapa_confirmacao(_msg)
+        confirmacao = self._etapa_confirmacao(_msg)
+        # Prepend waiting indicator (D-21)
+        return [waiting] + confirmacao
 
     def _etapa_confirmacao(self, _msg: str) -> list[str]:
         slot = self.slot_escolhido or {}
