@@ -19,42 +19,70 @@ _KB_DIR = Path(__file__).parent.parent / "knowledge_base"
 PLANOS: dict[str, dict] = {
     "premium": {
         "nome": "Plano Premium",
-        "descricao": "Acompanhamento completo mensal com retorno e suporte contínuo",
+        "descricao": "O mais indicado. 6 consultas + 270 dias de acompanhamento",
         "presencial": 1200.00,
         "online": 1080.00,
+        "parcela_presencial": 140.00,
+        "parcela_online": 126.00,
         "parcelas": 10,
         "inclui": [
-            "Consulta inicial (60 min)",
-            "Retorno quinzenal",
-            "Plano alimentar personalizado",
-            "Suporte via WhatsApp 5 dias/semana",
-            "Análise de exames",
-            "Cálculo de composição corporal",
+            "6 consultas + 270 dias de acompanhamento",
+            "Plano alimentar personalizado (montado junto com a paciente)",
+            "Ajustes e check-ins semanais",
+            "Lilly (assistente virtual nutricional)",
+            "Grupo exclusivo no WhatsApp",
+            "#NossoMomentoEmMovimento (encontros coletivos)",
+            "Galão de água 950ml personalizado",
+            "Mochilinha personalizada + brindes exclusivos",
+            "Guia 'Do mercado ao prato'",
+            "Guia 'Contenção de danos no fds'",
+            "E-book '100 doces saudáveis'",
+            "E-book 'Receitas para fazer na Airfryer'",
+            "Avaliação física + anamnese completa",
+            "Aplicativo de acompanhamento",
+            "Suporte por WhatsApp",
+            "Desconto especial na renovação",
         ],
     },
     "ouro": {
         "nome": "Plano Ouro",
-        "descricao": "Acompanhamento mensal com retorno",
+        "descricao": "O mais procurado. 3 consultas + 130 dias de acompanhamento",
         "presencial": 690.00,
         "online": 570.00,
+        "parcela_presencial": 128.00,
+        "parcela_online": 106.00,
         "parcelas": 6,
         "inclui": [
-            "Consulta inicial (60 min)",
-            "Retorno mensal",
+            "3 consultas + 130 dias de acompanhamento",
             "Plano alimentar personalizado",
-            "Suporte via WhatsApp 3 dias/semana",
+            "Ajustes e check-ins semanais",
+            "Lilly (assistente virtual nutricional)",
+            "Galão de água 950ml personalizado",
+            "Guia 'Do mercado ao prato'",
+            "Guia 'Contenção de danos no fds'",
+            "E-book '100 doces saudáveis'",
+            "Avaliação física + anamnese completa",
+            "Aplicativo de acompanhamento",
+            "Suporte por WhatsApp",
         ],
     },
     "com_retorno": {
         "nome": "Consulta com Retorno",
-        "descricao": "Consulta inicial + 1 retorno em até 30 dias",
+        "descricao": "Consulta inicial + 1 retorno em até 45 dias",
         "presencial": 480.00,
         "online": 400.00,
+        "parcela_presencial": 130.00,
+        "parcela_online": 109.00,
         "parcelas": 4,
         "inclui": [
             "Consulta inicial (60 min)",
-            "1 retorno em até 30 dias",
+            "1 retorno em até 45 dias",
             "Plano alimentar personalizado",
+            "Guia 'Do mercado ao prato'",
+            "Guia 'Contenção de danos no fds'",
+            "Avaliação física + anamnese completa",
+            "Aplicativo de acompanhamento",
+            "Suporte por WhatsApp",
         ],
     },
     "unica": {
@@ -62,21 +90,31 @@ PLANOS: dict[str, dict] = {
         "descricao": "Consulta avulsa sem retorno incluso",
         "presencial": 260.00,
         "online": 220.00,
+        "parcela_presencial": 93.00,
+        "parcela_online": 79.00,
         "parcelas": 3,
         "inclui": [
             "Consulta (60 min)",
             "Plano alimentar personalizado",
+            "Guia 'Do mercado ao prato'",
+            "Guia 'Contenção de danos no fds'",
+            "Avaliação física + anamnese completa",
+            "Aplicativo de acompanhamento",
+            "Suporte por WhatsApp",
         ],
     },
     "formulario": {
-        "nome": "Formulário / Avaliação Online",
-        "descricao": "Avaliação nutricional por formulário sem consulta ao vivo",
+        "nome": "Dieta por Formulário",
+        "descricao": "Plano alimentar personalizado sem consulta ao vivo",
         "presencial": 100.00,
         "online": 100.00,
+        "parcela_presencial": 53.00,
+        "parcela_online": 53.00,
         "parcelas": 2,
         "inclui": [
             "Formulário de anamnese detalhado",
-            "Plano alimentar personalizado enviado em até 72h",
+            "Plano alimentar personalizado enviado em até 5 dias úteis",
+            "Avaliação física por fotos",
         ],
         "observacao": "Não oferecer proativamente — apenas se paciente perguntar",
     },
@@ -84,35 +122,46 @@ PLANOS: dict[str, dict] = {
 
 POLITICAS: dict[str, str] = {
     "pagamento": (
-        "O pagamento deve ser realizado antes ou no dia da consulta. "
-        "Aceitamos PIX (chave CPF: 14994735670) e cartão de crédito via link de pagamento. "
-        "Para cartão, o link é gerado e enviado pelo WhatsApp."
+        "O agendamento só é confirmado após o pagamento antecipado. "
+        "PIX: sinal de 50% do valor escolhido. Chave PIX (CPF): 14994735670. "
+        "Cartão: pagamento integral via link da Rede (parcelamento disponível)."
     ),
     "cancelamento": (
-        "Cancelamentos com aviso de até 24h de antecedência não geram cobrança. "
-        "Cancelamentos com menos de 24h ou no-show podem ser cobrados como consulta avulsa."
+        "Cancelamentos/remarcações devem ser feitos com pelo menos 24h de antecedência. "
+        "Consulta remarcada deve ser realizada em até 7 dias corridos da data original. "
+        "Não comparecimento ou desistência: consulta considerada realizada, sem reembolso."
     ),
     "tolerancia": (
-        "A consulta aguarda até 15 minutos de atraso. "
-        "Após 15 minutos sem aviso, a consulta pode ser reagendada e cobrada normalmente."
+        "Tolerância máxima de 10 minutos de atraso. "
+        "Após 10 minutos sem aviso, a consulta pode ser reagendada e cobrada normalmente."
     ),
     "remarcacao": (
-        "Remarcações devem ser feitas com no mínimo 4h de antecedência. "
-        "Disponível até 7 dias antes da consulta original."
+        "Remarcações devem ser feitas com pelo menos 24h de antecedência. "
+        "Consulta remarcada deve ser realizada em até 7 dias corridos da data original."
     ),
     "horarios": (
-        "Atendimento de segunda a sexta, das 08h às 19h. "
-        "Sexta-feira: apenas até 17h. Sábados e domingos sem atendimento."
+        "Segunda a quinta: manhã (08h, 09h, 10h), tarde (15h, 16h, 17h), noite (18h, 19h). "
+        "Sexta: manhã (08h, 09h, 10h), tarde (15h, 16h, 17h). Sexta à noite: sem atendimento. "
+        "Sábados e domingos: sem atendimento em hipótese alguma."
     ),
     "modalidades": (
-        "Presencial: Clínica em BH/MG. "
-        "Online: videochamada via Google Meet ou WhatsApp Video — link enviado no dia."
+        "Presencial: Aura Clinic & Beauty, Rua Melo Franco 204/Sala 103, Jardim da Glória, Vespasiano/MG. "
+        "Online: videochamada pelo WhatsApp — a nutricionista liga para o número cadastrado. "
+        "Avaliação física online é feita por fotos."
+    ),
+    "restricoes": (
+        "Não atendemos gestantes ou menores de 16 anos."
     ),
 }
 
 CONTATOS: dict[str, str] = {
     "pix_chave": "14994735670",
     "numero_nutri_publico": "5531991394759",  # enviar ao paciente se solicitar contato direto
+    "clinica_nome": "Aura Clinic & Beauty",
+    "clinica_endereco": "Rua Melo Franco, 204, Sala 103, Jardim da Glória, Vespasiano/MG",
+    "clinica_referencia": "Ao lado da loja de móveis, na rua da academia Pratique Fitness. A 350m da Linha Verde.",
+    "clinica_maps": "https://maps.app.goo.gl/XxHgHxHh7aCxitDs8",
+    "formulario_link": "https://forms.gle/CsBmdxq9FLHJYJuZA",
     # NUNCA expor ao paciente:
     "_numero_interno": "3199205-9211",
 }
@@ -128,14 +177,14 @@ REGRAS_UPSELL: list[str] = [
 FAQ_ESTATICO: list[dict[str, str]] = [
     {
         "pergunta": "Atende sábado?",
-        "resposta": "Não, o atendimento é de segunda a sexta, das 08h às 17h às sextas e até 19h nos outros dias.",
+        "resposta": "Não, o atendimento é de segunda a sexta. Sexta à noite também não tem. Sábados e domingos sem atendimento em hipótese alguma 😊",
     },
     {
         "pergunta": "Quanto custa a consulta?",
         "resposta": (
-            "Temos quatro planos: Consulta Única (R$260 presencial / R$220 online), "
+            "Temos quatro opções: Consulta Única (R$260 presencial / R$220 online), "
             "Consulta com Retorno (R$480 / R$400), Plano Ouro (R$690 / R$570) e "
-            "Plano Premium (R$1.200 / R$1.080). Posso te enviar os detalhes de cada um?"
+            "Plano Premium (R$1.200 / R$1.080). Posso te enviar nosso material completo com todos os detalhes? 💚"
         ),
     },
     {
@@ -144,32 +193,66 @@ FAQ_ESTATICO: list[dict[str, str]] = [
     },
     {
         "pergunta": "Quanto tempo dura a consulta?",
-        "resposta": "A consulta inicial dura em torno de 60 minutos.",
+        "resposta": "Em média 60 minutos, com abordagem detalhada e plano personalizado 😊",
     },
     {
         "pergunta": "Como funciona a consulta online?",
         "resposta": (
-            "É feita por videochamada (Google Meet ou WhatsApp Video). "
-            "O link é enviado no dia da consulta. Funciona exatamente como a presencial!"
+            "É feita por videochamada pelo próprio WhatsApp — a Thaynara liga no número que você cadastrar. "
+            "A avaliação física é feita por fotos. Funciona exatamente como a presencial!"
         ),
     },
     {
         "pergunta": "Como pago?",
         "resposta": (
-            "Aceitamos PIX (chave CPF 14994735670) ou cartão de crédito via link de pagamento. "
-            "No cartão, parcelamos em até 10x dependendo do plano."
+            "Via PIX (sinal de 50%: chave CPF 14994735670) ou cartão de crédito via link de pagamento. "
+            "No cartão o valor é integral, parcelamos conforme o plano escolhido."
         ),
     },
     {
         "pergunta": "Posso remarcar?",
         "resposta": (
-            "Sim! Remarcações com pelo menos 4h de antecedência não têm custo. "
-            "Me avisa aqui pelo WhatsApp e a gente encontra um horário melhor."
+            "Sim! Com pelo menos 24h de antecedência, sem custo. "
+            "A consulta remarcada precisa ser realizada em até 7 dias corridos da data original. "
+            "Me avisa aqui e a gente acha um horário melhor 😊"
         ),
     },
     {
         "pergunta": "Onde fica a clínica?",
-        "resposta": "A Thaynara atende em BH/MG. Após o agendamento envio o endereço completo 😊",
+        "resposta": (
+            "A Thaynara atende na Aura Clinic & Beauty, "
+            "Rua Melo Franco, 204, Sala 103, Jardim da Glória, Vespasiano/MG. "
+            "Fica ao lado da loja de móveis, na rua da academia Pratique Fitness, a 350m da Linha Verde 😊 "
+            "https://maps.app.goo.gl/XxHgHxHh7aCxitDs8"
+        ),
+    },
+    {
+        "pergunta": "Faz bioimpedância?",
+        "resposta": (
+            "A Thaynara não usa bioimpedância porque ela pode apresentar muitas variações e precisa de preparo específico. "
+            "No lugar, ela usa o adipômetro, que é bem mais preciso! Com ele identifica percentual de gordura e massa magra. "
+            "Além disso avalia circunferências corporais e faz fotos para acompanhar sua evolução mês a mês! 📸💚"
+        ),
+    },
+    {
+        "pergunta": "Atende gestantes?",
+        "resposta": "Não atendemos gestantes nem menores de 16 anos, tudo bem?",
+    },
+    {
+        "pergunta": "O que é a Lilly?",
+        "resposta": (
+            "A Lilly é uma assistente virtual exclusiva dos Planos Ouro e Premium! "
+            "Sempre que precisar trocar um alimento do plano, é só perguntar pra ela. "
+            "Ela sugere substituições que mantêm o plano equilibrado 💚"
+        ),
+    },
+    {
+        "pergunta": "Tem desconto para família?",
+        "resposta": (
+            "Sim! Quando duas pessoas fecham juntas (casal, mãe e filha, irmãs etc.), "
+            "damos 10% de desconto no valor total. "
+            "As consultas são em horários sequenciais. Posso verificar a disponibilidade! 😊"
+        ),
     },
 ]
 
@@ -244,9 +327,11 @@ class KnowledgeBase:
         for k, p in self.planos.items():
             if k == "formulario":
                 continue  # não exibir proativamente
+            parc_p = p.get("parcela_presencial", p["presencial"] / p["parcelas"])
+            parc_o = p.get("parcela_online", p["online"] / p["parcelas"])
             linhas.append(
-                f"- {p['nome']}: R${p['presencial']:.0f} presencial / R${p['online']:.0f} online"
-                f" (até {p['parcelas']}x no cartão)"
+                f"- *{p['nome']}*: {p['parcelas']}x de R${parc_p:.0f} presencial "
+                f"ou R${parc_o:.0f} online (ou R${p['presencial']:.0f}/R${p['online']:.0f} no PIX)"
             )
         return "\n".join(linhas)
 

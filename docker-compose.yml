@@ -2,6 +2,8 @@ services:
   app:
     build: .
     env_file: .env
+    environment:
+      - WATCHFILES_FORCE_POLLING=true
     ports:
       - "8000:8000"
     depends_on:
@@ -10,7 +12,9 @@ services:
       redis:
         condition: service_healthy
     volumes:
+      - ./app:/app/app
       - ./knowledge_base:/app/knowledge_base:ro
+      - ./docs:/app/docs:ro
 
   postgres:
     image: postgres:15-alpine
@@ -18,6 +22,8 @@ services:
       POSTGRES_USER: agente
       POSTGRES_PASSWORD: agente123
       POSTGRES_DB: agente_ana
+    ports:
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -28,6 +34,8 @@ services:
 
   redis:
     image: redis:7-alpine
+    ports:
+      - "6379:6379"
     volumes:
       - redisdata:/data
     healthcheck:

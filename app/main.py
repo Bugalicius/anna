@@ -1,8 +1,11 @@
 import logging
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from app.webhook import router as webhook_router
+from app.test_chat import router as test_chat_router
 from app.remarketing import create_scheduler
 from app.retry import _retry_failed_messages
 from app.database import engine, Base
@@ -35,6 +38,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Agente Ana — Nutri Thaynara", lifespan=lifespan)
 app.include_router(webhook_router)
+app.include_router(test_chat_router)
+
+# Serve arquivos de mídia (PDF, imagens) para o chat de teste
+_docs_path = Path("/app/docs")
+if _docs_path.exists():
+    app.mount("/media", StaticFiles(directory=str(_docs_path)), name="media")
 
 
 @app.get("/health")

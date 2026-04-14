@@ -21,17 +21,17 @@ class MetaAPIClient:
             "Content-Type": "application/json",
         }
 
-    def send_text(self, to: str, text: str) -> dict:
+    async def send_text(self, to: str, text: str) -> dict:
         payload = {
             "messaging_product": "whatsapp",
             "to": to,
             "type": "text",
             "text": {"body": text},
         }
-        return self._post(payload)
+        return await self._post(payload)
 
-    def send_template(self, to: str, template_name: str, language: str = "pt_BR",
-                      components: list | None = None) -> dict:
+    async def send_template(self, to: str, template_name: str, language: str = "pt_BR",
+                            components: list | None = None) -> dict:
         payload = {
             "messaging_product": "whatsapp",
             "to": to,
@@ -42,11 +42,11 @@ class MetaAPIClient:
                 **({"components": components} if components else {}),
             },
         }
-        return self._post(payload)
+        return await self._post(payload)
 
-    def _post(self, payload: dict) -> dict:
+    async def _post(self, payload: dict) -> dict:
         url = f"{META_API_BASE}/{self._phone_id}/messages"
-        with httpx.Client(headers=self._headers, timeout=10) as client:
-            resp = client.post(url, json=payload)
+        async with httpx.AsyncClient(headers=self._headers, timeout=10) as client:
+            resp = await client.post(url, json=payload)
             resp.raise_for_status()
             return resp.json()

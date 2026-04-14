@@ -32,26 +32,28 @@ def test_verify_signature_missing_prefix():
     assert verify_signature(body, "sem-prefixo", APP_SECRET) is False
 
 
+@pytest.mark.asyncio
 @respx.mock
-def test_send_text_calls_meta_api(client):
+async def test_send_text_calls_meta_api(client):
     route = respx.post(
         f"https://graph.facebook.com/v19.0/{PHONE_ID}/messages"
     ).mock(return_value=httpx.Response(200, json={"messages": [{"id": "wamid.abc"}]}))
 
-    result = client.send_text(to="5531999999999", text="Olá!")
+    result = await client.send_text(to="5531999999999", text="Olá!")
     assert route.called
     payload = json.loads(route.calls[0].request.content)
     assert payload["to"] == "5531999999999"
     assert payload["text"]["body"] == "Olá!"
 
 
+@pytest.mark.asyncio
 @respx.mock
-def test_send_template_calls_meta_api(client):
+async def test_send_template_calls_meta_api(client):
     route = respx.post(
         f"https://graph.facebook.com/v19.0/{PHONE_ID}/messages"
     ).mock(return_value=httpx.Response(200, json={"messages": [{"id": "wamid.xyz"}]}))
 
-    client.send_template(to="5531999999999", template_name="follow_up_geral", language="pt_BR")
+    await client.send_template(to="5531999999999", template_name="follow_up_geral", language="pt_BR")
     assert route.called
     payload = json.loads(route.calls[0].request.content)
     assert payload["type"] == "template"

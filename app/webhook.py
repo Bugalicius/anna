@@ -7,7 +7,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 APP_SECRET = os.environ.get("META_APP_SECRET", "")
-VERIFY_TOKEN = os.environ.get("META_VERIFY_TOKEN", "")
+VERIFY_TOKEN = os.environ.get("WEBHOOK_VERIFY_TOKEN", "")
 
 
 @router.get("/webhook")
@@ -34,6 +34,7 @@ async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
 
     import json as _json
     payload = _json.loads(body)  # usar body já lido, não re-ler o stream
+    logger.info("WEBHOOK PAYLOAD: %s", _json.dumps(payload)[:500])
 
     # Extrair mensagens do payload aninhado da Meta
     for entry in payload.get("entry", []):

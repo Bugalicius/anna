@@ -51,41 +51,51 @@ ETAPAS = [
 # ── Mensagens fixas ──────────────────────────────────────────────────────────
 
 MSG_BOAS_VINDAS = (
-    "Olá! Sou a Ana, assistente virtual da nutricionista Thaynara Teixeira 💚\n\n"
-    "É um prazer ter você aqui! Antes de começar, pode me dizer seu nome "
-    "e se é sua primeira consulta com a Thaynara ou se já é paciente?"
+    "Olá! Que bom ter você por aqui 💚\n\n"
+    "Sou a Ana, responsável pelos agendamentos da nutricionista Thaynara Teixeira.\n\n"
+    "Pra começar, você poderia me informar:\n"
+    "• Qual seu nome e sobrenome?\n"
+    "• É sua primeira consulta ou você já é paciente?\n\n"
+    "Ah, um aviso importante: no momento a Thaynara não realiza atendimento "
+    "para gestantes e menores de 16 anos, tudo bem?"
 )
 
 MSG_OBJETIVOS = (
-    "Que ótimo, {nome}! 😊\n\n"
-    "Para te ajudar melhor, qual é o seu principal objetivo agora?\n\n"
-    "• Perda de peso\n"
-    "• Ganho de massa muscular\n"
-    "• Reeducação alimentar\n"
-    "• Tratamento de condição específica (diabetes, hipertensão etc.)\n"
-    "• Outro objetivo"
+    "Ótimo, {nome}! 😊\n\n"
+    "Me conta: qual é o seu principal objetivo com o acompanhamento nutricional?\n\n"
+    "👉 Emagrecer\n"
+    "👉 Ganhar massa\n"
+    "👉 Tratar lipedema\n"
+    "👉 Outro objetivo"
 )
 
+MSG_PLANOS_INTRO = "Obrigada pelas informações! 💚"
+
 MSG_PLANOS_RESUMO = (
-    "Perfeito! A Thaynara tem planos para diferentes momentos e objetivos 💚\n\n"
-    "{planos}\n\n"
-    "Posso te enviar o material completo com todos os detalhes. "
-    "Qual dessas opções te chamou mais atenção?"
+    "Acabei de enviar nosso mídia kit com todas as opções, valores e benefícios exclusivos 😊\n\n"
+    "A Thaynara trabalha com o método *#NutriTransforma* — acompanhamento real, "
+    "ajustes constantes e resultados sustentáveis, sem dietas extremas nem recomeços frustrantes.\n\n"
+    "Dá uma olhadinha com calma e me responde: qual modalidade faz mais sentido pra você agora?"
 )
 
 MSG_UPSELL = {
     "unica": (
-        "Que boa escolha! Só pra você comparar: a *Consulta com Retorno* "
-        "inclui um acompanhamento em até 30 dias por apenas +R${diff:.0f} "
-        "(R${valor_upgrade:.0f} presencial / R${valor_upgrade_online:.0f} online). "
-        "Costuma fazer muita diferença no resultado! Prefere manter a Consulta Única "
-        "ou faz sentido investir no retorno?"
+        "Ótima escolha! Só pra você comparar: o *Plano Ouro* tem 3 consultas + 130 dias de acompanhamento "
+        "por R${valor_upgrade:.0f} presencial (ou R${valor_upgrade_online:.0f} online) — "
+        "o valor por consulta fica bem mais em conta e você tem muito mais suporte! 💚 "
+        "Prefere manter a Consulta Única ou o Plano Ouro faz mais sentido pra você?"
     ),
     "com_retorno": (
-        "Ótima escolha! Vale mencionar que o *Plano Ouro* inclui suporte via WhatsApp "
-        "3x/semana e retorno mensal por +R${diff:.0f}. "
-        "Muitas pacientes preferem porque dá muito mais suporte no dia a dia. "
+        "Ótima escolha! Vale mencionar que o *Plano Ouro* tem 3 consultas + 130 dias de acompanhamento "
+        "por apenas +R${diff:.0f}. Mais consultas, mais suporte e a Lilly inclusa! "
         "Prefere manter a Consulta com Retorno ou o Plano Ouro faz mais sentido?"
+    ),
+    "ouro": (
+        "Ótima escolha! Só pra você saber: o *Plano Premium* dobra as consultas (6 no total), "
+        "270 dias de acompanhamento, encontros coletivos e a Lilly — nossa assistente virtual "
+        "que te ajuda com substituições de alimentos na hora que precisar, mantendo seu plano sempre ajustado! "
+        "Fica por R${valor_upgrade:.0f} presencial. Vale muito a pena! "
+        "Prefere manter o Ouro ou o Premium faz mais sentido?"
     ),
 }
 
@@ -97,47 +107,59 @@ MSG_AGENDAMENTO_OPCOES = (
 )
 
 MSG_FORMA_PAGAMENTO = (
-    "Show! Vou reservar esse horário para você 😊\n\n"
-    "O valor do *{plano_nome}* ({modalidade}) é *R${valor:.2f}* "
-    "({parcelas}x de R${parcela:.2f} no cartão).\n\n"
-    "Como prefere pagar?\n\n"
-    "• *PIX* (aprovação na hora)\n"
-    "• *Cartão de crédito* (link de pagamento)"
+    "Perfeito, {nome}! 😊\n\n"
+    "Para confirmar seu agendamento, é necessário o pagamento antecipado. "
+    "Essa é uma política da clínica — garante que seu horário fique reservado exclusivamente pra você 💚\n\n"
+    "*{plano_nome}* ({modalidade}):\n"
+    "• PIX com desconto: *R${valor:.0f}* (sinal de 50%: *R${sinal:.0f}*)\n"
+    "• Cartão: *{parcelas}x de R${parcela:.0f}* sem juros (valor integral)\n\n"
+    "Qual opção prefere?\n"
+    "👉 PIX\n"
+    "👉 Cartão de crédito"
 )
 
-MSG_PIX = (
-    "Perfeito! 💚\n\n"
-    "Chave PIX (CPF): *{chave_pix}*\n"
-    "Valor: *R${valor:.2f}*\n\n"
-    "Após o pagamento, me manda o comprovante aqui mesmo e eu confirmo tudo!"
+MSG_PIX_1 = "Segue a chave PIX para pagamento:"
+MSG_PIX_2 = "CPF: *{chave_pix}*"
+MSG_PIX_3 = (
+    "Valor do sinal (50%): *R${sinal:.0f}*\n\n"
+    "Assim que concluir, me manda o comprovante pra eu confirmar tudo e enviar as demais informações 😊"
 )
 
 MSG_CARTAO = (
     "Claro! Segue o link para pagamento seguro via cartão 💳\n\n"
     "{link}\n\n"
-    "Parcele em até {parcelas}x sem juros. "
+    "{parcelas}x de R${parcela:.0f}. "
     "Após confirmar o pagamento, a consulta fica garantida!"
 )
 
 MSG_CONFIRMACAO_PRESENCIAL = (
-    "🎉 *Consulta confirmada!*\n\n"
-    "*Paciente:* {nome}\n"
-    "*Data:* {data}\n"
-    "*Horário:* {hora}\n"
-    "*Modalidade:* Presencial\n"
-    "*Plano:* {plano_nome}\n\n"
-    "Vou te enviar agora o guia de como se preparar para a consulta presencial 📄"
+    "{nome}, sua consulta foi confirmada com sucesso! ✅\n\n"
+    "📅 *Data e hora:* {data} às {hora}\n"
+    "📍 *Local:* Aura Clinic & Beauty\n"
+    "Rua Melo Franco, 204/Sala 103, Jardim da Glória, Vespasiano\n"
+    "https://maps.app.goo.gl/XxHgHxHh7aCxitDs8\n\n"
+    "Políticas importantes:\n"
+    "⏱️ Tolerância máxima de atraso: 10 minutos.\n"
+    "🔄 Reagendar/cancelar: informar com 24h de antecedência.\n"
+    "🚫 Não comparecimento: consulta considerada realizada, sem reembolso.\n\n"
+    "💚 Obrigada pela confiança! Estamos te esperando."
 )
 
 MSG_CONFIRMACAO_ONLINE = (
-    "🎉 *Consulta confirmada!*\n\n"
-    "*Paciente:* {nome}\n"
-    "*Data:* {data}\n"
-    "*Horário:* {hora}\n"
-    "*Modalidade:* Online (videochamada)\n"
-    "*Plano:* {plano_nome}\n\n"
-    "Vou te enviar o guia de preparação para consulta online 📄\n"
-    "O link da videochamada será enviado no dia da consulta 😊"
+    "{nome}, sua consulta foi confirmada com sucesso! ✅\n\n"
+    "📅 *Data e hora:* {data} às {hora}\n"
+    "📍 *Local:* Chamada de vídeo pelo WhatsApp (a nutri irá te ligar no número cadastrado)\n"
+    "✅ Certifique-se de ter uma boa conexão de internet.\n\n"
+    "Políticas importantes:\n"
+    "⏱️ Tolerância máxima de atraso: 10 minutos.\n"
+    "🔄 Reagendar/cancelar: informar com 24h de antecedência.\n"
+    "🚫 Não comparecimento: consulta considerada realizada, sem reembolso.\n\n"
+    "💚 Obrigada pela confiança! Estamos te esperando."
+)
+
+MSG_CONFIRMACAO_ONLINE_MEDIDAS = (
+    "Não esquece de mandar a foto e as medidas no número da Nutri, por favor. "
+    "Elas são muito importantes na realização da consulta. Obrigadaaa 💚"
 )
 
 MSG_FINALIZACAO = (
@@ -261,6 +283,9 @@ class AgenteAtendimento:
         if etapa == "confirmacao":
             return self._etapa_confirmacao(msg)
 
+        if etapa == "formulario":
+            return self._etapa_formulario_pagamento(msg)
+
         if etapa == "finalizacao":
             return [MSG_FINALIZACAO.format(nome=self.nome or "")]
 
@@ -271,11 +296,7 @@ class AgenteAtendimento:
 
     def _etapa_boas_vindas(self, msg: str) -> list[str]:
         """Primeiro contato: envia boas-vindas e aguarda nome."""
-        if not self.historico or len(self.historico) <= 1:
-            # primeira mensagem — responde com boas-vindas
-            return [MSG_BOAS_VINDAS]
-
-        # segunda mensagem — extrai nome
+        # Tenta extrair nome da mensagem atual
         nome = _extrair_nome(msg)
         if nome:
             self.nome = nome
@@ -284,7 +305,14 @@ class AgenteAtendimento:
             ) else "novo"
             self.status_paciente = status
             self.etapa = "qualificacao"
+            # Se é a primeira mensagem E tem nome, inclui boas-vindas + pergunta objetivo
+            if len(self.historico) <= 1:
+                return [MSG_BOAS_VINDAS, MSG_OBJETIVOS.format(nome=self.nome)]
             return [MSG_OBJETIVOS.format(nome=self.nome)]
+
+        # Primeira mensagem sem nome — responde com boas-vindas (pede nome)
+        if len(self.historico) <= 1:
+            return [MSG_BOAS_VINDAS]
 
         return [_gerar_resposta_llm(self.historico, "boas_vindas",
                                      "Ainda precisa coletar o nome do paciente.")]
@@ -292,30 +320,57 @@ class AgenteAtendimento:
     def _etapa_qualificacao(self, msg: str) -> list[str]:
         self.objetivo = msg[:200]  # salva objetivo bruto
         self.etapa = "apresentacao_planos"
-        planos_txt = kb.resumo_planos_texto()
-        resposta = MSG_PLANOS_RESUMO.format(planos=planos_txt)
-        return [resposta]
+        # Envia: confirmação + [PDF seria enviado aqui] + mensagem sobre planos
+        return [
+            MSG_PLANOS_INTRO,
+            "[PDF: Thaynara - Nutricionista.pdf]",  # substituído por send_document em produção
+            MSG_PLANOS_RESUMO,
+        ]
 
     def _etapa_apresentacao_planos(self, msg: str) -> list[str]:
         """Identifica o plano de interesse e pergunta modalidade."""
+        msg_lower = msg.lower()
+
+        # Captura modalidade mesmo sem plano escolhido
+        if "online" in msg_lower:
+            self.modalidade = "online"
+        elif any(w in msg_lower for w in ["presencial", "pessoal", "clínica", "clinica", "vespasiano"]):
+            self.modalidade = "presencial"
+
         plano = _identificar_plano(msg)
         if plano:
             self.plano_escolhido = plano
-            # pergunta modalidade se não foi mencionada
-            if "online" in msg.lower():
-                self.modalidade = "online"
+            if plano == "formulario":
+                self.etapa = "formulario"
+                return self._etapa_formulario_explicacao()
+            # Se modalidade já conhecida, avança direto
+            if self.modalidade:
                 self.etapa = "escolha_plano"
                 return self._etapa_escolha_plano(msg)
-            if any(w in msg.lower() for w in ["presencial", "pessoal", "clínica", "clinica"]):
-                self.modalidade = "presencial"
-                self.etapa = "escolha_plano"
-                return self._etapa_escolha_plano(msg)
+            # Pergunta modalidade
             return [
-                f"Ótima escolha! Prefere o atendimento *presencial* (Belo Horizonte/MG) "
-                f"ou *online* (videochamada)? 😊"
+                f"Ótima escolha! Prefere o atendimento *presencial* (Vespasiano/MG — Aura Clinic) "
+                f"ou *online* (videochamada pelo WhatsApp)? 😊"
             ]
 
         return [_gerar_resposta_llm(self.historico, "apresentacao_planos")]
+
+    def _etapa_formulario_explicacao(self) -> list[str]:
+        return [
+            "Vou te explicar direitinho como funciona, tá bom? 💚\n\n"
+            "A *Dieta por Formulário* é uma opção mais acessível e prática. "
+            "Você recebe um plano alimentar personalizado baseado em um formulário bem completo: "
+            "rotina, hábitos, preferências e objetivos.\n\n"
+            "Além disso:\n"
+            "• Pode enviar fotos para análise visual da nutri\n"
+            "• Em até 5 dias úteis recebe tudo por e-mail\n"
+            "• Pode solicitar ajustes no plano em até 5 dias\n\n"
+            "Se você sente que precisa de acompanhamento mais próximo, avaliações detalhadas "
+            "e suporte contínuo, a consulta completa (presencial ou online) faz toda a diferença. "
+            "A nutri avalia comportamento alimentar, sinais físicos, histórico clínico e acompanha "
+            "sua evolução com app exclusivo + check-ins personalizados.\n\n"
+            "Hoje você sente que qual plano se encaixa melhor na sua realidade?"
+        ]
 
     def _etapa_escolha_plano(self, msg: str) -> list[str]:
         """Captura modalidade e tenta upsell único."""
@@ -334,22 +389,25 @@ class AgenteAtendimento:
             modal = self.modalidade
 
             if plano == "unica":
-                diff = kb.get_valor("com_retorno", modal) - kb.get_valor("unica", modal)
                 msg_up = MSG_UPSELL["unica"].format(
-                    diff=diff,
-                    valor_upgrade=kb.get_valor("com_retorno", "presencial"),
-                    valor_upgrade_online=kb.get_valor("com_retorno", "online"),
+                    valor_upgrade=kb.get_valor("ouro", "presencial"),
+                    valor_upgrade_online=kb.get_valor("ouro", "online"),
                 )
-            else:  # com_retorno
+            elif plano == "com_retorno":
                 diff = kb.get_valor("ouro", modal) - kb.get_valor("com_retorno", modal)
                 msg_up = MSG_UPSELL["com_retorno"].format(diff=diff)
+            else:  # ouro
+                msg_up = MSG_UPSELL["ouro"].format(
+                    valor_upgrade=kb.get_valor("premium", "presencial"),
+                )
 
             return [msg_up]
 
         # se upsell foi oferecido, verifica se paciente aceitou upgrade
-        if self.upsell_oferecido and self.plano_escolhido in ("unica", "com_retorno"):
-            if any(w in msg.lower() for w in ["ouro", "retorno", "sim", "pode", "vamos", "upgrade"]):
-                self.plano_escolhido = "ouro" if self.plano_escolhido == "com_retorno" else "com_retorno"
+        if self.upsell_oferecido:
+            if any(w in msg.lower() for w in ["premium", "sim", "pode", "vamos", "upgrade", "esse"]):
+                upgrades = {"unica": "ouro", "com_retorno": "ouro", "ouro": "premium"}
+                self.plano_escolhido = upgrades.get(self.plano_escolhido, self.plano_escolhido)
 
         self.etapa = "agendamento"
         return self._iniciar_agendamento()
@@ -367,8 +425,17 @@ class AgenteAtendimento:
         if not slots:
             return [MSG_SEM_HORARIOS]
 
-        # guarda os 3 primeiros para o paciente escolher
-        self._slots_oferecidos = slots[:3]
+        # guarda 3 slots em dias DIFERENTES para o paciente escolher
+        dias_usados: set[str] = set()
+        selecionados: list[dict] = []
+        for slot in slots:
+            dia = slot.get("data_fmt", "")
+            if dia not in dias_usados:
+                selecionados.append(slot)
+                dias_usados.add(dia)
+            if len(selecionados) >= 3:
+                break
+        self._slots_oferecidos = selecionados
         opcoes = "\n".join(
             f"{i+1}. {s['data_fmt']} às {s['hora']}"
             for i, s in enumerate(self._slots_oferecidos)
@@ -410,15 +477,20 @@ class AgenteAtendimento:
         self.etapa = "forma_pagamento"
 
         plano_dados = kb.get_plano(self.plano_escolhido or "unica")
-        valor = kb.get_valor(self.plano_escolhido or "unica", self.modalidade or "presencial")
+        modal = self.modalidade or "presencial"
+        valor = kb.get_valor(self.plano_escolhido or "unica", modal)
         parcelas = kb.get_parcelas(self.plano_escolhido or "unica")
+        parcela_key = f"parcela_{modal}"
+        parcela = plano_dados.get(parcela_key, valor / parcelas) if plano_dados else valor / parcelas
 
         return [MSG_FORMA_PAGAMENTO.format(
+            nome=self.nome or "",
             plano_nome=plano_dados["nome"] if plano_dados else self.plano_escolhido,
-            modalidade=self.modalidade,
+            modalidade=modal,
             valor=valor,
+            sinal=valor * 0.5,
             parcelas=parcelas,
-            parcela=valor / parcelas,
+            parcela=parcela,
         )]
 
     def _etapa_forma_pagamento(self, msg: str) -> list[str]:
@@ -434,7 +506,11 @@ class AgenteAtendimento:
         valor = kb.get_valor(self.plano_escolhido or "unica", self.modalidade or "presencial")
 
         if self.forma_pagamento == "pix":
-            return [MSG_PIX.format(chave_pix=kb.contatos["pix_chave"], valor=valor)]
+            return [
+                MSG_PIX_1,
+                MSG_PIX_2.format(chave_pix=kb.contatos["pix_chave"]),
+                MSG_PIX_3.format(sinal=valor * 0.5),
+            ]
 
         # cartão — gera link
         link_result = gerar_link_pagamento(
@@ -450,6 +526,7 @@ class AgenteAtendimento:
         return [MSG_CARTAO.format(
             link=link_result.url,
             parcelas=link_result.parcelas,
+            parcela=link_result.parcela_valor,
         )]
 
     def _etapa_pagamento(self, msg: str) -> list[str]:
@@ -507,19 +584,59 @@ class AgenteAtendimento:
 
     def _etapa_confirmacao(self, _msg: str) -> list[str]:
         slot = self.slot_escolhido or {}
-        plano_dados = kb.get_plano(self.plano_escolhido or "unica")
-        plano_nome = plano_dados["nome"] if plano_dados else (self.plano_escolhido or "")
-
-        template = MSG_CONFIRMACAO_PRESENCIAL if self.modalidade != "online" else MSG_CONFIRMACAO_ONLINE
-        confirmacao = template.format(
-            nome=self.nome or "",
-            data=slot.get("data_fmt", ""),
-            hora=slot.get("hora", ""),
-            plano_nome=plano_nome,
-        )
 
         self.etapa = "finalizacao"
-        return [confirmacao]
+
+        if self.modalidade == "online":
+            msgs = [
+                MSG_CONFIRMACAO_ONLINE.format(
+                    nome=self.nome or "",
+                    data=slot.get("data_fmt", ""),
+                    hora=slot.get("hora", ""),
+                ),
+                "[IMG: COMO-SE-PREPARAR---ONLINE.jpg]",
+                "[PDF: Guia Circunferências Corporais]",
+                f"Contato da nutricionista: {kb.contatos['numero_nutri_publico']}",
+                MSG_CONFIRMACAO_ONLINE_MEDIDAS,
+            ]
+        else:
+            msgs = [
+                MSG_CONFIRMACAO_PRESENCIAL.format(
+                    nome=self.nome or "",
+                    data=slot.get("data_fmt", ""),
+                    hora=slot.get("hora", ""),
+                ),
+                "[IMG: COMO-SE-PREPARAR---presencial.jpg]",
+            ]
+
+        return msgs
+
+
+    def _etapa_formulario_pagamento(self, msg: str) -> list[str]:
+        """Fluxo do formulário: aguarda confirmação e envia link."""
+        msg_lower = msg.lower()
+        confirmado = any(w in msg_lower for w in [
+            "paguei", "pago", "feito", "fiz", "enviei", "transferi", "confirmado", "ok", "sim",
+        ])
+        if confirmado or len(msg) > 30:
+            self.pagamento_confirmado = True
+            self.etapa = "finalizacao"
+            return [
+                f"Aqui está o link para preencher o formulário 💚\n\n"
+                f"{kb.contatos['formulario_link']}\n\n"
+                "Responda todas as perguntas com atenção e sinceridade — elas são a base do seu plano alimentar.\n\n"
+                "Por favor, envie no número da nutri fotos de short/top de treino ou biquíni (feminino) "
+                "ou bermuda sem camisa (masculino), nas posições de frente, costas e laterais, da cabeça aos pés.\n\n"
+                "Assim que recebermos o formulário preenchido, sua dieta será enviada em até 5 dias úteis 💪",
+                f"Contato da nutricionista para enviar as fotos: {kb.contatos['numero_nutri_publico']}",
+            ]
+
+        # ainda não confirmou — envia dados de pagamento
+        return [
+            "Para garantir o compromisso, o formulário só é enviado após o pagamento 😊\n\n"
+            f"R$ 100 — Chave PIX (CPF): *{kb.contatos['pix_chave']}*\n\n"
+            "Feito, me manda o comprovante que retorno com a confirmação e orientações! 👈✅"
+        ]
 
 
     # ── serialização ─────────────────────────────────────────────────────────
@@ -572,7 +689,7 @@ def _extrair_nome(msg: str) -> str | None:
     import re
     # Remove saudações comuns
     limpo = re.sub(
-        r"^(oi|olá|ola|bom dia|boa tarde|boa noite|tudo bem|tudo bom)[,!.]*\s*",
+        r"^(oi|olá|ola|bom dia|boa tarde|boa noite|tudo bem|tudo bom|meu nome [eé]|me chamo|sou o|sou a|sou)[,!.]*\s*",
         "",
         msg.strip(),
         flags=re.IGNORECASE,
@@ -588,11 +705,18 @@ def _extrair_nome(msg: str) -> str | None:
     if nome_partes:
         return " ".join(nome_partes)
 
-    # fallback: primeira palavra com mais de 2 chars
-    for t in tokens:
+    # fallback: primeira palavra ORIGINALMENTE capitalizada no texto (nome próprio)
+    _NAO_NOMES = {
+        "tenho", "quero", "gostaria", "preciso", "estou", "sou", "minha", "meu",
+        "para", "sobre", "posso", "fazer", "qual", "como", "quando", "onde",
+        "primeira", "segunda", "nova", "nova", "boa", "bom", "tudo", "bem",
+    }
+    for t in msg.strip().split():
         t_clean = t.strip(",.!?")
-        if len(t_clean) > 2 and t_clean.isalpha():
-            return t_clean.capitalize()
+        if (len(t_clean) > 2 and t_clean.isalpha()
+                and t_clean[0].isupper()
+                and t_clean.lower() not in _NAO_NOMES):
+            return t_clean
     return None
 
 
