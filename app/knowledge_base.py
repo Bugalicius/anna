@@ -7,8 +7,11 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+
+BRT = timezone(timedelta(hours=-3))
 
 logger = logging.getLogger(__name__)
 
@@ -336,7 +339,7 @@ class KnowledgeBase:
         return "\n".join(linhas)
 
     def faq_combinado(self) -> list[dict[str, str]]:
-        """FAQ estático + perguntas mineradas com frequência > 1."""
+        """FAQ estático + perguntas mineradas com frequência > 1 + FAQ aprendido do Breno (D-11)."""
         resultado = list(self.faq_estatico)
         for item in self.faq_minerado:
             if item.get("frequency", 0) > 1 and item.get("suggested_answer"):
@@ -344,6 +347,17 @@ class KnowledgeBase:
                     "pergunta": item["question"],
                     "resposta": item["suggested_answer"],
                 })
+        # FAQ aprendido (D-11)
+        if _FAQ_APRENDIDO_FILE.exists():
+            try:
+                aprendido = json.loads(_FAQ_APRENDIDO_FILE.read_text(encoding="utf-8"))
+                for item in aprendido:
+                    resultado.append({
+                        "pergunta": item["pergunta"],
+                        "resposta": item["resposta"],
+                    })
+            except Exception as e:
+                logger.error("Erro ao carregar FAQ aprendido: %s", e)
         return resultado
 
     def system_prompt(self) -> str:
@@ -375,6 +389,46 @@ Seu objetivo é agendar consultas com empatia, clareza e naturalidade em portugu
 ## Tom
 {self.tone_guide or 'Empático, profissional mas descontraído. Use emojis com moderação (💚).'}
 """
+
+
+# ── FAQ Aprendido — persistido em arquivo JSON (D-11) ─────────────────────────
+
+_FAQ_APRENDIDO_FILE = _KB_DIR / "faq_aprendido.json"
+
+
+def salvar_faq_aprendido(pergunta: str, resposta: str) -> None:
+    """
+    Salva par pergunta/resposta aprendido do Breno na knowledge base.
+    Persiste em arquivo JSON para sobreviver a deploys (D-11).
+    Evita duplicatas — atualiza resposta se mesma pergunta já existir.
+    """
+    faq_list: list[dict] = []
+    if _FAQ_APRENDIDO_FILE.exists():
+        try:
+            faq_list = json.loads(_FAQ_APRENDIDO_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            faq_list = []
+
+    # Evitar duplicatas exatas — atualiza resposta existente
+    for item in faq_list:
+        if item.get("pergunta", "").lower().strip() == pergunta.lower().strip():
+            item["resposta"] = resposta
+            _FAQ_APRENDIDO_FILE.write_text(
+                json.dumps(faq_list, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+            logger.info("FAQ aprendido atualizado: %s", pergunta[:50])
+            return
+
+    faq_list.append({
+        "pergunta": pergunta,
+        "resposta": resposta,
+        "source": "breno_relay",
+        "created_at": datetime.now(BRT).isoformat(),
+    })
+    _FAQ_APRENDIDO_FILE.write_text(
+        json.dumps(faq_list, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    logger.info("FAQ aprendido salvo: %s", pergunta[:50])
 
 
 # Instância global (inicializada na primeira importação)

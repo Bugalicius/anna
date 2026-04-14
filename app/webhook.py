@@ -101,5 +101,21 @@ async def process_message(message: dict, metadata: dict):
         db.add(msg)
         db.commit()
 
+    # Detectar mensagem do Breno (número interno) antes de rotear como paciente
+    from app.escalation import _NUMERO_INTERNO, processar_resposta_breno
+    from app.meta_api import MetaAPIClient
+    import os as _os
+
+    _meta = MetaAPIClient(
+        phone_number_id=_os.environ.get("WHATSAPP_PHONE_NUMBER_ID", ""),
+        access_token=_os.environ.get("WHATSAPP_TOKEN", ""),
+    )
+
+    if phone == _NUMERO_INTERNO:
+        # Mensagem do Breno — processar como resposta de escalação
+        logger.info("Mensagem do número interno detectada — processando como resposta do Breno")
+        await processar_resposta_breno(meta_client=_meta, texto_resposta=text)
+        return
+
     # Rotear e responder (fora do session para evitar lock longo)
     await route_message(phone=phone, phone_hash=phone_hash, text=text, meta_message_id=meta_id)

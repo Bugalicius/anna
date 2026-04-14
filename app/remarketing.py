@@ -159,9 +159,33 @@ def _dispatch_due_messages():
                 db.commit()
 
 
+def _check_escalation_reminders():
+    """Job APScheduler: verifica lembretes de escalação pendentes a cada 5 minutos."""
+    import asyncio
+    from app.meta_api import MetaAPIClient
+    from app.escalation import enviar_lembretes_pendentes
+
+    meta = MetaAPIClient(
+        phone_number_id=os.environ.get("META_PHONE_NUMBER_ID", ""),
+        access_token=os.environ.get("META_ACCESS_TOKEN", ""),
+    )
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        enviados = loop.run_until_complete(enviar_lembretes_pendentes(meta))
+        loop.close()
+        if enviados > 0:
+            logger.info("Lembretes de escalação enviados: %d", enviados)
+    except Exception as e:
+        logger.error("Falha no job de lembretes de escalação: %s", e)
+
+
 def create_scheduler() -> BackgroundScheduler:
     jobstores = {"default": SQLAlchemyJobStore(url=os.environ.get("DATABASE_URL", ""))}
     scheduler = BackgroundScheduler(jobstores=jobstores)
     scheduler.add_job(_dispatch_due_messages, "interval", minutes=1, id="remarketing_dispatcher",
                       replace_existing=True)
+    scheduler.add_job(_check_escalation_reminders, "interval", minutes=5,
+                      id="escalation_reminders", replace_existing=True)
     return scheduler

@@ -30,6 +30,29 @@ class MetaAPIClient:
         }
         return await self._post(payload)
 
+    async def send_contact(self, to: str, nome: str, telefone: str) -> dict:
+        """Envia VCard de contato via WhatsApp (D-05)."""
+        partes = nome.split(" ", 1)
+        first_name = partes[0]
+        last_name = partes[1] if len(partes) > 1 else ""
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": "contacts",
+            "contacts": [{
+                "name": {
+                    "formatted_name": nome,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                },
+                "phones": [{
+                    "phone": telefone,
+                    "type": "CELL",
+                }],
+            }],
+        }
+        return await self._post(payload)
+
     async def send_template(self, to: str, template_name: str, language: str = "pt_BR",
                             components: list | None = None) -> dict:
         payload = {
