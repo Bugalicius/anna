@@ -207,16 +207,16 @@ async def test_route_message_carrega_redis_no_inicio(state_mgr_mock, meta_mock):
     agente_mock.processar = MagicMock(return_value=["olá"])
     agente_mock.etapa = "coleta_nome"
 
-    with patch("app.database.SessionLocal", return_value=db_mock), \
+    with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.agents.orchestrator.rotear", return_value={
+         patch("app.router.rotear", return_value={
              "agente": "atendimento",
              "intencao": "novo_lead",
              "confianca": 1.0,
              "resposta_padrao": None,
          }), \
-         patch("app.agents.atendimento.AgenteAtendimento") as MockAgente:
+         patch("app.router.AgenteAtendimento") as MockAgente:
         instance = MockAgente.return_value
         instance.processar.return_value = ["oi paciente"]
         instance.etapa = "coleta_nome"
@@ -238,16 +238,16 @@ async def test_route_message_salva_redis_apos_processar(state_mgr_mock, meta_moc
     contact = _make_contact(stage="presenting")
     db_mock = _make_db_mock(contact)
 
-    with patch("app.database.SessionLocal", return_value=db_mock), \
+    with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.agents.orchestrator.rotear", return_value={
+         patch("app.router.rotear", return_value={
              "agente": "atendimento",
              "intencao": "novo_lead",
              "confianca": 1.0,
              "resposta_padrao": None,
          }), \
-         patch("app.agents.atendimento.AgenteAtendimento") as MockAgente:
+         patch("app.router.AgenteAtendimento") as MockAgente:
         instance = MockAgente.return_value
         instance.processar.return_value = ["oi paciente"]
         instance.etapa = "coleta_nome"  # não finalizado
@@ -269,20 +269,23 @@ async def test_route_message_deleta_redis_em_finalizacao(state_mgr_mock, meta_mo
     contact = _make_contact(stage="presenting")
     db_mock = _make_db_mock(contact)
 
-    with patch("app.database.SessionLocal", return_value=db_mock), \
+    with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.agents.orchestrator.rotear", return_value={
+         patch("app.router.rotear", return_value={
              "agente": "atendimento",
              "intencao": "novo_lead",
              "confianca": 1.0,
              "resposta_padrao": None,
          }), \
-         patch("app.agents.atendimento.AgenteAtendimento") as MockAgente:
+         patch("app.router.AgenteAtendimento") as MockAgente:
         instance = MockAgente.return_value
         instance.processar.return_value = ["consulta agendada com sucesso!"]
         instance.etapa = "finalizacao"  # fluxo finalizado
         instance.nome = "Maria"
+        instance.pagamento_confirmado = False
+        # _tipo permite que _fluxo_finalizado identifique o tipo via getattr fallback
+        instance._tipo = "AgenteAtendimento"
         instance.to_dict = MagicMock(return_value={"_tipo": "atendimento", "etapa": "finalizacao"})
         await router_module.route_message("5511999", "hash123", "ok", "msg-id-1")
 
@@ -308,16 +311,16 @@ async def test_interrupt_remarcar_troca_agente(state_mgr_mock, meta_mock):
     contact = _make_contact(stage="presenting", collected_name="Carlos")
     db_mock = _make_db_mock(contact)
 
-    with patch("app.database.SessionLocal", return_value=db_mock), \
+    with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.agents.orchestrator.rotear", return_value={
+         patch("app.router.rotear", return_value={
              "agente": "retencao",
              "intencao": "remarcar",
              "confianca": 0.95,
              "resposta_padrao": None,
          }), \
-         patch("app.agents.retencao.AgenteRetencao") as MockRetencao:
+         patch("app.router.AgenteRetencao") as MockRetencao:
         instance = MockRetencao.return_value
         instance.processar_remarcacao.return_value = ["vamos remarcar!"]
         instance.etapa = "aguardando_slot"
@@ -346,10 +349,10 @@ async def test_inline_tirar_duvida_mantem_agente_ativo(state_mgr_mock, meta_mock
     contact = _make_contact(stage="presenting", collected_name="Ana")
     db_mock = _make_db_mock(contact)
 
-    with patch("app.database.SessionLocal", return_value=db_mock), \
+    with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.agents.orchestrator.rotear", return_value={
+         patch("app.router.rotear", return_value={
              "agente": "atendimento",
              "intencao": "tirar_duvida",
              "confianca": 0.88,
@@ -379,10 +382,10 @@ async def test_inline_fora_contexto_mantem_agente_ativo(state_mgr_mock, meta_moc
     contact = _make_contact(stage="presenting")
     db_mock = _make_db_mock(contact)
 
-    with patch("app.database.SessionLocal", return_value=db_mock), \
+    with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.agents.orchestrator.rotear", return_value={
+         patch("app.router.rotear", return_value={
              "agente": "padrao",
              "intencao": "fora_de_contexto",
              "confianca": 0.9,
@@ -413,16 +416,16 @@ async def test_paciente_retorno_saudacao_por_nome(state_mgr_mock, meta_mock):
     )
     db_mock = _make_db_mock(contact)
 
-    with patch("app.database.SessionLocal", return_value=db_mock), \
+    with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.agents.orchestrator.rotear", return_value={
+         patch("app.router.rotear", return_value={
              "agente": "retencao",
              "intencao": "remarcar",
              "confianca": 0.9,
              "resposta_padrao": None,
          }), \
-         patch("app.agents.retencao.AgenteRetencao") as MockRetencao:
+         patch("app.router.AgenteRetencao") as MockRetencao:
         instance = MockRetencao.return_value
         instance.processar_remarcacao.return_value = ["vamos remarcar!"]
         instance.etapa = "aguardando_slot"
@@ -453,16 +456,16 @@ async def test_redis_failure_nao_trava(state_mgr_mock, meta_mock):
     contact = _make_contact(stage="new")
     db_mock = _make_db_mock(contact)
 
-    with patch("app.database.SessionLocal", return_value=db_mock), \
+    with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.agents.orchestrator.rotear", return_value={
+         patch("app.router.rotear", return_value={
              "agente": "atendimento",
              "intencao": "novo_lead",
              "confianca": 1.0,
              "resposta_padrao": None,
          }), \
-         patch("app.agents.atendimento.AgenteAtendimento") as MockAgente:
+         patch("app.router.AgenteAtendimento") as MockAgente:
         instance = MockAgente.return_value
         instance.processar.return_value = ["Olá! Bem-vinda!"]
         instance.etapa = "coleta_nome"
