@@ -63,12 +63,12 @@ Plans:
   3. Quando lead responde que não vai marcar, sistema move para "lead perdido" e nenhuma mensagem adicional é enviada
   4. Mensagens de follow-up seguem os templates da documentação (seção 6) — sem texto improvisado
   5. Remarketing não interrompe paciente com conversa ativa — verifica estado FSM antes de disparar
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: APScheduler fix — migrar de `BackgroundScheduler` para `AsyncIOScheduler`, corrigir coroutine não-awaited
-- [ ] 03-02: Drip triggers e controle de estado — counters, lead perdido, verificação de conversa ativa
-- [ ] 03-03: Templates e validação end-to-end — submissão/aprovação Meta + teste de entrega real
+- [ ] 03-01-PLAN.md — AsyncIOScheduler migration: scheduler async, jobs async, redis.asyncio rate limiting
+- [ ] 03-02-PLAN.md — Drip logic + lead perdido: sequencia 24h/7d/30d, MAX=3, recusou_remarketing, check conversa ativa
+- [ ] 03-03-PLAN.md — Templates + Meta integration: textos aprovados, send_text/send_template, graceful degradation
 
 ### Phase 4: Meta Cloud API
 **Goal**: Integração Meta Cloud API é segura, idempotente e compliant com LGPD — webhook validado por HMAC, deduplicação previne agendamentos duplicados, mídia real enviada, dados de pacientes pseudonimizados antes de chegar ao LLM
