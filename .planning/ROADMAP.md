@@ -29,12 +29,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Quando Ana não sabe responder, encaminha a dúvida internamente, aguarda resposta e repassa ao paciente — sem revelar o número 31 99205-9211
   4. Após reinicio do processo, paciente que estava no meio de um fluxo continua de onde parou (estado persistido no Redis)
   5. Tom e sequência de mensagens seguem a documentação oficial — sem improvisar saudações, etapas ou valores
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Context-aware FSM — structured LLM output com `{nova_etapa, slots_atualizados, resposta}` e interrupt detection
-- [ ] 01-02: Redis state serialization — `to_dict()/from_dict()` nos agentes, substituição do `_AGENT_STATE` in-memory
-- [ ] 01-03: Escalation relay + waiting indicator + confidence threshold + behavior alignment
+- [x] 01-01-PLAN.md — Redis state persistence + agent serialization (to_dict/from_dict) + Contact/PendingEscalation models
+- [ ] 01-02-PLAN.md — Redis integration no router + context-aware orchestrator + interrupt detection + reconhecimento por nome
+- [ ] 01-03-PLAN.md — Escalation relay 3 caminhos + waiting indicator + FAQ aprendido + alinhamento de tom
 
 ### Phase 2: Fluxo de Remarcação
 **Goal**: Regras de remarcação de retorno funcionam corretamente — prazo comunicado, horários priorizados, Dietbox atualizado antes da confirmação, fallback para "perda de retorno" implementado
@@ -49,9 +49,9 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 02-01: Regras de prazo e detecção retorno vs. nova consulta — lógica em `retencao.py`
-- [ ] 02-02: Priorização de horários e negociação flexível — algoritmo de ordenação e fluxo de fallback
-- [ ] 02-03: Sequência correta: Dietbox write → verificação de sucesso → confirmação ao paciente
+- [x] 02-01: Regras de prazo e detecção retorno vs. nova consulta — lógica em `retencao.py`
+- [x] 02-02: Priorização de horários e negociação flexível — algoritmo de ordenação e fluxo de fallback
+- [x] 02-03: Sequência correta: Dietbox write → verificação de sucesso → confirmação ao paciente
 
 ### Phase 3: Remarketing
 **Goal**: Sistema de follow-up automático funciona de ponta a ponta — scheduler dispara nas janelas certas, templates corretos são enviados, controle de tentativas e lead perdido funcionam
@@ -93,7 +93,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Inteligência Conversacional | 0/3 | Not started | - |
-| 2. Fluxo de Remarcação | 0/3 | Not started | - |
+| 1. Inteligência Conversacional | 1/3 | In progress | - |
+| 2. Fluxo de Remarcação | 3/3 | Complete | 2026-04-12 |
 | 3. Remarketing | 0/3 | Not started | - |
 | 4. Meta Cloud API | 0/3 | Not started | - |
