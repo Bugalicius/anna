@@ -34,6 +34,7 @@ IntencaoType = Literal[
     "cancelar",
     "fora_de_contexto",
     "duvida_clinica",
+    "recusou_remarketing",
 ]
 
 _INTENCOES_AGENTE1: set[str] = {"novo_lead", "tirar_duvida", "agendar", "pagar"}
@@ -54,6 +55,7 @@ Opções de intenção:
 - remarcar: quer mudar data/hora de consulta já agendada
 - cancelar: quer cancelar consulta
 - duvida_clinica: dúvida médica/nutricional (dieta, exames, sintomas, condições de saúde)
+- recusou_remarketing: lead informa que não vai marcar consulta, não tem interesse, pede para parar de enviar mensagens, diz "deixa pra lá", "não vou marcar", "pode tirar meu número"
 - fora_de_contexto: assunto não relacionado a consultas ou nutrição
 
 Responda APENAS com JSON válido, sem explicações.
@@ -103,6 +105,7 @@ def _classificar_intencao(mensagem: str, contexto: str = "") -> tuple[IntencaoTy
         validas = {
             "novo_lead", "tirar_duvida", "agendar", "pagar",
             "remarcar", "cancelar", "fora_de_contexto", "duvida_clinica",
+            "recusou_remarketing",
         }
         if intencao not in validas:
             intencao = "fora_de_contexto"
@@ -166,6 +169,10 @@ def rotear(
 
     if intencao == "duvida_clinica":
         return {"agente": "escalacao", "intencao": intencao, "confianca": confianca, "resposta_padrao": None}
+
+    # D-08: lead recusa remarketing — encaminha para handler dedicado
+    if intencao == "recusou_remarketing":
+        return {"agente": "remarketing_recusa", "intencao": intencao, "confianca": confianca, "resposta_padrao": None}
 
     # fora_de_contexto
     return {

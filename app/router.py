@@ -18,6 +18,7 @@ from app.agents.orchestrator import rotear
 from app.agents.retencao import AgenteRetencao
 from app.database import SessionLocal
 from app.models import Contact
+from app.remarketing import cancel_pending_remarketing
 from app.tags import Tag, set_tag
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,12 @@ _MSG_INLINE_PADRAO = (
     "Posso te ajudar com agendamentos e informações sobre as consultas 💚"
 )
 
+# ── Mensagem de encerramento ao detectar recusa de remarketing (D-09) ─────────
+MSG_ENCERRAMENTO_REMARKETING = (
+    "Tudo bem! Posso perguntar o que pesou na decisão? "
+    "Só pra melhorar nosso atendimento 😊"
+)
+
 
 async def route_message(phone: str, phone_hash: str, text: str, meta_message_id: str):
     """
@@ -60,7 +67,6 @@ async def route_message(phone: str, phone_hash: str, text: str, meta_message_id:
     """
     from app.escalation import escalar_para_humano
     from app.meta_api import MetaAPIClient
-    from app.remarketing import cancel_pending_remarketing
 
     meta = MetaAPIClient()
 
@@ -170,6 +176,23 @@ async def route_message(phone: str, phone_hash: str, text: str, meta_message_id:
             return
 
     # ── 7. Roteamento para agente (sem agente ativo ou após interrupt) ─────────
+
+    # ── Recusa de remarketing — lead perdido (D-09, D-10) ────────────────────
+    if agente_destino == "remarketing_recusa":
+        await _enviar(meta, phone, [MSG_ENCERRAMENTO_REMARKETING])
+
+        # Cancela fila pendente e move para lead_perdido (D-10)
+        with SessionLocal() as db:
+            contact = db.query(Contact).filter_by(phone_hash=phone_hash).first()
+            if contact:
+                cancel_pending_remarketing(db, contact.id)
+                set_tag(db, contact, Tag.LEAD_PERDIDO, force=True)
+                db.commit()
+
+        # Deleta estado Redis se existir (D-10)
+        if _state_mgr:
+            await _state_mgr.delete(phone_hash)
+        return
 
     # Resposta padrão (fora de contexto sem agente ativo)
     if agente_destino == "padrao":

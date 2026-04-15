@@ -23,21 +23,12 @@ from app.models import Contact, RemarketingQueue
 logger = logging.getLogger(__name__)
 
 REMARKETING_SEQUENCE = [
-    {"position": 1, "template": "follow_up_geral", "delay_hours": 2},
-    {"position": 2, "template": "objecao_preco", "delay_hours": 24},
-    {"position": 3, "template": "urgencia_vagas", "delay_hours": 48},
-    {"position": 4, "template": "depoimento", "delay_hours": 72},
-    {"position": 5, "template": "oferta_especial", "delay_hours": 168},
+    {"position": 1, "template": "ana_followup_24h", "delay_hours": 24},
+    {"position": 2, "template": "ana_followup_7d", "delay_hours": 168},
+    {"position": 3, "template": "ana_followup_30d", "delay_hours": 720},
 ]
 
-BEHAVIORAL_TEMPLATES = {
-    "pediu_preco": ("objecao_preco", True),
-    "disse_vou_pensar": ("follow_up_geral", True),
-    "pediu_parcelamento": ("opcoes_pagamento", False),
-    "mencionou_concorrente": ("diferenciacao", False),
-}
-
-MAX_REMARKETING = 5
+MAX_REMARKETING = 3
 RATE_LIMIT_PER_MIN = 30
 
 
@@ -47,6 +38,8 @@ def can_schedule_remarketing(db: Session, contact_id: str) -> bool:
     """Verifica se o contato pode receber mais mensagens de remarketing."""
     contact = db.get(Contact, contact_id)
     if not contact or contact.remarketing_count >= MAX_REMARKETING:
+        return False
+    if contact.stage == "lead_perdido":
         return False
 
     today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -81,26 +74,6 @@ def schedule_time_remarketing(db: Session, contact_id: str, template: str,
     db.commit()
     return entry
 
-
-def schedule_behavioral_remarketing(db: Session, contact_id: str, signals: list[str]):
-    """Agenda mensagens de remarketing baseadas em comportamento."""
-    for signal in signals:
-        if signal not in BEHAVIORAL_TEMPLATES:
-            continue
-        template, counts = BEHAVIORAL_TEMPLATES[signal]
-        if counts and not can_schedule_remarketing(db, contact_id):
-            continue
-        entry = RemarketingQueue(
-            contact_id=contact_id,
-            template_name=template,
-            scheduled_for=datetime.now(UTC) + timedelta(minutes=5),
-            status="pending",
-            sequence_position=0,
-            trigger_type="behavior",
-            counts_toward_limit=counts,
-        )
-        db.add(entry)
-    db.commit()
 
 
 def cancel_pending_remarketing(db: Session, contact_id: str):
@@ -155,7 +128,7 @@ async def _dispatch_due_messages() -> None:
                     continue
 
                 contact = db.get(Contact, entry.contact_id)
-                if not contact or contact.stage == "archived":
+                if not contact or contact.stage in ("archived", "lead_perdido"):
                     entry.status = "cancelled"
                     db.commit()
                     continue
@@ -165,6 +138,13 @@ async def _dispatch_due_messages() -> None:
                     entry.status = "cancelled"
                     db.commit()
                     continue
+
+                # D-11: pular se paciente tem conversa ativa no Redis
+                state_key = f"agent_state:{contact.phone_hash}"
+                has_active = await redis_client.exists(state_key)
+                if has_active:
+                    logger.info("Remarketing skip — conversa ativa para %s", contact.phone_hash[-4:])
+                    continue  # pula este ciclo, tenta no proximo (1 min)
 
                 try:
                     await meta.send_template(
@@ -176,7 +156,7 @@ async def _dispatch_due_messages() -> None:
                     if entry.counts_toward_limit:
                         contact.remarketing_count += 1
                     if contact.remarketing_count >= MAX_REMARKETING:
-                        contact.stage = "archived"
+                        contact.stage = "lead_perdido"  # D-01: apos 3 sem resposta = lead perdido
                     db.commit()
                     await asyncio.sleep(2)  # intervalo mínimo de 2s entre disparos
                 except Exception as e:
@@ -203,6 +183,71 @@ async def _check_escalation_reminders() -> None:
             logger.info("Lembretes de escalação enviados: %d", enviados)
     except Exception as e:
         logger.error("Falha no job de lembretes de escalação: %s", e)
+
+
+# ── Helper testavel para logica de dispatch ───────────────────────────────────
+
+async def _dispatch_from_db(
+    entries: list,
+    db,
+    redis_client,
+    meta,
+) -> None:
+    """
+    Processa lista de entries de remarketing com redis_client e meta injetados.
+
+    Extraido de _dispatch_due_messages para permitir testes unitarios sem
+    necessidade de patchear imports internos (mesmo padrao do Plan 03-01).
+    """
+    now = datetime.now(UTC)
+
+    for entry in entries:
+        # Rate limit Redis: max 30/min
+        minute_key = f"meta:rate:{now.strftime('%Y%m%d%H%M')}"
+        count = await redis_client.incr(minute_key)
+        if count == 1:
+            await redis_client.expire(minute_key, 60)
+        if count > RATE_LIMIT_PER_MIN:
+            entry.scheduled_for = now + timedelta(minutes=1)
+            db.commit()
+            continue
+
+        contact = db.get(Contact, entry.contact_id)
+        if not contact or contact.stage in ("archived", "lead_perdido"):
+            entry.status = "cancelled"
+            db.commit()
+            continue
+
+        if not contact.phone_e164:
+            logger.error("Contato %s sem phone_e164, cancelando entry", entry.contact_id)
+            entry.status = "cancelled"
+            db.commit()
+            continue
+
+        # D-11: pular se paciente tem conversa ativa no Redis
+        state_key = f"agent_state:{contact.phone_hash}"
+        has_active = await redis_client.exists(state_key)
+        if has_active:
+            logger.info("Remarketing skip — conversa ativa para %s", contact.phone_hash[-4:])
+            continue  # pula este ciclo, tenta no proximo (1 min)
+
+        try:
+            await meta.send_template(
+                to=contact.phone_e164,
+                template_name=entry.template_name,
+            )
+            entry.status = "sent"
+            entry.sent_at = now
+            if entry.counts_toward_limit:
+                contact.remarketing_count += 1
+            if contact.remarketing_count >= MAX_REMARKETING:
+                contact.stage = "lead_perdido"  # D-01: apos 3 sem resposta = lead perdido
+            db.commit()
+            await asyncio.sleep(2)
+        except Exception as e:
+            logger.error("Falha ao enviar remarketing %s: %s", entry.id, e)
+            entry.status = "failed"
+            db.commit()
 
 
 # ── Factory do scheduler ──────────────────────────────────────────────────────
