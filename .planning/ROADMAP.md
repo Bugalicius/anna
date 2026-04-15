@@ -82,9 +82,9 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 04-01: Webhook HMAC enforcement e deduplicação Redis (`message_id`, 4h TTL)
-- [ ] 04-02: Envio de texto, PDF e imagem via Meta Cloud API (substituindo Evolution API)
-- [ ] 04-03: LGPD audit — pseudonimização de dados sensíveis antes de LLM calls, proteção contra prompt injection
+- [x] 04-01: Webhook HMAC enforcement e deduplicação Redis (`message_id`, 4h TTL)
+- [x] 04-02: Envio de texto, PDF e imagem via Meta Cloud API (substituindo Evolution API)
+- [x] 04-03: LGPD audit — pseudonimização de dados sensíveis antes de LLM calls, proteção contra prompt injection
 
 ## Progress
 
