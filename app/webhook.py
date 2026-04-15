@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import logging
 import os
+import redis.asyncio as aioredis
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
 from app.meta_api import verify_signature
 
@@ -8,6 +11,25 @@ logger = logging.getLogger(__name__)
 
 APP_SECRET = os.environ.get("META_APP_SECRET", "")
 VERIFY_TOKEN = os.environ.get("WEBHOOK_VERIFY_TOKEN", "")
+
+_DEDUP_TTL = 14400  # 4 horas em segundos
+
+
+async def _is_duplicate_message(meta_message_id: str) -> bool:
+    """
+    Retorna True se mensagem ja foi processada (duplicata).
+    Redis SET NX EX atomico. Graceful degradation: False se Redis falhar.
+    """
+    redis_url = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+    try:
+        r = aioredis.Redis.from_url(redis_url, decode_responses=True)
+        key = f"dedup:msg:{meta_message_id}"
+        result = await r.set(key, "1", nx=True, ex=_DEDUP_TTL)
+        await r.aclose()
+        return result is None  # None = key ja existia = duplicata — fail open
+    except Exception as e:
+        logger.warning("Redis dedup indisponivel: %s — prosseguindo sem dedup", e)
+        return False  # fail open
 
 
 @router.get("/webhook")
@@ -57,6 +79,11 @@ async def process_message(message: dict, metadata: dict):
     meta_id = message.get("id", "")
     phone = message.get("from", "")
     text = message.get("text", {}).get("body", "") or "[mídia]"
+
+    # Deduplicacao atomica via Redis SET NX (camada primaria)
+    if await _is_duplicate_message(meta_id):
+        logger.debug("Dedup Redis: mensagem %s ja processada, ignorando", meta_id)
+        return
 
     with SessionLocal() as db:
         # Deduplicação: se já existe, ignora

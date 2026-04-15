@@ -80,7 +80,7 @@ async def test_dedup_redis_blocks_duplicate():
     from app.webhook import process_message
 
     with patch("app.webhook._is_duplicate_message", new_callable=AsyncMock, return_value=True) as mock_dedup, \
-         patch("app.webhook.route_message", new_callable=AsyncMock) as mock_route:
+         patch("app.router.route_message", new_callable=AsyncMock) as mock_route:
         await process_message(MESSAGE_FIXTURE, METADATA_FIXTURE)
 
     mock_dedup.assert_awaited_once_with("wamid.test123")
@@ -92,17 +92,17 @@ async def test_dedup_redis_allows_first():
     """Primeira mensagem e processada normalmente quando _is_duplicate_message retorna False."""
     from app.webhook import process_message
 
+    mock_db = MagicMock()
+    mock_db.__enter__ = MagicMock(return_value=mock_db)
+    mock_db.__exit__ = MagicMock(return_value=False)
+    mock_db.query.return_value.filter_by.return_value.first.return_value = None
+    mock_db.query.return_value.filter_by.return_value.order_by.return_value.first.return_value = None
+
     with patch("app.webhook._is_duplicate_message", new_callable=AsyncMock, return_value=False), \
-         patch("app.webhook.SessionLocal") as mock_session_cls, \
-         patch("app.webhook.route_message", new_callable=AsyncMock) as mock_route, \
-         patch("app.webhook.processar_resposta_breno", new_callable=AsyncMock), \
-         patch("app.webhook._NUMERO_INTERNO", "outro_numero"):
-        mock_db = MagicMock()
-        mock_db.__enter__ = MagicMock(return_value=mock_db)
-        mock_db.__exit__ = MagicMock(return_value=False)
-        mock_db.query.return_value.filter_by.return_value.first.return_value = None
-        mock_db.query.return_value.filter_by.return_value.order_by.return_value.first.return_value = None
-        mock_session_cls.return_value = mock_db
+         patch("app.database.SessionLocal", return_value=mock_db), \
+         patch("app.router.route_message", new_callable=AsyncMock) as mock_route, \
+         patch("app.escalation._NUMERO_INTERNO", "outro_numero"), \
+         patch("app.escalation.processar_resposta_breno", new_callable=AsyncMock):
         await process_message(MESSAGE_FIXTURE, METADATA_FIXTURE)
 
     mock_route.assert_awaited_once()
@@ -110,23 +110,18 @@ async def test_dedup_redis_allows_first():
 
 @pytest.mark.asyncio
 async def test_dedup_graceful_degradation():
-    """Redis indisponivel nao bloqueia o processamento (fail open — route_message e chamado)."""
-    from app.webhook import process_message
+    """Redis indisponivel nao bloqueia o processamento: _is_duplicate_message retorna False (fail open)."""
+    import app.webhook as wh
 
-    async def mock_dedup_raises(meta_id: str) -> bool:
-        raise Exception("Redis down")
+    # Simular Redis com erro: from_url retorna cliente que levanta ConnectionError no set()
+    mock_redis = AsyncMock()
+    mock_redis.set.side_effect = Exception("Connection refused")
+    mock_redis.aclose = AsyncMock()
+    mock_redis_cls = MagicMock(return_value=mock_redis)
 
-    with patch("app.webhook._is_duplicate_message", new=mock_dedup_raises), \
-         patch("app.webhook.SessionLocal") as mock_session_cls, \
-         patch("app.webhook.route_message", new_callable=AsyncMock) as mock_route, \
-         patch("app.webhook.processar_resposta_breno", new_callable=AsyncMock), \
-         patch("app.webhook._NUMERO_INTERNO", "outro_numero"):
-        mock_db = MagicMock()
-        mock_db.__enter__ = MagicMock(return_value=mock_db)
-        mock_db.__exit__ = MagicMock(return_value=False)
-        mock_db.query.return_value.filter_by.return_value.first.return_value = None
-        mock_db.query.return_value.filter_by.return_value.order_by.return_value.first.return_value = None
-        mock_session_cls.return_value = mock_db
-        await process_message(MESSAGE_FIXTURE, METADATA_FIXTURE)
+    with patch("app.webhook.aioredis") as mock_aioredis:
+        mock_aioredis.Redis.from_url.return_value = mock_redis
+        result = await wh._is_duplicate_message("wamid.redis-down")
 
-    mock_route.assert_awaited_once()
+    # fail open: deve retornar False mesmo com Redis down
+    assert result is False
