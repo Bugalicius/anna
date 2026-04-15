@@ -1,9 +1,11 @@
 import hashlib
 import hmac
 import json
+import os
 import pytest
 import respx
 import httpx
+from unittest.mock import patch
 from app.meta_api import MetaAPIClient, verify_signature
 
 PHONE_ID = "123456789"
@@ -58,3 +60,17 @@ async def test_send_template_calls_meta_api(client):
     payload = json.loads(route.calls[0].request.content)
     assert payload["type"] == "template"
     assert payload["template"]["name"] == "follow_up_geral"
+
+
+# ── Teste MetaAPIClient sem args ──────────────────────────────────────────────
+
+def test_client_no_args_reads_env():
+    """MetaAPIClient() sem argumentos deve ler env vars WHATSAPP_PHONE_NUMBER_ID e WHATSAPP_TOKEN."""
+    with patch.dict(os.environ, {
+        "WHATSAPP_PHONE_NUMBER_ID": "env_phone_id",
+        "WHATSAPP_TOKEN": "env_token",
+    }):
+        client_no_args = MetaAPIClient()
+
+    assert client_no_args._phone_id == "env_phone_id"
+    assert "Bearer env_token" in client_no_args._headers["Authorization"]
