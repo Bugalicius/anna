@@ -24,10 +24,10 @@ async def lifespan(app: FastAPI):
     init_state_manager(redis_url)
 
     scheduler = create_scheduler()
-    # Adicionar job de retry
+    # Adicionar job de retry (async)
     scheduler.add_job(
         _retry_failed_messages, "interval", minutes=5,
-        id="retry_processor", replace_existing=True
+        id="retry_processor", replace_existing=True,
     )
     scheduler.start()
     app.state.scheduler = scheduler
