@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Agente de WhatsApp "Ana" para a nutricionista Thaynara Teixeira (CRN9 31020). Backend FastAPI com arquitetura multi-agentes (5 agentes especializados) que automatiza agendamento de consultas, atendimento a dúvidas, remarketing de leads e suporte pré/pós-agendamento. Atende exclusivamente pacientes da Thaynara via WhatsApp.
+Agente de WhatsApp "Ana" para a nutricionista Thaynara Teixeira (CRN9 31020). Backend FastAPI com arquitetura multi-agentes que automatiza agendamento de consultas, remarcação, remarketing de leads e suporte pré-consulta. Atende exclusivamente pacientes da Thaynara via WhatsApp com integração completa à Meta Cloud API e Dietbox.
 
 ## Core Value
 
@@ -12,84 +12,78 @@ A Ana deve interpretar corretamente a intenção do paciente e conduzir o fluxo 
 
 ### Validated
 
-<!-- Funcionalidades que já existem e funcionam no código -->
+<!-- Funcionalidades entregues e verificadas no código — v1.0 -->
 
-- ✓ Webhook handler para receber mensagens WhatsApp — existing (app/webhook.py)
-- ✓ Roteamento por intenção via Claude Haiku (Orquestrador) — existing (app/agents/orchestrator.py)
-- ✓ Agente 1 (Atendimento) com FSM de 10 etapas — existing (app/agents/atendimento.py)
-- ✓ Agente 2 (Retenção) com remarcação e remarketing — existing (app/agents/retencao.py)
-- ✓ Agente 3 (Dietbox Worker) — cadastro, agendamento, consulta de agenda — existing (app/agents/dietbox_worker.py)
-- ✓ Agente 4 (Rede Worker) — geração de link de pagamento por automação — existing (app/agents/rede_worker.py)
-- ✓ Knowledge base com dados da clínica, planos e FAQ — existing (app/knowledge_base.py)
-- ✓ Interface de teste em http://localhost:8000/test/chat — existing (app/static/)
-- ✓ 104 testes passando (pytest) — existing (tests/)
-- ✓ Banco SQLite com SQLAlchemy + Alembic — existing (app/database.py)
+- ✓ Webhook handler com verificação de assinatura HMAC — v1.0 (app/webhook.py)
+- ✓ Roteamento por intenção via Claude Haiku (Orquestrador) — v1.0 (app/agents/orchestrator.py)
+- ✓ Agente Atendimento com FSM de 10 etapas — v1.0 (app/agents/atendimento.py)
+- ✓ Agente Retenção com remarcação e remarketing — v1.0 (app/agents/retencao.py)
+- ✓ Agente Dietbox Worker — cadastro, agendamento, consulta — v1.0 (app/agents/dietbox_worker.py)
+- ✓ Agente Rede Worker — geração de link de pagamento — v1.0 (app/agents/rede_worker.py)
+- ✓ Knowledge base com dados da clínica, planos e FAQ — v1.0 (app/knowledge_base.py)
+- ✓ Redis state persistence + serialização de agentes — v1.0 (app/state_manager.py)
+- ✓ Context-aware router com detecção de interrupção + reconhecimento por nome — v1.0 (app/router.py)
+- ✓ Escalação com 3 caminhos + relay bidirecional + waiting indicator — v1.0 (app/escalation.py)
+- ✓ Deduplicação atômica de mensagens via Redis SET NX (TTL 4h) — v1.0 (app/webhook.py)
+- ✓ Envio real de PDF e imagens via Meta Cloud API com cache Redis — v1.0 (app/meta_api.py, app/media_store.py)
+- ✓ Sanitização de PII (CPF, telefone, email) antes de chamadas ao LLM — v1.0 (app/pii_sanitizer.py)
+- ✓ Sistema de remarketing drip 24h/7d/30d com MAX=3 e lead perdido — v1.0 (app/remarketing.py)
+- ✓ Regras de remarcação: retorno vs. nova consulta, priorização de horários, Dietbox write-first — v1.0 (app/agents/retencao.py)
+- ✓ 255 testes passando — v1.0 (tests/)
 
 ### Active
 
-<!-- Escopo atual — o que precisa ser construído/corrigido -->
+<!-- Escopo v2 — próximo milestone -->
 
-**Prioridade 1 — Inteligência da Ana (bloqueio principal):**
-- [ ] Corrigir interpretação de contexto — agente deve entender a conversa e adaptar o fluxo, não seguir rigidamente
-- [ ] Alinhar comportamento do agente com a documentação oficial (agente-ana-documentacao-final.docx)
-- [ ] Corrigir regras de remarcação de retorno: comunicar "até 7 dias", mas oferecer semana seguinte inteira (seg-sex)
-- [ ] Priorização de horários na remarcação: 1) mais próximo da preferência, 2) próximo mais próximo, 3) mais distante disponível
-- [ ] Negociação flexível de horários com fallback para "perde o retorno" se nenhum encaixar
-- [ ] Distinção entre remarcação de retorno (já pagou, prazo de 7 dias) e nova consulta (sem restrição)
-- [ ] Enviar "Um instante, por favor 💚" antes de operações demoradas (consulta Dietbox, busca de horários)
-- [ ] Escalar para 31 99205-9211 (interno) quando não souber responder, e repassar a resposta ao paciente
-
-**Prioridade 2 — Gateway de Pagamento (Rede):**
-- [ ] Pesquisar e migrar de automação Playwright para API REST e-Rede (ou alternativa)
-- [ ] Garantir que funcione em VPS sem display server
-- [ ] Manter geração de links de pagamento por plano/modalidade/parcelas
-
-**Prioridade 3 — Remarketing:**
-- [ ] Implementar sistema de follow-up automático (24h, 7d, 30d)
-- [ ] Controle de contadores (máximo 3 tentativas) e etiquetas
-- [ ] Mensagens conforme documentação (seção 6)
-
-**Prioridade 4 — Meta Cloud API:**
-- [ ] Finalizar integração com Meta Cloud API (substituir Evolution API)
-- [ ] Verificação de assinatura de webhook
-- [ ] Envio/recebimento de mensagens, mídia e templates
+- [ ] **PGTO-01**: Migrar geração de links de Playwright/Rede para API REST (Asaas ou alternativa) — VPS sem display server
+- [ ] **AUTO-01**: Lembrete automático 24h antes da consulta
+- [ ] **INTL-06**: FAQ inline durante fluxo ativo — responder perguntas incidentais sem resetar etapa atual
+- [ ] **INTL-07**: Guard contra alucinação — agente nunca inventa informações clínicas ou de preço
+- [ ] **AUTO-02**: Detecção de comprovante de pagamento por análise de imagem
+- [ ] **UX-01**: Desconto família detectado automaticamente
+- [ ] **UX-02**: Check de satisfação 24h após consulta
 
 ### Out of Scope
 
-- SaaS multi-nutricionista — projeto é exclusivo para Thaynara
-- Orientações nutricionais/clínicas pela Ana — limites claros de atuação
-- Atendimento a gestantes e menores de 16 anos — política da clínica
-- Oferta proativa da modalidade Formulário — só quando paciente perguntar
-- App mobile — atendimento exclusivo via WhatsApp
+| Feature | Reason |
+|---------|--------|
+| SaaS multi-nutricionista | Projeto exclusivo para Thaynara |
+| Orientações nutricionais/clínicas | Limites de atuação da Ana — risco legal e ético |
+| Atendimento a gestantes/menores de 16 | Política da clínica |
+| Oferta proativa do Formulário | Thaynara não quer — só quando paciente perguntar |
+| App mobile | Atendimento exclusivo via WhatsApp |
+| WhatsApp Pay nativo | PIX + comprovante funciona melhor no Brasil |
+| Reembolso automatizado | Requer julgamento humano; risco de fraude |
+| Histórico de conversa > 30 dias | Custo de storage + risco LGPD |
+| Botões interativos do WhatsApp | Requer aprovação Meta Business; texto numerado funciona |
 
 ## Context
 
-**Estado atual (abril 2026):**
-- Fase 3 concluída: multi-agentes + testes de integração (104 testes)
-- Ana funciona na interface de teste (localhost:8000/test/chat) mas com problemas de inteligência
-- Agente não interpreta contexto corretamente — segue fluxo rígido sem adaptar
-- Regras de remarcação implementadas incorretamente
-- Integração Rede usa Playwright com headless=False (não funciona em VPS, lento ~180s, frágil)
-- APScheduler configurado para remarketing mas lógica de disparo não testada
+**Estado atual (pós v1.0, abril 2026):**
+- 255 testes passando, 11.076 LOC Python
+- Ana funciona com inteligência conversacional completa: interpreta contexto, adapta fluxo, persiste estado no Redis
+- Integração Meta Cloud API: webhook HMAC validado, deduplicação Redis, envio real de PDF/imagens, PII sanitizado antes do LLM
+- Sistema de remarketing automático funcionando: 24h/7d/30d, MAX=3, detecção de lead perdido
+- Remarcação: regras corretas de retorno vs. nova consulta, priorização de horários, Dietbox write-first
+- **Pendência crítica v2**: Rede/Playwright não funciona em VPS sem display server — geração de link de pagamento é o principal bloqueio para produção
 
 **Documentação de referência:**
 - `agente-ana-documentacao-final.docx` — documentação oficial do comportamento da Ana (v2.0)
-- `docs/regras_remarcacao.md` — regras de remarcação (template com ⚠️ a preencher)
+- `docs/regras_remarcacao.md` — regras de remarcação
 - `docs/` — PDFs de planos, guias de preparo, imagens de instruções
 
 **Integrações externas:**
 - Dietbox — API/scraper para agenda, cadastro, agendamento (funcional via Playwright headless)
-- Rede (userede.com.br) — links de pagamento por cartão (Playwright headless=False, precisa migrar)
-- Evolution API — gateway WhatsApp atual
-- Meta Cloud API — gateway WhatsApp futuro
+- Rede (userede.com.br) — links de pagamento por cartão (Playwright headless=False, **precisa migrar para API REST**)
+- Meta Cloud API — gateway WhatsApp (integração completa v1.0)
 - Claude Haiku 4.5 — LLM principal para todos os agentes
 
 ## Constraints
 
 - **LLM**: Claude Haiku 4.5 (claude-haiku-4-5-20251001) — custo controlado, latência baixa
 - **Stack**: Python 3.12 + FastAPI — não mudar
-- **Hospedagem**: VPS Linux — sem display server (impacta Playwright headless=False)
-- **Privacidade**: LGPD — nunca armazenar dados sensíveis fora do Dietbox, pseudonimização para LLM
+- **Hospedagem**: VPS Linux — sem display server (impacta Playwright headless=False para Rede)
+- **Privacidade**: LGPD — nunca armazenar dados sensíveis fora do Dietbox; PII sanitizado antes de chamar LLM (implementado)
 - **Segurança**: Número 31 99205-9211 NUNCA exposto ao paciente
 - **UX**: Mensagens curtas e objetivas, tom informal/acolhedor, emojis com moderação
 
@@ -97,22 +91,19 @@ A Ana deve interpretar corretamente a intenção do paciente e conduzir o fluxo 
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Manter Evolution API por enquanto | Testar agente offline antes de finalizar Meta | — Pending |
-| Priorizar inteligência da Ana sobre integrações | Agente "burro" é o maior bloqueio para produção | — Pending |
-| Remarcação: comunicar 7 dias, oferecer semana seguinte inteira | Flexibilidade real sem confundir paciente | — Pending |
-| Rede: migrar de Playwright para API REST (ou alternativa) | Automação de navegador não funciona em VPS, é frágil e lenta | — Pending |
+| Redis state persistence antes de qualquer outra feature | Estado confiável é pré-requisito de tudo — agente "amnésico" não serve | ✓ Good — todo FSM depende disso |
+| Priorizar inteligência da Ana sobre integrações | Agente "burro" é o maior bloqueio para produção | ✓ Good — interpretação correta funcionando |
+| Remarcação: comunicar 7 dias, oferecer semana seguinte inteira | Flexibilidade real sem confundir paciente | ✓ Good — implementado e testado |
+| Dietbox write-first antes de confirmar ao paciente | Evita confirmação para horário que falhou no Dietbox | ✓ Good — fluxo correto |
+| Rede: manter Playwright por ora, migrar em v2 | Automação de navegador funciona em dev, VPS é problema da v2 | ⚠ Revisit — bloqueio principal para deploy em VPS |
+| Deduplicação via Redis SET NX (TTL 4h) | Atômica, sem race condition, graceful degradation se Redis cair | ✓ Good — webhook idempotente |
+| Sanitização PII context-aware antes do LLM | Regex simples causava ambiguidade entre CPF e telefone sem formatação | ✓ Good — 13 testes, LGPD compliant |
 | Público exclusivo: pacientes da Thaynara | Não é SaaS, não precisa de multi-tenancy | ✓ Good |
+| Evolution API → Meta Cloud API | Meta Cloud API é a integração oficial e recomendada | ✓ Good — migração concluída em v1.0 |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
-
-**After each phase transition** (via `/gsd-transition`):
-1. Requirements invalidated? → Move to Out of Scope with reason
-2. Requirements validated? → Move to Validated with phase reference
-3. New requirements emerged? → Add to Active
-4. Decisions to log? → Add to Key Decisions
-5. "What This Is" still accurate? → Update if drifted
 
 **After each milestone** (via `/gsd-complete-milestone`):
 1. Full review of all sections
@@ -121,4 +112,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-07 after initialization*
+*Last updated: 2026-04-15 after v1.0 milestone*
