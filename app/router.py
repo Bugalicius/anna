@@ -10,6 +10,7 @@ Numero interno NUNCA exposto ao paciente (INTL-04).
 """
 from __future__ import annotations
 
+import hashlib as _hashlib
 import logging
 from datetime import datetime, UTC
 
@@ -266,14 +267,82 @@ async def route_message(phone: str, phone_hash: str, text: str, meta_message_id:
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
-async def _enviar(meta, phone: str, mensagens: list[str | None]):
-    """Envia lista de mensagens via Meta API, absorvendo falhas individuais."""
+_MEDIA_CACHE_TTL = 82800  # 23h em segundos
+
+
+async def _enviar(meta, phone: str, mensagens: list):
+    """Envia lista de mensagens via Meta API. Detecta dicts de midia e envia como documento/imagem."""
     for msg in mensagens:
-        if msg:
-            try:
+        if not msg:
+            continue
+        try:
+            if isinstance(msg, dict) and "media_type" in msg:
+                await _enviar_midia(meta, phone, msg)
+            else:
                 await meta.send_text(phone, msg)
-            except Exception as e:
-                logger.error("Falha ao enviar mensagem para %s: %s", phone[-4:], e)
+        except Exception as e:
+            logger.error("Falha ao enviar mensagem para %s: %s", phone[-4:], e)
+
+
+async def _enviar_midia(meta, phone: str, media_msg: dict):
+    """Resolve media_key -> upload (com cache Redis) -> send_document/send_image."""
+    from app.media_store import MEDIA_STATIC
+
+    key = media_msg["media_key"]
+    info = MEDIA_STATIC.get(key)
+    if not info:
+        logger.error("media_key '%s' nao encontrada em MEDIA_STATIC", key)
+        return
+
+    media_id = await _get_or_upload_media(meta, key, info)
+    if not media_id:
+        logger.error("Falha ao obter media_id para '%s'", key)
+        return
+
+    caption = media_msg.get("caption", "")
+    if media_msg["media_type"] == "document":
+        await meta.send_document(to=phone, media_id=media_id, filename=info["filename"], caption=caption)
+    elif media_msg["media_type"] == "image":
+        await meta.send_image(to=phone, media_id=media_id, caption=caption)
+
+
+async def _get_or_upload_media(meta, media_key: str, info: dict) -> str | None:
+    """Retorna media_id do cache Redis ou faz upload e cacheia."""
+    import os
+    import redis.asyncio as _aioredis
+
+    cache_key = f"media_id:{_hashlib.sha256(media_key.encode()).hexdigest()[:16]}"
+    redis_url = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+
+    # Tentar cache Redis
+    r = None
+    try:
+        r = _aioredis.Redis.from_url(redis_url, decode_responses=True)
+        cached = await r.get(cache_key)
+        if cached:
+            await r.aclose()
+            return cached
+    except Exception:
+        r = None  # Redis indisponivel — prosseguir com upload direto
+
+    # Upload para Meta
+    try:
+        file_bytes = open(info["path"], "rb").read()
+        media_id = await meta.upload_media(file_bytes, info["mime"], info["filename"])
+    except Exception as e:
+        logger.error("Falha upload midia '%s': %s", media_key, e)
+        return None
+
+    # Cachear no Redis (falha nao e critica)
+    try:
+        if r is None:
+            r = _aioredis.Redis.from_url(redis_url, decode_responses=True)
+        await r.set(cache_key, media_id, ex=_MEDIA_CACHE_TTL)
+        await r.aclose()
+    except Exception:
+        pass  # Cache falhou — proximo envio fara upload de novo
+
+    return media_id
 
 
 def _tipo_agente(agent) -> str | None:

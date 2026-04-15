@@ -332,7 +332,7 @@ class AgenteAtendimento:
         # Envia: confirmação + [PDF seria enviado aqui] + mensagem sobre planos
         return [
             MSG_PLANOS_INTRO,
-            "[PDF: Thaynara - Nutricionista.pdf]",  # substituído por send_document em produção
+            {"media_type": "document", "media_key": "pdf_thaynara", "caption": "Nosso midia kit completo"},
             MSG_PLANOS_RESUMO,
         ]
 
@@ -627,8 +627,8 @@ class AgenteAtendimento:
                     data=slot.get("data_fmt", ""),
                     hora=slot.get("hora", ""),
                 ),
-                "[IMG: COMO-SE-PREPARAR---ONLINE.jpg]",
-                "[PDF: Guia Circunferências Corporais]",
+                {"media_type": "image", "media_key": "img_preparo_online", "caption": "Como se preparar para a consulta online"},
+                {"media_type": "document", "media_key": "pdf_guia_circunf_mulher", "caption": "Guia de medidas corporais"},
                 f"Contato da nutricionista: {kb.contatos['numero_nutri_publico']}",
                 MSG_CONFIRMACAO_ONLINE_MEDIDAS,
             ]
@@ -639,7 +639,7 @@ class AgenteAtendimento:
                     data=slot.get("data_fmt", ""),
                     hora=slot.get("hora", ""),
                 ),
-                "[IMG: COMO-SE-PREPARAR---presencial.jpg]",
+                {"media_type": "image", "media_key": "img_preparo_presencial", "caption": "Como se preparar para a consulta presencial"},
             ]
 
         return msgs
