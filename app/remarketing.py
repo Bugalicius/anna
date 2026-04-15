@@ -31,6 +31,68 @@ REMARKETING_SEQUENCE = [
 MAX_REMARKETING = 3
 RATE_LIMIT_PER_MIN = 30
 
+# ── Textos aprovados — fonte de verdade (D-02, D-03, D-04) ───────────────────
+
+MSG_FOLLOWUP_24H = (
+    "Eiii! \U0001f60a Tudo bem por aí?\n\n"
+    "Fico pensando se ficou alguma dúvida sobre a consulta com a Thaynara... "
+    "Pode me perguntar à vontade, tô aqui pra isso! \U0001f49a\n\n"
+    "Quando quiser marcar é só me falar \U0001f4c5"
+)
+
+MSG_FOLLOWUP_7D = (
+    "Oii! Passando pra saber se você teve chance de pensar na consulta "
+    "com a Thaynara \U0001f33f\n\n"
+    "Às vezes bate aquela dúvida se vale a pena... mas a maioria das pacientes "
+    "conta que a primeira consulta já muda bastante a relação com a alimentação \U0001f60a\n\n"
+    "Se quiser conversar sobre qualquer coisa antes de decidir, me chama! \U0001f449"
+)
+
+MSG_FOLLOWUP_30D = (
+    "Eiii, última passagem por aqui! \U0001f49a\n\n"
+    "Sei que a vida corrida faz a gente adiar algumas coisas... "
+    "Se um dia você quiser dar esse passo, pode me chamar que a gente vê "
+    "o melhor horário pra você com a Thaynara \U0001f4c5\n\n"
+    "Qualquer coisa, estarei por aqui! \U0001f60a"
+)
+
+TEMPLATE_NAMES = {
+    1: "ana_followup_24h",
+    2: "ana_followup_7d",
+    3: "ana_followup_30d",
+}
+
+# Textos por posicao na sequencia (usados por _enviar_remarketing)
+_MSG_POR_POSICAO = {
+    1: MSG_FOLLOWUP_24H,
+    2: MSG_FOLLOWUP_7D,
+    3: MSG_FOLLOWUP_30D,
+}
+
+# Templates Meta aprovados? Mudar para True apos aprovacao no Business Manager (D-06)
+# Env var permite ativar sem redeploy: REMARKETING_TEMPLATES_APPROVED=true
+TEMPLATES_APPROVED = os.environ.get("REMARKETING_TEMPLATES_APPROVED", "false").lower() == "true"
+
+# ── Guia: Submissao de Templates no Meta Business Manager ────────────────────
+#
+# Templates necessarios (D-07):
+#   1. ana_followup_24h  — categoria: MARKETING
+#   2. ana_followup_7d   — categoria: MARKETING
+#   3. ana_followup_30d  — categoria: MARKETING
+#
+# Passos:
+#   1. Acesse business.facebook.com > WhatsApp Manager > Message Templates
+#   2. Crie cada template com categoria "Marketing"
+#   3. Idioma: Portuguese (BR) — codigo pt_BR
+#   4. Corpo: copie EXATAMENTE o texto de MSG_FOLLOWUP_* (incluindo emojis)
+#   5. Submeta para revisao — aprovacao pode levar ate 48h
+#   6. Apos aprovacao, defina REMARKETING_TEMPLATES_APPROVED=true no .env
+#
+# Enquanto templates nao aprovados:
+#   - Mensagem 24h: tenta send_text (funciona se paciente escreveu nas ultimas 24h)
+#   - Mensagens 7d/30d: ficam na fila, nao sao enviadas (sem erro)
+# ─────────────────────────────────────────────────────────────────────────────
+
 
 # ── Funções sync de agendamento (mantidas síncronas) ──────────────────────────
 
