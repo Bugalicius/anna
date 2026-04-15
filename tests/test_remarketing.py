@@ -468,10 +468,12 @@ async def test_dispatch_nao_cancela_entry_quando_conversa_ativa():
 async def test_dispatch_envia_quando_sem_conversa_ativa():
     """Quando nao ha chave agent_state no Redis, entry e disparada normalmente."""
     from app.remarketing import _dispatch_from_db
+    from unittest.mock import patch
 
     entry = MagicMock()
     entry.contact_id = "contact-id-7"
     entry.template_name = "ana_followup_24h"
+    entry.sequence_position = 1
     entry.counts_toward_limit = True
     entry.id = "entry-id-3"
     entry.status = "pending"
@@ -492,9 +494,12 @@ async def test_dispatch_envia_quando_sem_conversa_ativa():
 
     meta = AsyncMock()
 
-    await _dispatch_from_db([entry], db, redis_client, meta)
+    # _dispatch_from_db agora delega para _enviar_remarketing (refatoracao 03-03)
+    with patch("app.remarketing._enviar_remarketing", new_callable=AsyncMock, return_value=True) as mock_enviar:
+        await _dispatch_from_db([entry], db, redis_client, meta)
+        mock_enviar.assert_called_once()
 
-    meta.send_template.assert_called_once()
+    assert entry.status == "sent"
 
 
 @pytest.mark.asyncio

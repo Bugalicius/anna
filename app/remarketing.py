@@ -229,6 +229,57 @@ async def _dispatch_due_messages() -> None:
         await redis_client.aclose()
 
 
+async def _enviar_remarketing(
+    meta: "MetaAPIClient",
+    to: str,
+    entry: "RemarketingQueue",
+) -> bool:
+    """
+    Envia mensagem de remarketing usando o canal correto.
+
+    - Position 1 (24h): tenta send_text primeiro (D-05).
+      Se a Meta rejeitar por janela fechada (erro 131026), loga e retorna False.
+    - Position 2/3 (7d/30d): usa send_template se aprovados (D-06).
+      Se templates nao aprovados, retorna False (entry permanece pending).
+
+    Returns: True se enviado com sucesso, False se falhou ou nao disponivel.
+    """
+    position = entry.sequence_position
+
+    if position == 1:
+        # 24h — tenta texto livre (D-05)
+        texto = _MSG_POR_POSICAO.get(position)
+        if not texto:
+            return False
+        try:
+            await meta.send_text(to=to, text=texto)
+            return True
+        except Exception as e:
+            error_str = str(e)
+            if "131026" in error_str or "re-engage" in error_str.lower():
+                logger.warning("Janela 24h fechada para %s — aguardando template", to[-4:])
+            else:
+                logger.error("Falha send_text remarketing para %s: %s", to[-4:], e)
+            return False
+    else:
+        # 7d/30d — usa template Meta (D-06)
+        if not TEMPLATES_APPROVED:
+            logger.info(
+                "Templates Meta nao aprovados — skip position %d para %s",
+                position, to[-4:],
+            )
+            return False
+        template_name = TEMPLATE_NAMES.get(position)
+        if not template_name:
+            return False
+        try:
+            await meta.send_template(to=to, template_name=template_name)
+            return True
+        except Exception as e:
+            logger.error("Falha send_template %s para %s: %s", template_name, to[-4:], e)
+            return False
+
+
 async def _check_escalation_reminders() -> None:
     """Job APScheduler: verifica lembretes de escalação pendentes a cada 5 minutos."""
     from app.meta_api import MetaAPIClient
@@ -293,11 +344,8 @@ async def _dispatch_from_db(
             logger.info("Remarketing skip — conversa ativa para %s", contact.phone_hash[-4:])
             continue  # pula este ciclo, tenta no proximo (1 min)
 
-        try:
-            await meta.send_template(
-                to=contact.phone_e164,
-                template_name=entry.template_name,
-            )
+        success = await _enviar_remarketing(meta, contact.phone_e164, entry)
+        if success:
             entry.status = "sent"
             entry.sent_at = now
             if entry.counts_toward_limit:
@@ -305,11 +353,14 @@ async def _dispatch_from_db(
             if contact.remarketing_count >= MAX_REMARKETING:
                 contact.stage = "lead_perdido"  # D-01: apos 3 sem resposta = lead perdido
             db.commit()
-            await asyncio.sleep(2)
-        except Exception as e:
-            logger.error("Falha ao enviar remarketing %s: %s", entry.id, e)
-            entry.status = "failed"
-            db.commit()
+            await asyncio.sleep(2)  # intervalo minimo entre disparos
+        else:
+            # Para position 1 (janela fechada): marca failed
+            # Para position 2/3 (templates nao aprovados): mantém pending
+            if entry.sequence_position == 1:
+                entry.status = "failed"
+                db.commit()
+            # positions 2/3 sem template aprovado: nao muda status — retry no proximo ciclo
 
 
 # ── Factory do scheduler ──────────────────────────────────────────────────────
