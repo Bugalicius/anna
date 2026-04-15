@@ -28,6 +28,7 @@ from app.agents.dietbox_worker import (
 )
 from app.agents.rede_worker import gerar_link_pagamento
 from app.knowledge_base import kb
+from app.pii_sanitizer import sanitize_historico
 from app.tags import Tag
 
 logger = logging.getLogger(__name__)
@@ -205,7 +206,9 @@ def _gerar_resposta_llm(
 
     system = kb.system_prompt() + f"\n\n## Etapa atual do fluxo: {etapa}\n{contexto_extra}"
 
-    msgs = [{"role": m["role"], "content": m["content"]} for m in historico[-10:]]
+    # LGPD: sanitizar PII antes de enviar ao LLM (META-04)
+    historico_limpo = sanitize_historico(historico[-10:])
+    msgs = [{"role": m["role"], "content": m["content"]} for m in historico_limpo]
 
     try:
         response = client.messages.create(
