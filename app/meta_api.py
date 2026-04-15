@@ -75,6 +75,50 @@ class MetaAPIClient:
         }
         return await self._post(payload)
 
+    async def upload_media(self, file_bytes: bytes, mime_type: str, filename: str) -> str:
+        """Faz upload de arquivo para Meta e retorna media_id."""
+        url = f"{META_API_BASE}/{self._phone_id}/media"
+        auth_header = {"Authorization": self._headers["Authorization"]}
+        async with httpx.AsyncClient(headers=auth_header, timeout=30) as client:
+            files = {"file": (filename, file_bytes, mime_type)}
+            data = {"messaging_product": "whatsapp", "type": mime_type}
+            resp = await client.post(url, files=files, data=data)
+            resp.raise_for_status()
+            return resp.json()["id"]
+
+    async def send_document(
+        self,
+        to: str,
+        media_id: str,
+        filename: str,
+        caption: str = "",
+    ) -> dict:
+        """Envia documento (PDF, etc.) via WhatsApp."""
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": "document",
+            "document": {
+                "id": media_id,
+                "filename": filename,
+                **({"caption": caption} if caption else {}),
+            },
+        }
+        return await self._post(payload)
+
+    async def send_image(self, to: str, media_id: str, caption: str = "") -> dict:
+        """Envia imagem via WhatsApp."""
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": "image",
+            "image": {
+                "id": media_id,
+                **({"caption": caption} if caption else {}),
+            },
+        }
+        return await self._post(payload)
+
     async def _post(self, payload: dict) -> dict:
         url = f"{META_API_BASE}/{self._phone_id}/messages"
         async with httpx.AsyncClient(headers=self._headers, timeout=10) as client:
