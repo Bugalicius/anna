@@ -208,11 +208,8 @@ async def _dispatch_due_messages() -> None:
                     logger.info("Remarketing skip — conversa ativa para %s", contact.phone_hash[-4:])
                     continue  # pula este ciclo, tenta no proximo (1 min)
 
-                try:
-                    await meta.send_template(
-                        to=contact.phone_e164,
-                        template_name=entry.template_name,
-                    )
+                success = await _enviar_remarketing(meta, contact.phone_e164, entry)
+                if success:
                     entry.status = "sent"
                     entry.sent_at = now
                     if entry.counts_toward_limit:
@@ -220,11 +217,14 @@ async def _dispatch_due_messages() -> None:
                     if contact.remarketing_count >= MAX_REMARKETING:
                         contact.stage = "lead_perdido"  # D-01: apos 3 sem resposta = lead perdido
                     db.commit()
-                    await asyncio.sleep(2)  # intervalo mínimo de 2s entre disparos
-                except Exception as e:
-                    logger.error("Falha ao enviar remarketing %s: %s", entry.id, e)
-                    entry.status = "failed"
-                    db.commit()
+                    await asyncio.sleep(2)  # intervalo mínimo entre disparos
+                else:
+                    # Para position 1 (janela fechada): marca failed
+                    # Para position 2/3 (templates nao aprovados): mantém pending
+                    if entry.sequence_position == 1:
+                        entry.status = "failed"
+                        db.commit()
+                    # positions 2/3 sem template aprovado: nao muda status — retry no proximo ciclo
     finally:
         await redis_client.aclose()
 
