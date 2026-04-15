@@ -66,9 +66,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — AsyncIOScheduler migration: scheduler async, jobs async, redis.asyncio rate limiting
-- [ ] 03-02-PLAN.md — Drip logic + lead perdido: sequencia 24h/7d/30d, MAX=3, recusou_remarketing, check conversa ativa
-- [ ] 03-03-PLAN.md — Templates + Meta integration: textos aprovados, send_text/send_template, graceful degradation
+- [x] 03-01-PLAN.md — AsyncIOScheduler migration: scheduler async, jobs async, redis.asyncio rate limiting
+- [x] 03-02-PLAN.md — Drip logic + lead perdido: sequencia 24h/7d/30d, MAX=3, recusou_remarketing, check conversa ativa
+- [x] 03-03-PLAN.md — Templates + Meta integration: textos aprovados, send_text/send_template, graceful degradation
 
 ### Phase 4: Meta Cloud API
 **Goal**: Integração Meta Cloud API é segura, idempotente e compliant com LGPD — webhook validado por HMAC, deduplicação previne agendamentos duplicados, mídia real enviada, dados de pacientes pseudonimizados antes de chegar ao LLM
@@ -95,5 +95,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Inteligência Conversacional | 3/3 | Complete | 2026-04-14 |
 | 2. Fluxo de Remarcação | 3/3 | Complete | 2026-04-12 |
-| 3. Remarketing | 0/3 | Not started | - |
+| 3. Remarketing | 3/3 | Complete | 2026-04-14 |
 | 4. Meta Cloud API | 0/3 | Not started | - |
