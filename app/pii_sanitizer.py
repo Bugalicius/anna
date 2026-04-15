@@ -33,6 +33,12 @@ _PHONE_CONTEXT_RE = re.compile(
 # Aplicado apos _PHONE_CONTEXT_RE para evitar sobreposicao
 _CPF_BARE_RE = re.compile(r'\b\d{11}\b')
 
+# Alias para compatibilidade — padrao geral de CPF (com ou sem pontuacao)
+_CPF_RE = _CPF_BARE_RE
+
+# Alias para compatibilidade — padrao geral de telefone BR
+_PHONE_BR_RE = _PHONE_FORMATTED_RE
+
 # Email
 _EMAIL_RE = re.compile(r'[\w.+-]+@[\w-]+\.[\w.]+')
 
