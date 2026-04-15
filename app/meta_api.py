@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import hashlib
 import hmac
 import httpx
+import os
 
 META_API_BASE = "https://graph.facebook.com/v19.0"
 
@@ -14,10 +17,15 @@ def verify_signature(body: bytes, signature: str, app_secret: str) -> bool:
 
 
 class MetaAPIClient:
-    def __init__(self, phone_number_id: str, access_token: str):
-        self._phone_id = phone_number_id
+    def __init__(
+        self,
+        phone_number_id: str | None = None,
+        access_token: str | None = None,
+    ):
+        self._phone_id = phone_number_id or os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "")
+        token = access_token or os.environ.get("WHATSAPP_TOKEN", "")
         self._headers = {
-            "Authorization": f"Bearer {access_token}",
+            "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
 
