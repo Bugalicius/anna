@@ -1,0 +1,61 @@
+services:
+  app:
+    build: .
+    env_file: .env
+    environment:
+      - WATCHFILES_FORCE_POLLING=true
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+      - ./knowledge_base:/app/knowledge_base:ro
+      - ./docs:/app/docs:ro
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: agente
+      POSTGRES_PASSWORD: agente123
+      POSTGRES_DB: agente_ana
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agente"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot_www:/var/www/certbot:ro
+      - certbot_conf:/etc/letsencrypt:ro
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  redisdata:
+  certbot_www:
+  certbot_conf:
