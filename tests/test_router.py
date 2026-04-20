@@ -368,6 +368,46 @@ async def test_tirar_duvida_em_etapa_sensivel_deixa_agente_responder(state_mgr_m
     assert "explicação contextual" in str(meta_mock.send_text.call_args)
 
 
+@pytest.mark.asyncio
+async def test_agente_ativo_atendimento_atualiza_tag_e_nome_no_contact(state_mgr_mock, meta_mock):
+    """Agente ativo de atendimento deve persistir stage e nome ao avançar o fluxo."""
+    from app.agents.atendimento import AgenteAtendimento
+    import app.router as router_module
+    router_module._state_mgr = state_mgr_mock
+
+    agente_ativo = AgenteAtendimento(telefone="5511999", phone_hash="hash123")
+    agente_ativo.etapa = "agendamento"
+    agente_ativo.nome = "Ana Maria"
+    agente_ativo.processar = MagicMock(return_value=["vamos para pagamento"])
+    state_mgr_mock.load = AsyncMock(return_value=agente_ativo)
+
+    contact = _make_contact(stage="novo_lead", collected_name=None)
+    db_mock = _make_db_mock(contact)
+
+    def _processar(_text):
+        agente_ativo.etapa = "forma_pagamento"
+        agente_ativo.nome = "Ana Maria"
+        return ["vamos para pagamento"]
+
+    agente_ativo.processar = MagicMock(side_effect=_processar)
+
+    with patch("app.router.SessionLocal", return_value=db_mock), \
+        patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
+         patch("app.remarketing.cancel_pending_remarketing"), \
+         patch("app.router.rotear", return_value={
+             "agente": "atendimento",
+             "intencao": "novo_lead",
+             "confianca": 0.99,
+             "resposta_padrao": None,
+         }):
+        await router_module.route_message("5511999", "hash123", "1", "msg-id-1")
+
+    assert contact.stage == "aguardando_pagamento"
+    assert contact.collected_name == "Ana Maria"
+    assert contact.first_name == "Ana"
+    state_mgr_mock.save.assert_called_once()
+
+
 # ── Test 6: inline — fora_de_contexto mantém agente ativo ────────────────────
 
 @pytest.mark.asyncio

@@ -188,6 +188,7 @@ async def route_message(phone: str, phone_hash: str, text: str, meta_message_id:
             _tnome = _tipo_agente(agente_ativo)
             if _tnome == "AgenteAtendimento":
                 respostas = agente_ativo.processar(text)
+                _atualizar_contact_por_estado(phone_hash, agente_ativo)
             elif _tnome == "AgenteRetencao":
                 if agente_ativo.etapa in ("aguardando_motivo", "coletando_nome_cancel"):
                     respostas = agente_ativo.processar_cancelamento(text)
@@ -246,26 +247,7 @@ async def route_message(phone: str, phone_hash: str, text: str, meta_message_id:
     if agente_destino == "atendimento":
         agente = AgenteAtendimento(telefone=phone, phone_hash=phone_hash)
         respostas = agente.processar(text)
-
-        # Atualiza tag ao avançar para etapas-chave
-        with SessionLocal() as db:
-            contact = db.query(Contact).filter_by(phone_hash=phone_hash).first()
-            if contact:
-                if agente.etapa == "finalizacao" and agente.pagamento_confirmado:
-                    set_tag(db, contact, Tag.OK, force=True)
-                    if agente.nome:
-                        contact.collected_name = agente.nome
-                        if not contact.first_name and agente.nome:
-                            contact.first_name = agente.nome.split()[0]
-                elif agente.etapa in ("agendamento", "forma_pagamento"):
-                    set_tag(db, contact, Tag.AGUARDANDO_PAGAMENTO)
-                elif agente.etapa in ("cadastro_dietbox", "confirmacao", "finalizacao"):
-                    set_tag(db, contact, Tag.AGENDADO)
-                    if agente.nome:
-                        contact.collected_name = agente.nome
-                        if not contact.first_name and agente.nome:
-                            contact.first_name = agente.nome.split()[0]
-                db.commit()
+        _atualizar_contact_por_estado(phone_hash, agente)
 
         await _enviar(meta, phone, respostas)
 
@@ -487,3 +469,31 @@ def _salvar_nome_contact(phone_hash: str, nome: str) -> None:
                 db.commit()
     except Exception as e:
         logger.warning("Falha ao salvar nome no Contact %s: %s", phone_hash[-4:], e)
+
+
+def _atualizar_contact_por_estado(phone_hash: str, agent) -> None:
+    """Atualiza tag e nome do contato conforme a etapa atual do agente."""
+    if _tipo_agente(agent) != "AgenteAtendimento":
+        return
+
+    try:
+        with SessionLocal() as db:
+            contact = db.query(Contact).filter_by(phone_hash=phone_hash).first()
+            if not contact:
+                return
+
+            if agent.etapa == "finalizacao" and agent.pagamento_confirmado:
+                set_tag(db, contact, Tag.OK, force=True)
+            elif agent.etapa in ("agendamento", "forma_pagamento"):
+                set_tag(db, contact, Tag.AGUARDANDO_PAGAMENTO)
+            elif agent.etapa in ("cadastro_dietbox", "confirmacao", "finalizacao"):
+                set_tag(db, contact, Tag.AGENDADO)
+
+            if agent.nome:
+                contact.collected_name = agent.nome
+                if not contact.first_name:
+                    contact.first_name = agent.nome.split()[0]
+
+            db.commit()
+    except Exception as e:
+        logger.warning("Falha ao atualizar contato %s pelo estado do agente: %s", phone_hash[-4:], e)
