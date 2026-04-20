@@ -251,17 +251,20 @@ async def route_message(phone: str, phone_hash: str, text: str, meta_message_id:
         with SessionLocal() as db:
             contact = db.query(Contact).filter_by(phone_hash=phone_hash).first()
             if contact:
-                if agente.etapa in ("agendamento", "forma_pagamento"):
+                if agente.etapa == "finalizacao" and agente.pagamento_confirmado:
+                    set_tag(db, contact, Tag.OK, force=True)
+                    if agente.nome:
+                        contact.collected_name = agente.nome
+                        if not contact.first_name and agente.nome:
+                            contact.first_name = agente.nome.split()[0]
+                elif agente.etapa in ("agendamento", "forma_pagamento"):
                     set_tag(db, contact, Tag.AGUARDANDO_PAGAMENTO)
                 elif agente.etapa in ("cadastro_dietbox", "confirmacao", "finalizacao"):
                     set_tag(db, contact, Tag.AGENDADO)
                     if agente.nome:
                         contact.collected_name = agente.nome
-                        # Persiste first_name para reconhecimento futuro (D-13)
                         if not contact.first_name and agente.nome:
                             contact.first_name = agente.nome.split()[0]
-                elif agente.etapa == "finalizacao" and agente.pagamento_confirmado:
-                    set_tag(db, contact, Tag.OK, force=True)
                 db.commit()
 
         await _enviar(meta, phone, respostas)
