@@ -530,15 +530,10 @@ def cancelar_agendamento(
 
     Retorna True se bem-sucedido, False em qualquer falha.
     """
-    payload = {
-        "desmarcada": True,
-        "Observacao": observacao,
-    }
     try:
-        resp = requests.patch(
+        resp = requests.delete(
             f"{DIETBOX_API}/agenda/{id_agenda}",
             headers=_headers(),
-            json=payload,
             timeout=20,
         )
         resp.raise_for_status()
