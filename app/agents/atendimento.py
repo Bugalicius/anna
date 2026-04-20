@@ -761,33 +761,43 @@ class AgenteAtendimento:
         if not slots:
             return [MSG_SEM_HORARIOS]
 
-        # Filtra por preferência de turno e/ou dia
+        # Algoritmo de priorização (D-09 a D-13):
+        # Slot 1 = melhor match da preferência (dia + turno)
+        # Slots 2 e 3 = próximos disponíveis em dias DIFERENTES
         DIAS_PT_LOCAL = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
 
-        filtrados = []
-        for slot in slots:
-            if horas_preferidas and slot["hora"] not in horas_preferidas:
-                continue
-            if dia_preferido is not None and not slot["data_fmt"].startswith(DIAS_PT_LOCAL[dia_preferido]):
-                continue
-            filtrados.append(slot)
+        def _slot_dia(s: dict) -> str:
+            """Extrai o dia do data_fmt para comparação."""
+            return s.get("data_fmt", "").split("T")[0] if "T" in s.get("data_fmt", "") else s.get("datetime", "")[:10]
 
-        # Se não encontrou nada com filtro de dia, ignora filtro de dia mas mantém turno
-        if not filtrados and dia_preferido is not None:
-            filtrados = [s for s in slots if not horas_preferidas or s["hora"] in horas_preferidas]
+        def _match_preferencia(s: dict) -> bool:
+            dia_ok = dia_preferido is None or s["data_fmt"].startswith(DIAS_PT_LOCAL[dia_preferido])
+            hora_ok = not horas_preferidas or s["hora"] in horas_preferidas
+            return dia_ok and hora_ok
 
-        # Se ainda vazio, usa todos os slots disponíveis
-        if not filtrados:
-            filtrados = slots
+        # Slot 1: primeiro que bate dia + turno
+        slot1 = next((s for s in slots if _match_preferencia(s)), None)
 
-        # Pega até 3 slots em horários DIFERENTES
-        selecionados: list[dict] = []
-        horas_usadas: set[str] = set()
-        for slot in filtrados:
-            hora = slot["hora"]
-            if hora not in horas_usadas:
-                selecionados.append(slot)
-                horas_usadas.add(hora)
+        # Se não encontrou match exato, tenta só turno
+        if slot1 is None and horas_preferidas:
+            slot1 = next((s for s in slots if s["hora"] in horas_preferidas), None)
+
+        # Se ainda não achou, pega qualquer slot
+        if slot1 is None:
+            slot1 = slots[0]
+
+        selecionados: list[dict] = [slot1]
+        dias_usados: set[str] = {slot1["datetime"][:10]}
+
+        # Slots 2 e 3: próximos em dias diferentes, preferencialmente mesmo turno
+        candidatos = [s for s in slots if s["datetime"][:10] not in dias_usados]
+        # Prefere mesmo turno, mas não exige
+        ordenados = sorted(candidatos, key=lambda s: (0 if (horas_preferidas and s["hora"] in horas_preferidas) else 1))
+        for s in ordenados:
+            dia = s["datetime"][:10]
+            if dia not in dias_usados:
+                selecionados.append(s)
+                dias_usados.add(dia)
             if len(selecionados) >= 3:
                 break
 
