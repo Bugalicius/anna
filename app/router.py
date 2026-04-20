@@ -446,12 +446,14 @@ def _is_intake_etapa(agent) -> bool:
 
 def _deve_deixar_agente_responder_duvida(agent, intencao: str) -> bool:
     """
-    Permite que o próprio agente trate dúvidas contextuais em etapas sensíveis.
+    Permite que o próprio agente trate mensagens em etapas sensíveis.
 
-    Isso evita que perguntas como parcelamento, comparação de planos ou
-    esclarecimentos sobre pagamento recebam a resposta inline genérica do router.
+    Cobre dois casos:
+    - tirar_duvida: perguntas contextuais (parcelamento, planos, pagamento)
+    - fora_de_contexto: respostas curtas/numéricas ("1", "pix", "sim") que o
+      LLM classifica erroneamente mas que são input válido para o FSM do agente
     """
-    if intencao != "tirar_duvida":
+    if intencao not in ("tirar_duvida", "fora_de_contexto"):
         return False
 
     tipo = _tipo_agente(agent)
@@ -463,9 +465,12 @@ def _deve_deixar_agente_responder_duvida(agent, intencao: str) -> bool:
             "agendamento",
             "forma_pagamento",
             "pagamento",
+            "cadastro_dietbox",
+            "confirmacao",
+            "finalizacao",
         )
     if tipo == "AgenteRetencao":
-        return etapa in ("coletando_preferencia", "oferecendo_slots")
+        return etapa in ("coletando_preferencia", "oferecendo_slots", "aguardando_confirmacao_dietbox")
     return False
 
 
