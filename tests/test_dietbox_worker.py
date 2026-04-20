@@ -459,3 +459,31 @@ def test_alterar_agendamento_url_correta():
 
     url_chamada = mock_patch.call_args[0][0]
     assert url_chamada == f"{DIETBOX_API}/agenda/ID-123"
+
+
+def test_cancelar_agendamento_sucesso_retorna_true():
+    """cancelar_agendamento com mock status 200 → retorna True."""
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status = MagicMock()
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.patch", return_value=mock_resp):
+        from app.agents.dietbox_worker import cancelar_agendamento
+        result = cancelar_agendamento("ID-999", "Cancelado pela paciente")
+
+    assert result is True
+
+
+def test_cancelar_agendamento_payload_correto():
+    """cancelar_agendamento envia payload com desmarcada=True e Observacao."""
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status = MagicMock()
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.patch", return_value=mock_resp) as mock_patch:
+        from app.agents.dietbox_worker import cancelar_agendamento
+        cancelar_agendamento("ID-999", "Cancelado pela paciente")
+
+    payload = mock_patch.call_args.kwargs["json"]
+    assert payload["desmarcada"] is True
+    assert payload["Observacao"] == "Cancelado pela paciente"

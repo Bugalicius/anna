@@ -521,6 +521,34 @@ def alterar_agendamento(
         return False
 
 
+def cancelar_agendamento(
+    id_agenda: str,
+    observacao: str = "Cancelado pelo Agente Ana",
+) -> bool:
+    """
+    Cancela um agendamento existente no Dietbox.
+
+    Retorna True se bem-sucedido, False em qualquer falha.
+    """
+    payload = {
+        "desmarcada": True,
+        "Observacao": observacao,
+    }
+    try:
+        resp = requests.patch(
+            f"{DIETBOX_API}/agenda/{id_agenda}",
+            headers=_headers(),
+            json=payload,
+            timeout=20,
+        )
+        resp.raise_for_status()
+        logger.info("Agendamento cancelado: id=%s", id_agenda)
+        return True
+    except Exception as e:
+        logger.error("Falha ao cancelar agendamento %s: %s", id_agenda, e)
+        return False
+
+
 # ── Financeiro ────────────────────────────────────────────────────────────────
 
 def lancar_financeiro(

@@ -335,8 +335,8 @@ async def test_interrupt_remarcar_troca_agente(state_mgr_mock, meta_mock):
 # ── Test 5: inline — tirar_duvida responde sem trocar de agente ───────────────
 
 @pytest.mark.asyncio
-async def test_inline_tirar_duvida_mantem_agente_ativo(state_mgr_mock, meta_mock):
-    """Test 5: com agente ativo + intenção 'tirar_duvida' → responde inline, agente NÃO troca."""
+async def test_tirar_duvida_em_etapa_sensivel_deixa_agente_responder(state_mgr_mock, meta_mock):
+    """Com agente ativo em etapa sensível, dúvida contextual deve ser tratada pelo próprio agente."""
     from app.agents.atendimento import AgenteAtendimento
     import app.router as router_module
     router_module._state_mgr = state_mgr_mock
@@ -350,7 +350,7 @@ async def test_inline_tirar_duvida_mantem_agente_ativo(state_mgr_mock, meta_mock
     db_mock = _make_db_mock(contact)
 
     with patch("app.router.SessionLocal", return_value=db_mock), \
-         patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
+        patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
          patch("app.remarketing.cancel_pending_remarketing"), \
          patch("app.router.rotear", return_value={
              "agente": "atendimento",
@@ -358,12 +358,14 @@ async def test_inline_tirar_duvida_mantem_agente_ativo(state_mgr_mock, meta_mock
              "confianca": 0.88,
              "resposta_padrao": None,
          }):
+        agente_ativo.processar = MagicMock(return_value=["explicação contextual"])
         await router_module.route_message("5511999", "hash123", "quanto custa?", "msg-id-1")
 
-    # Agente deve ter sido salvo (não trocado)
+    agente_ativo.processar.assert_called_once_with("quanto custa?")
     state_mgr_mock.save.assert_called_once()
-    # send_text deve ter sido chamado (resposta inline)
+    # send_text deve ter sido chamado com a resposta do próprio agente
     meta_mock.send_text.assert_called_once()
+    assert "explicação contextual" in str(meta_mock.send_text.call_args)
 
 
 # ── Test 6: inline — fora_de_contexto mantém agente ativo ────────────────────

@@ -181,15 +181,14 @@ def test_fluxo_remarcacao_completo(mock_pac, mock_agenda, mock_lanc, mock_slots)
     assert agente.etapa == "oferecendo_slots"
     assert len(agente._slots_oferecidos) >= 1
 
-    # Escolhe opção 3 (código usa "terceiro", masculino)
-    # Plan 02-03: após escolha, etapa vai para aguardando_confirmacao_dietbox
-    # e retorna mensagem de espera (Dietbox ainda não foi chamado)
+    # Escolhe opção 3 e a remarcação deve ser executada no mesmo turno
     with patch("app.agents.retencao.alterar_agendamento", return_value=True):
         r3 = agente.processar_remarcacao("pode ser o terceiro horário")
-    assert agente.etapa == "aguardando_confirmacao_dietbox"
+    assert agente.etapa == "concluido"
     texto3 = " ".join(r3)
-    # Retorna indicador de espera antes de chamar Dietbox
+    # Retorna indicador de espera e a confirmação final
     assert "instante" in texto3.lower() or "💚" in texto3
+    assert "remarcada com sucesso" in texto3.lower()
 
 
 # ── 5. Retenção — remarcação sem slots disponíveis ───────────────────────────
@@ -217,7 +216,13 @@ def test_remarcacao_sem_slots(mock_pac, mock_agenda, mock_lanc, mock_slots):
 
 # ── 6. Fluxo de retenção — cancelamento ──────────────────────────────────────
 
-def test_fluxo_cancelamento_completo():
+@patch("app.agents.retencao.cancelar_agendamento", return_value=True)
+@patch("app.agents.retencao.consultar_agendamento_ativo",
+       return_value={"id": "AGENDA-003", "inicio": "2026-04-17T09:00:00",
+                     "fim": "2026-04-17T10:00:00", "id_servico": "SVC-001"})
+@patch("app.agents.retencao.buscar_paciente_por_telefone",
+       return_value={"id": 55, "nome": "Roberto", "telefone": "5531999990003"})
+def test_fluxo_cancelamento_completo(mock_pac, mock_agenda, mock_cancelar):
     from app.agents.retencao import AgenteRetencao
 
     agente = AgenteRetencao(telefone="5531999990003", nome="Roberto", modalidade="presencial")
@@ -229,6 +234,7 @@ def test_fluxo_cancelamento_completo():
     r2 = agente.processar_cancelamento("tive um imprevisto")
     assert agente.etapa == "concluido"
     assert any("cancelad" in r.lower() for r in r2)
+    mock_cancelar.assert_called_once()
 
 
 # ── 7. Mensagem de remarketing e lembrete ────────────────────────────────────

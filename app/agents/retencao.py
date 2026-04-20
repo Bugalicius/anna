@@ -18,6 +18,7 @@ import anthropic
 from app.agents.dietbox_worker import (
     alterar_agendamento,
     buscar_paciente_por_telefone,
+    cancelar_agendamento,
     consultar_agendamento_ativo,
     consultar_slots_disponiveis,
     verificar_lancamento_financeiro,
@@ -177,6 +178,11 @@ MSG_CANCELAMENTO_CONFIRMADO = (
     "A Thaynara vai adorar te receber 💚"
 )
 
+MSG_ERRO_CANCELAMENTO_DIETBOX = (
+    "Ops! Tive um problema técnico ao registrar o cancelamento no sistema 😔\n\n"
+    "Vou pedir para a Thaynara verificar manualmente, tudo bem? 💚"
+)
+
 MSG_POLITICA_CANCELAMENTO = kb.get_politica("cancelamento")
 
 
@@ -219,6 +225,8 @@ class AgenteRetencao:
             "motivo": self.motivo,
             "consulta_atual": self.consulta_atual,
             "novo_slot": self.novo_slot,
+            "_slots_oferecidos": self._slots_oferecidos,
+            "_preferencia_horario": self._preferencia_horario,
             "historico": self.historico[-20:],  # T-01-01: máx 20 entradas
             # ── Phase 2 ──────────────────────────────────────────────────────
             "tipo_remarcacao": self.tipo_remarcacao,
@@ -269,6 +277,54 @@ class AgenteRetencao:
         for r in respostas:
             self.historico.append({"role": "assistant", "content": r})
         return respostas
+
+    def _executar_remarcacao_dietbox(self) -> list[str]:
+        """Confirma a remarcação no Dietbox usando o slot já escolhido.
+
+        Mantido como helper para permitir execução imediata no mesmo turno e
+        também compatibilidade com estados antigos que ainda possam cair na
+        etapa 'aguardando_confirmacao_dietbox'.
+        """
+        if not self.novo_slot:
+            logger.error(
+                "aguardando_confirmacao_dietbox sem novo_slot: telefone=%s",
+                self.telefone[-4:],
+            )
+            self.etapa = "erro_remarcacao"
+            return [MSG_ERRO_REMARCACAO_DIETBOX]
+
+        from datetime import datetime as _dt
+        novo_dt = _dt.fromisoformat(self.novo_slot["datetime"])
+
+        data_original = ""
+        if self.consulta_atual:
+            inicio_original = self.consulta_atual.get("inicio", "")
+            if inicio_original:
+                try:
+                    dt_orig = _dt.fromisoformat(inicio_original)
+                    data_original = dt_orig.strftime("%d/%m/%Y")
+                except ValueError:
+                    data_original = inicio_original[:10]
+        data_nova = novo_dt.strftime("%d/%m/%Y")
+        observacao = (
+            f"Remarcado do dia {data_original} para {data_nova}"
+            if data_original
+            else f"Remarcado para {data_nova}"
+        )
+
+        id_agenda = self.id_agenda_original or ""
+        sucesso = alterar_agendamento(id_agenda, novo_dt, observacao)
+
+        if sucesso:
+            self.etapa = "concluido"
+            return [MSG_CONFIRMACAO_REMARCACAO.format(
+                data=self.novo_slot["data_fmt"],
+                hora=self.novo_slot["hora"],
+                modalidade=self.modalidade,
+            )]
+
+        self.etapa = "erro_remarcacao"
+        return [MSG_ERRO_REMARCACAO_DIETBOX]
 
     # ── detecção retorno / nova consulta ──────────────────────────────────────
 
@@ -450,9 +506,7 @@ class AgenteRetencao:
             slot = _extrair_escolha_slot(msg, self._slots_oferecidos)
             if slot:
                 self.novo_slot = slot
-                self.etapa = "aguardando_confirmacao_dietbox"
-                # Indicador de espera antes de chamar Dietbox (per comportamento Fase 1)
-                return ["Um instante, por favor 💚"]
+                return ["Um instante, por favor 💚"] + self._executar_remarcacao_dietbox()
 
             # Rejeição: calcula próximo batch
             slots_oferecidos_dts = {s["datetime"] for s in self._slots_oferecidos}
@@ -475,48 +529,7 @@ class AgenteRetencao:
 
         # Etapa 4: chamar Dietbox para alterar agendamento e confirmar ao paciente (per D-20/D-21)
         if self.etapa == "aguardando_confirmacao_dietbox":
-            if not self.novo_slot:
-                # Estado inconsistente — não deveria acontecer
-                logger.error(
-                    "aguardando_confirmacao_dietbox sem novo_slot: telefone=%s",
-                    self.telefone[-4:],
-                )
-                self.etapa = "erro_remarcacao"
-                return [MSG_ERRO_REMARCACAO_DIETBOX]
-
-            from datetime import datetime as _dt
-            novo_dt = _dt.fromisoformat(self.novo_slot["datetime"])
-
-            # Monta observação per D-23
-            data_original = ""
-            if self.consulta_atual:
-                inicio_original = self.consulta_atual.get("inicio", "")
-                if inicio_original:
-                    try:
-                        dt_orig = _dt.fromisoformat(inicio_original)
-                        data_original = dt_orig.strftime("%d/%m/%Y")
-                    except ValueError:
-                        data_original = inicio_original[:10]
-            data_nova = novo_dt.strftime("%d/%m/%Y")
-            observacao = (
-                f"Remarcado do dia {data_original} para {data_nova}"
-                if data_original
-                else f"Remarcado para {data_nova}"
-            )
-
-            id_agenda = self.id_agenda_original or ""
-            sucesso = alterar_agendamento(id_agenda, novo_dt, observacao)
-
-            if sucesso:
-                self.etapa = "concluido"
-                return [MSG_CONFIRMACAO_REMARCACAO.format(
-                    data=self.novo_slot["data_fmt"],
-                    hora=self.novo_slot["hora"],
-                    modalidade=self.modalidade,
-                )]
-            else:
-                self.etapa = "erro_remarcacao"
-                return [MSG_ERRO_REMARCACAO_DIETBOX]
+            return self._executar_remarcacao_dietbox()
 
         # Etapa 5: erro técnico — orientar paciente a contatar a Thaynara
         if self.etapa == "erro_remarcacao":
@@ -550,8 +563,32 @@ class AgenteRetencao:
             ]
 
         if self.etapa == "aguardando_motivo":
-            self.etapa = "concluido"
-            return [MSG_CANCELAMENTO_CONFIRMADO]
+            self.motivo = msg[:200]
+
+            paciente = buscar_paciente_por_telefone(self.telefone)
+            if not paciente:
+                self.etapa = "erro_cancelamento"
+                return [MSG_ERRO_CANCELAMENTO_DIETBOX]
+
+            agenda = consultar_agendamento_ativo(id_paciente=int(paciente["id"]))
+            if not agenda:
+                self.etapa = "erro_cancelamento"
+                return [MSG_ERRO_CANCELAMENTO_DIETBOX]
+
+            self.consulta_atual = agenda
+            self.id_agenda_original = agenda["id"]
+            observacao = f"Cancelado pelo paciente. Motivo: {self.motivo}"
+            sucesso = cancelar_agendamento(agenda["id"], observacao=observacao)
+
+            if sucesso:
+                self.etapa = "concluido"
+                return [MSG_CANCELAMENTO_CONFIRMADO]
+
+            self.etapa = "erro_cancelamento"
+            return [MSG_ERRO_CANCELAMENTO_DIETBOX]
+
+        if self.etapa == "erro_cancelamento":
+            return [MSG_ERRO_CANCELAMENTO_DIETBOX]
 
         return [MSG_CANCELAMENTO_CONFIRMADO]
 

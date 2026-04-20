@@ -15,6 +15,7 @@ Fluxo completo de 10 etapas:
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import random
@@ -190,6 +191,61 @@ MSG_ERRO_PAGAMENTO = (
     f"chave CPF *{kb.contatos['pix_chave']}*"
 )
 
+MSG_ERRO_AGENDAMENTO_DIETBOX = (
+    "Ops! Tive um problema técnico ao confirmar seu agendamento no sistema 😔\n\n"
+    "Seu horário ainda não foi confirmado. Vou tentar novamente assim que você me responder aqui, "
+    "ou, se preferir, posso pedir para a Thaynara verificar manualmente 💚"
+)
+
+
+_PROMPT_INTERPRETACAO_ETAPA = """\
+Você está ajudando a interpretar a mensagem de uma paciente dentro de um fluxo comercial de agendamento nutricional.
+
+Retorne APENAS JSON válido com os campos:
+  "acao": string
+  "plano": string|null
+  "modalidade": string|null
+  "forma_pagamento": string|null
+  "aceita_upgrade": boolean
+  "manter_plano": boolean
+  "resposta_sugerida": string|null
+
+Valores válidos de "acao":
+- informar_plano
+- informar_modalidade
+- informar_plano_modalidade
+- tirar_duvida
+- aceitar_upgrade
+- manter_escolha
+- escolher_pagamento
+- resposta_livre
+- indefinido
+
+Planos válidos:
+- premium
+- ouro
+- com_retorno
+- unica
+- formulario
+
+Modalidades válidas:
+- presencial
+- online
+
+Formas de pagamento válidas:
+- pix
+- cartao
+
+Etapa atual: {etapa}
+Estado atual: {estado}
+
+Histórico recente:
+{historico}
+
+Mensagem da paciente:
+{mensagem}
+"""
+
 
 # ── Motor de resposta via LLM ─────────────────────────────────────────────────
 
@@ -221,6 +277,88 @@ def _gerar_resposta_llm(
     except Exception as e:
         logger.error("Erro LLM em etapa %s: %s", etapa, e)
         return "Desculpa, tive um problema técnico. Pode repetir?"
+
+
+def _interpretar_mensagem_etapa(
+    historico: list[dict],
+    etapa: str,
+    mensagem: str,
+    estado: dict,
+) -> dict:
+    """
+    Interpreta a mensagem do paciente dentro de uma etapa específica.
+
+    Retorna dict estruturado para o FSM decidir se avança, responde dúvida ou
+    mantém a etapa atual.
+    """
+    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+
+    historico_limpo = sanitize_historico(historico[-8:])
+    historico_txt = "\n".join(
+        f"{m['role']}: {m['content']}" for m in historico_limpo
+    ) or "(sem histórico)"
+    prompt = _PROMPT_INTERPRETACAO_ETAPA.format(
+        etapa=etapa,
+        estado=json.dumps(estado, ensure_ascii=False),
+        historico=historico_txt,
+        mensagem=mensagem,
+    )
+
+    try:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=300,
+            system=kb.system_prompt(),
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = response.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        data = json.loads(raw)
+        return {
+            "acao": data.get("acao", "indefinido"),
+            "plano": data.get("plano"),
+            "modalidade": data.get("modalidade"),
+            "forma_pagamento": data.get("forma_pagamento"),
+            "aceita_upgrade": bool(data.get("aceita_upgrade", False)),
+            "manter_plano": bool(data.get("manter_plano", False)),
+            "resposta_sugerida": data.get("resposta_sugerida"),
+        }
+    except Exception as e:
+        logger.error("Erro ao interpretar mensagem na etapa %s: %s", etapa, e)
+        return {
+            "acao": "indefinido",
+            "plano": None,
+            "modalidade": None,
+            "forma_pagamento": None,
+            "aceita_upgrade": False,
+            "manter_plano": False,
+            "resposta_sugerida": None,
+        }
+
+
+def _resumo_pagamento_plano(plano: str, modalidade: str) -> str:
+    plano_dados = kb.get_plano(plano) or {}
+    nome = plano_dados.get("nome", plano)
+    valor_pix = kb.get_valor(plano, modalidade)
+    parcelas = kb.get_parcelas(plano)
+    parcela = plano_dados.get(f"parcela_{modalidade}", 0)
+    return (
+        f"*{nome}* ({modalidade}): PIX de R${valor_pix:.0f} "
+        f"ou {parcelas}x de R${parcela:.0f} no cartão"
+    )
+
+
+def _responder_duvida_pagamento(plano_atual: str, modalidade: str, plano_upgrade: str | None = None) -> str:
+    linhas = [_resumo_pagamento_plano(plano_atual, modalidade)]
+    if plano_upgrade and plano_upgrade != plano_atual:
+        linhas.append(_resumo_pagamento_plano(plano_upgrade, modalidade))
+    return (
+        "Sim! No cartão dá pra parcelar 😊\n\n"
+        + "\n".join(f"• {linha}" for linha in linhas)
+    )
 
 
 # ── Classe principal do Agente 1 ──────────────────────────────────────────────
@@ -393,6 +531,57 @@ class AgenteAtendimento:
                 f"ou *online* (videochamada pelo WhatsApp)? 😊"
             ]
 
+        if self.modalidade:
+            return [
+                f"Perfeito, {self.modalidade}! 😊\n\n"
+                "Agora me conta qual plano faz mais sentido pra você:\n"
+                "👉 Consulta única\n"
+                "👉 Consulta com retorno\n"
+                "👉 Plano Ouro\n"
+                "👉 Plano Premium\n"
+                "👉 Dieta por formulário"
+            ]
+
+        interpretacao = _interpretar_mensagem_etapa(
+            self.historico,
+            "apresentacao_planos",
+            msg,
+            {
+                "plano_escolhido": self.plano_escolhido,
+                "modalidade": self.modalidade,
+            },
+        )
+
+        plano_interp = interpretacao.get("plano")
+        modalidade_interp = interpretacao.get("modalidade")
+        if plano_interp:
+            self.plano_escolhido = plano_interp
+        if modalidade_interp:
+            self.modalidade = modalidade_interp
+
+        if self.plano_escolhido and self.modalidade:
+            self.etapa = "escolha_plano"
+            return self._etapa_escolha_plano(msg)
+
+        if self.plano_escolhido and not self.modalidade:
+            return [
+                f"Perfeito! Para esse plano, você prefere *presencial* ou *online*? 😊"
+            ]
+
+        if self.modalidade and not self.plano_escolhido:
+            return [
+                f"Perfeito, {self.modalidade}! 😊\n\n"
+                "Agora me conta qual plano faz mais sentido pra você:\n"
+                "👉 Consulta única\n"
+                "👉 Consulta com retorno\n"
+                "👉 Plano Ouro\n"
+                "👉 Plano Premium\n"
+                "👉 Dieta por formulário"
+            ]
+
+        if interpretacao.get("acao") in {"tirar_duvida", "resposta_livre"} and interpretacao.get("resposta_sugerida"):
+            return [interpretacao["resposta_sugerida"]]
+
         return [_gerar_resposta_llm(self.historico, "apresentacao_planos")]
 
     def _etapa_formulario_explicacao(self) -> list[str]:
@@ -445,9 +634,47 @@ class AgenteAtendimento:
 
         # se upsell foi oferecido, verifica se paciente aceitou upgrade
         if self.upsell_oferecido:
-            if any(w in msg.lower() for w in ["premium", "sim", "pode", "vamos", "upgrade", "esse"]):
-                upgrades = {"unica": "ouro", "com_retorno": "ouro", "ouro": "premium"}
+            upgrades = {"unica": "ouro", "com_retorno": "ouro", "ouro": "premium"}
+            plano_atual = self.plano_escolhido or "unica"
+            plano_upgrade = upgrades.get(plano_atual, plano_atual)
+            modal = self.modalidade or "presencial"
+
+            # Dúvidas sobre comparação/parcelamento devem manter o paciente na etapa
+            # em vez de avançar direto para agendamento.
+            if any(w in msg.lower() for w in [
+                "duvida", "dúvida", "não sei", "nao sei", "divide", "parcel",
+                "cartão", "cartao", "valor", "preço", "preco", "?",
+            ]):
+                return [
+                    _responder_duvida_pagamento(plano_atual, modal, plano_upgrade)
+                    + f"\n\nPrefere seguir com o *{kb.get_plano(plano_atual)['nome']}* "
+                    f"ou o *{kb.get_plano(plano_upgrade)['nome']}* faz mais sentido pra você?"
+                ]
+
+            interpretacao = _interpretar_mensagem_etapa(
+                self.historico,
+                "escolha_plano",
+                msg,
+                {
+                    "plano_atual": plano_atual,
+                    "plano_upgrade": plano_upgrade,
+                    "modalidade": modal,
+                    "upsell_oferecido": self.upsell_oferecido,
+                },
+            )
+
+            if interpretacao.get("plano") in upgrades:
+                self.plano_escolhido = interpretacao["plano"]
+                plano_atual = self.plano_escolhido
+                plano_upgrade = upgrades.get(plano_atual, plano_atual)
+
+            if interpretacao.get("acao") in {"tirar_duvida", "resposta_livre"} and interpretacao.get("resposta_sugerida"):
+                return [interpretacao["resposta_sugerida"]]
+
+            if interpretacao.get("aceita_upgrade") or any(w in msg.lower() for w in ["premium", "sim", "pode", "vamos", "upgrade", "esse"]):
                 self.plano_escolhido = upgrades.get(self.plano_escolhido, self.plano_escolhido)
+            elif interpretacao.get("manter_plano"):
+                pass
 
         self.etapa = "agendamento"
         return self._iniciar_agendamento()
@@ -555,6 +782,31 @@ class AgenteAtendimento:
         elif any(w in msg_lower for w in ["cartão", "cartao", "crédito", "credito", "link"]):
             self.forma_pagamento = "cartao"
         else:
+            interpretacao = _interpretar_mensagem_etapa(
+                self.historico,
+                "forma_pagamento",
+                msg,
+                {
+                    "plano_escolhido": self.plano_escolhido,
+                    "modalidade": self.modalidade,
+                    "slot_escolhido": self.slot_escolhido,
+                },
+            )
+            if interpretacao.get("forma_pagamento") == "pix":
+                self.forma_pagamento = "pix"
+            elif interpretacao.get("forma_pagamento") == "cartao":
+                self.forma_pagamento = "cartao"
+            elif interpretacao.get("acao") in {"tirar_duvida", "resposta_livre"} and interpretacao.get("resposta_sugerida"):
+                return [interpretacao["resposta_sugerida"]]
+            elif any(w in msg_lower for w in ["divide", "parcel", "cartão", "cartao", "pix", "desconto"]):
+                plano = self.plano_escolhido or "unica"
+                modal = self.modalidade or "presencial"
+                return [
+                    "Funciona assim 😊\n\n"
+                    f"• {_resumo_pagamento_plano(plano, modal)}\n"
+                    f"• No PIX você paga com desconto e no cartão o valor vai parcelado\n\n"
+                    "Qual opção prefere: *PIX* ou *cartão*?"
+                ]
             return ["Pode pagar via *PIX* ou *cartão de crédito* — qual prefere? 😊"]
 
         self.etapa = "pagamento"
@@ -637,9 +889,11 @@ class AgenteAtendimento:
                 self.id_agenda_dietbox = resultado["id_agenda"]
             else:
                 logger.error("Dietbox falhou: %s", resultado.get("erro"))
+                return [waiting, MSG_ERRO_AGENDAMENTO_DIETBOX]
 
         except Exception as e:
             logger.error("Erro no cadastro Dietbox: %s", e)
+            return [waiting, MSG_ERRO_AGENDAMENTO_DIETBOX]
 
         self.etapa = "confirmacao"
         confirmacao = self._etapa_confirmacao(_msg)
@@ -719,6 +973,7 @@ class AgenteAtendimento:
             "modalidade": self.modalidade,
             "upsell_oferecido": self.upsell_oferecido,
             "slot_escolhido": self.slot_escolhido,
+            "_slots_oferecidos": getattr(self, "_slots_oferecidos", []),
             "forma_pagamento": self.forma_pagamento,
             "pagamento_confirmado": self.pagamento_confirmado,
             "id_paciente_dietbox": self.id_paciente_dietbox,
@@ -738,6 +993,7 @@ class AgenteAtendimento:
         agent.modalidade = data.get("modalidade")
         agent.upsell_oferecido = data.get("upsell_oferecido", False)
         agent.slot_escolhido = data.get("slot_escolhido")
+        agent._slots_oferecidos = data.get("_slots_oferecidos", [])
         agent.forma_pagamento = data.get("forma_pagamento")
         agent.pagamento_confirmado = data.get("pagamento_confirmado", False)
         agent.id_paciente_dietbox = data.get("id_paciente_dietbox")

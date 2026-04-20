@@ -106,6 +106,30 @@ def test_waiting_indicator_antes_de_cadastro_dietbox():
     )
 
 
+def test_cadastro_dietbox_falha_nao_confirma_consulta():
+    """Falha no Dietbox não deve avançar para confirmação/finalização."""
+    from app.agents.atendimento import AgenteAtendimento
+
+    agente = AgenteAtendimento(telefone="5531999990007", phone_hash="hash007")
+    agente.etapa = "cadastro_dietbox"
+    agente.modalidade = "presencial"
+    agente.plano_escolhido = "unica"
+    agente.nome = "Joana"
+    agente.pagamento_confirmado = True
+    agente.slot_escolhido = {
+        "data_fmt": "15/04/2026",
+        "hora": "09:00",
+        "datetime": "2026-04-15T09:00:00",
+    }
+
+    with patch("app.agents.atendimento.processar_agendamento", return_value={"sucesso": False, "erro": "Dietbox offline"}):
+        respostas = agente._etapa_cadastro_dietbox("ok")
+
+    texto = " ".join(respostas).lower()
+    assert agente.etapa == "cadastro_dietbox"
+    assert "não foi confirmado" in texto or "problema técnico" in texto
+
+
 # ── Test: tom e mensagens ─────────────────────────────────────────────────────
 
 def test_msg_boas_vindas_tom_informal():
@@ -189,6 +213,42 @@ def test_formulario_nunca_oferecido_proativamente():
     assert len(proibidos_em) == 0, (
         f"As seguintes MSG_* mencionam 'formulário' proativamente: {proibidos_em}"
     )
+
+
+def test_apresentacao_planos_modalidade_sem_plano_pede_plano():
+    """Se a paciente informa só modalidade, deve manter contexto e pedir o plano."""
+    from app.agents.atendimento import AgenteAtendimento
+
+    agente = AgenteAtendimento(telefone="5531999990005", phone_hash="hash005")
+    agente.etapa = "apresentacao_planos"
+    agente.nome = "Breno"
+    agente.historico = [{"role": "assistant", "content": "Qual modalidade faz mais sentido pra você agora?"}]
+
+    respostas = agente._etapa_apresentacao_planos("presencial")
+
+    assert agente.modalidade == "presencial"
+    texto = " ".join(str(r) for r in respostas)
+    assert "qual plano" in texto.lower()
+    assert "consulta única" in texto.lower() or "plano ouro" in texto.lower()
+
+
+def test_escolha_plano_duvida_parcelamento_mantem_etapa():
+    """Dúvida de parcelamento após upsell não deve quebrar o fluxo nem avançar etapa."""
+    from app.agents.atendimento import AgenteAtendimento
+
+    agente = AgenteAtendimento(telefone="5531999990006", phone_hash="hash006")
+    agente.etapa = "escolha_plano"
+    agente.plano_escolhido = "unica"
+    agente.modalidade = "presencial"
+    agente.upsell_oferecido = True
+
+    respostas = agente._etapa_escolha_plano("estou em dúvida, divide no cartão?")
+
+    assert agente.etapa == "escolha_plano"
+    texto = " ".join(respostas).lower()
+    assert "cartão" in texto or "cartao" in texto
+    assert "consulta única" in texto
+    assert "plano ouro" in texto
 
 
 # ── Test: FAQ aprendido ───────────────────────────────────────────────────────

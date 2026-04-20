@@ -169,7 +169,11 @@ async def route_message(phone: str, phone_hash: str, text: str, meta_message_id:
         # D-03: intencoes inline — responde sem sair do fluxo
         # Exceção: etapas de intake (boas_vindas, qualificacao) não usam inline —
         # mensagens ambíguas como "já sou paciente" devem ser tratadas pelo FSM do agente
-        elif intencao in _INTENCOES_INLINE and not _is_intake_etapa(agente_ativo):
+        elif (
+            intencao in _INTENCOES_INLINE
+            and not _is_intake_etapa(agente_ativo)
+            and not _deve_deixar_agente_responder_duvida(agente_ativo, intencao)
+        ):
             resposta_inline = (
                 rota.get("resposta_padrao") or _MSG_INLINE_PADRAO
             )
@@ -431,9 +435,34 @@ def _is_intake_etapa(agent) -> bool:
     tipo = _tipo_agente(agent)
     etapa = getattr(agent, "etapa", None)
     if tipo == "AgenteAtendimento":
-        return etapa in ("boas_vindas", "qualificacao")
+        return etapa in ("boas_vindas", "qualificacao", "apresentacao_planos", "escolha_plano")
     if tipo == "AgenteRetencao":
         return etapa in ("coletando_nome", "coletando_nome_cancel")
+    return False
+
+
+def _deve_deixar_agente_responder_duvida(agent, intencao: str) -> bool:
+    """
+    Permite que o próprio agente trate dúvidas contextuais em etapas sensíveis.
+
+    Isso evita que perguntas como parcelamento, comparação de planos ou
+    esclarecimentos sobre pagamento recebam a resposta inline genérica do router.
+    """
+    if intencao != "tirar_duvida":
+        return False
+
+    tipo = _tipo_agente(agent)
+    etapa = getattr(agent, "etapa", None)
+    if tipo == "AgenteAtendimento":
+        return etapa in (
+            "apresentacao_planos",
+            "escolha_plano",
+            "agendamento",
+            "forma_pagamento",
+            "pagamento",
+        )
+    if tipo == "AgenteRetencao":
+        return etapa in ("coletando_preferencia", "oferecendo_slots")
     return False
 
 
