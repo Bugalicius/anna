@@ -503,7 +503,7 @@ def alterar_agendamento(
         "Observacao": observacao,
     }
     try:
-        resp = requests.patch(
+        resp = requests.put(
             f"{DIETBOX_API}/agenda/{id_agenda}",
             headers=_headers(),
             json=payload,

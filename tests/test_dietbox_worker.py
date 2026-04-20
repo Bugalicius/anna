@@ -376,7 +376,7 @@ def test_alterar_agendamento_sucesso_retorna_true():
     novo_dt = datetime(2026, 4, 14, 9, 0, tzinfo=BRT)
 
     with patch("app.agents.dietbox_worker._headers", return_value={}), \
-         patch("requests.patch", return_value=mock_resp):
+         patch("requests.put", return_value=mock_resp):
         from app.agents.dietbox_worker import alterar_agendamento
         result = alterar_agendamento("ID-123", novo_dt, "Remarcado do dia 10/04 para 14/04")
 
@@ -419,7 +419,7 @@ def test_alterar_agendamento_timeout_retorna_false():
 
 
 def test_alterar_agendamento_payload_correto():
-    """alterar_agendamento envia payload com Start, End e Observacao corretos."""
+    """alterar_agendamento envia payload com Start, End e Observacao corretos via PUT."""
     from datetime import datetime, timedelta, timezone
     BRT = timezone(timedelta(hours=-3))
 
@@ -430,11 +430,11 @@ def test_alterar_agendamento_payload_correto():
     mock_resp.raise_for_status = MagicMock()
 
     with patch("app.agents.dietbox_worker._headers", return_value={}), \
-         patch("requests.patch", return_value=mock_resp) as mock_patch:
+         patch("requests.put", return_value=mock_resp) as mock_put:
         from app.agents.dietbox_worker import alterar_agendamento
         alterar_agendamento("ID-123", novo_dt, observacao)
 
-    call_kwargs = mock_patch.call_args
+    call_kwargs = mock_put.call_args
     payload = call_kwargs[1]["json"] if "json" in call_kwargs[1] else call_kwargs[0][1]
     assert "Start" in payload
     assert "End" in payload
@@ -443,7 +443,7 @@ def test_alterar_agendamento_payload_correto():
 
 
 def test_alterar_agendamento_url_correta():
-    """alterar_agendamento usa URL DIETBOX_API/agenda/{id_agenda} com PATCH."""
+    """alterar_agendamento usa URL DIETBOX_API/agenda/{id_agenda} com PUT."""
     from datetime import datetime, timedelta, timezone
     BRT = timezone(timedelta(hours=-3))
 
@@ -453,11 +453,11 @@ def test_alterar_agendamento_url_correta():
     mock_resp.raise_for_status = MagicMock()
 
     with patch("app.agents.dietbox_worker._headers", return_value={}), \
-         patch("requests.patch", return_value=mock_resp) as mock_patch:
+         patch("requests.put", return_value=mock_resp) as mock_put:
         from app.agents.dietbox_worker import alterar_agendamento, DIETBOX_API
         alterar_agendamento("ID-123", novo_dt, "Remarcado")
 
-    url_chamada = mock_patch.call_args[0][0]
+    url_chamada = mock_put.call_args[0][0]
     assert url_chamada == f"{DIETBOX_API}/agenda/ID-123"
 
 
@@ -467,23 +467,22 @@ def test_cancelar_agendamento_sucesso_retorna_true():
     mock_resp.raise_for_status = MagicMock()
 
     with patch("app.agents.dietbox_worker._headers", return_value={}), \
-         patch("requests.patch", return_value=mock_resp):
+         patch("requests.delete", return_value=mock_resp):
         from app.agents.dietbox_worker import cancelar_agendamento
         result = cancelar_agendamento("ID-999", "Cancelado pela paciente")
 
     assert result is True
 
 
-def test_cancelar_agendamento_payload_correto():
-    """cancelar_agendamento envia payload com desmarcada=True e Observacao."""
+def test_cancelar_agendamento_url_correta():
+    """cancelar_agendamento usa DELETE em DIETBOX_API/agenda/{id_agenda}."""
     mock_resp = MagicMock()
     mock_resp.raise_for_status = MagicMock()
 
     with patch("app.agents.dietbox_worker._headers", return_value={}), \
-         patch("requests.patch", return_value=mock_resp) as mock_patch:
-        from app.agents.dietbox_worker import cancelar_agendamento
+         patch("requests.delete", return_value=mock_resp) as mock_delete:
+        from app.agents.dietbox_worker import cancelar_agendamento, DIETBOX_API
         cancelar_agendamento("ID-999", "Cancelado pela paciente")
 
-    payload = mock_patch.call_args.kwargs["json"]
-    assert payload["desmarcada"] is True
-    assert payload["Observacao"] == "Cancelado pela paciente"
+    url_chamada = mock_delete.call_args[0][0]
+    assert url_chamada == f"{DIETBOX_API}/agenda/ID-999"
