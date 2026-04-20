@@ -880,7 +880,7 @@ class AgenteAtendimento:
                 dt_consulta=dt,
                 modalidade=self.modalidade or "presencial",
                 plano=self.plano_escolhido or "unica",
-                valor_sinal=kb.get_valor(self.plano_escolhido or "unica", self.modalidade or "presencial"),
+                valor_sinal=round(kb.get_valor(self.plano_escolhido or "unica", self.modalidade or "presencial") * 0.5, 2),
                 forma_pagamento=self.forma_pagamento or "pix",
             )
 
