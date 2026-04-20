@@ -397,15 +397,22 @@ def test_pool_com_so_3_slots_rejeicao_declara_perda_direto():
     assert agent.etapa == "perda_retorno"
 
 
-def test_escolha_valida_segunda_rodada_confirma_normalmente():
-    """Paciente escolhe slot na rodada 2 → etapa vai para aguardando_confirmacao_dietbox ou concluido."""
+def test_escolha_valida_segunda_rodada_confirma_normalmente(monkeypatch):
+    """Paciente escolhe slot na rodada 2 → confirma sem cair em perda de retorno."""
+    monkeypatch.setattr(
+        "app.agents.retencao.alterar_agendamento",
+        lambda *_args, **_kwargs: True,
+    )
+
     agent = _agent_com_slots(num_slots=6)
     agent.rodada_negociacao = 1
+    agent.id_agenda_original = "AGENDA-123"
 
     respostas = agent.processar_remarcacao("1")
 
     # Escolheu → não deve declarar perda de retorno
     assert agent.etapa != "perda_retorno"
+    assert agent.etapa == "concluido"
     texto = " ".join(respostas)
     assert len(texto) > 0
 
@@ -439,8 +446,13 @@ def _agent_aguardando_confirmacao(id_agenda: str = "ID-999") -> "AgenteRetencao"
     return agent
 
 
-def test_escolha_slot_muda_etapa_para_aguardando_confirmacao():
-    """Paciente escolhe slot válido → etapa 'aguardando_confirmacao_dietbox', novo_slot salvo, retorna espera."""
+def test_escolha_slot_muda_etapa_para_aguardando_confirmacao(monkeypatch):
+    """Paciente escolhe slot válido → novo_slot salvo e remarcação executa no mesmo turno."""
+    monkeypatch.setattr(
+        "app.agents.retencao.alterar_agendamento",
+        lambda *_args, **_kwargs: True,
+    )
+
     from app.agents.retencao import AgenteRetencao
     agent = AgenteRetencao(telefone="5531999990000", nome="Ana")
     agent.etapa = "oferecendo_slots"
@@ -450,7 +462,7 @@ def test_escolha_slot_muda_etapa_para_aguardando_confirmacao():
 
     respostas = agent.processar_remarcacao("1")
 
-    assert agent.etapa == "aguardando_confirmacao_dietbox"
+    assert agent.etapa == "concluido"
     assert agent.novo_slot is not None
     assert "instante" in " ".join(respostas).lower() or "💚" in " ".join(respostas)
 

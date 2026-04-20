@@ -84,22 +84,25 @@ MSG_PLANOS_RESUMO = (
 
 MSG_UPSELL = {
     "unica": (
-        "Ótima escolha! Só pra você comparar: o *Plano Ouro* tem 3 consultas + 130 dias de acompanhamento "
-        "por R${valor_upgrade:.0f} presencial (ou R${valor_upgrade_online:.0f} online) — "
-        "o valor por consulta fica bem mais em conta e você tem muito mais suporte! 💚 "
-        "Prefere manter a Consulta Única ou o Plano Ouro faz mais sentido pra você?"
+        "Ótima escolha! Mas posso te dar uma dica? 💚\n\n"
+        "O *Plano Ouro* sai por R${valor_upgrade:.0f} presencial (ou R${valor_upgrade_online:.0f} online) "
+        "e já inclui 3 consultas + 130 dias de acompanhamento — "
+        "o custo por consulta fica bem menor e o suporte é muito mais completo.\n\n"
+        "Quer manter a Consulta Única ou prefere o Ouro?"
     ),
     "com_retorno": (
-        "Ótima escolha! Vale mencionar que o *Plano Ouro* tem 3 consultas + 130 dias de acompanhamento "
-        "por apenas +R${diff:.0f}. Mais consultas, mais suporte e a Lilly inclusa! "
-        "Prefere manter a Consulta com Retorno ou o Plano Ouro faz mais sentido?"
+        "Ótima escolha! Posso te dar uma dica? 💚\n\n"
+        "Por apenas +R${diff:.0f} você sobe pro *Plano Ouro*: 3 consultas, 130 dias de acompanhamento "
+        "e a Lilly inclusa. É bem mais suporte pelo investimento.\n\n"
+        "Quer manter a Consulta com Retorno ou prefere o Ouro?"
     ),
     "ouro": (
-        "Ótima escolha! Só pra você saber: o *Plano Premium* dobra as consultas (6 no total), "
-        "270 dias de acompanhamento, encontros coletivos e a Lilly — nossa assistente virtual "
-        "que te ajuda com substituições de alimentos na hora que precisar, mantendo seu plano sempre ajustado! "
-        "Fica por R${valor_upgrade:.0f} presencial. Vale muito a pena! "
-        "Prefere manter o Ouro ou o Premium faz mais sentido?"
+        "Ótima escolha! Posso te dar uma dica? 💚\n\n"
+        "O *Plano Premium* dobra as consultas (6 no total), 270 dias de acompanhamento, "
+        "encontros coletivos e a Lilly — nossa assistente que te ajuda com "
+        "substituições de alimentos na hora, mantendo seu plano sempre ajustado. "
+        "Fica por R${valor_upgrade:.0f} presencial.\n\n"
+        "Quer manter o Ouro ou prefere o Premium?"
     ),
 }
 
