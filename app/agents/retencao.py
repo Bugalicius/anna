@@ -387,7 +387,7 @@ class AgenteRetencao:
         if self.etapa == "inicio":
             tipo = self._detectar_tipo_remarcacao()
             if tipo == "nova_consulta":
-                self.etapa = "redirecionando_atendimento"
+                self.etapa = "concluido"
                 return [
                     "Não localizei um agendamento já confirmado para você 😊\n"
                     "Vou te passar para o fluxo de agendamento normal — me conta o que você está procurando!"
@@ -537,7 +537,7 @@ class AgenteRetencao:
 
         # Etapa 6: perda de retorno — qualquer mensagem redireciona para atendimento
         if self.etapa == "perda_retorno":
-            self.etapa = "redirecionando_atendimento"
+            self.etapa = "concluido"
             return ["Claro! Vou te encaminhar para o fluxo de agendamento normal 💚"]
 
         return [_gerar_resposta_llm_retencao(self.historico, self.etapa)]

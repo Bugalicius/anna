@@ -375,14 +375,14 @@ def test_rejeicao_segunda_rodada_declara_perda_retorno():
 
 
 def test_etapa_perda_retorno_oferece_nova_consulta():
-    """Na etapa 'perda_retorno', qualquer msg → redirecionando_atendimento."""
+    """Na etapa 'perda_retorno', qualquer msg → concluido."""
     from app.agents.retencao import AgenteRetencao
     agent = AgenteRetencao(telefone="5531999990000", nome="Ana")
     agent.etapa = "perda_retorno"
 
     respostas = agent.processar_remarcacao("ok, quero agendar nova consulta")
 
-    assert agent.etapa == "redirecionando_atendimento"
+    assert agent.etapa == "concluido"
     texto = " ".join(respostas)
     assert len(texto) > 0
 
