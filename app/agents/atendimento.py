@@ -24,6 +24,7 @@ from datetime import datetime, date, timedelta, timezone
 import anthropic
 
 from app.agents.dietbox_worker import (
+    confirmar_pagamento,
     consultar_slots_disponiveis,
     processar_agendamento,
 )
@@ -387,6 +388,7 @@ class AgenteAtendimento:
         self.pagamento_confirmado: bool = False
         self.id_paciente_dietbox: int | None = None
         self.id_agenda_dietbox: str | None = None
+        self.id_transacao_dietbox: str | None = None
         self.historico: list[dict] = []
 
     # ── entrada de mensagem ───────────────────────────────────────────────────
@@ -887,6 +889,13 @@ class AgenteAtendimento:
             if resultado["sucesso"]:
                 self.id_paciente_dietbox = resultado["id_paciente"]
                 self.id_agenda_dietbox = resultado["id_agenda"]
+                self.id_transacao_dietbox = resultado.get("id_transacao")
+                # Marca pagamento como pago no Dietbox (sinal ja recebido)
+                if self.id_transacao_dietbox:
+                    try:
+                        confirmar_pagamento(self.id_transacao_dietbox)
+                    except Exception as exc:
+                        logger.warning("Falha ao confirmar pagamento no Dietbox: %s", exc)
             else:
                 logger.error("Dietbox falhou: %s", resultado.get("erro"))
                 return [waiting, MSG_ERRO_AGENDAMENTO_DIETBOX]
@@ -978,6 +987,7 @@ class AgenteAtendimento:
             "pagamento_confirmado": self.pagamento_confirmado,
             "id_paciente_dietbox": self.id_paciente_dietbox,
             "id_agenda_dietbox": self.id_agenda_dietbox,
+            "id_transacao_dietbox": self.id_transacao_dietbox,
             "historico": self.historico[-20:],  # T-01-01: máx 20 entradas
         }
 
@@ -998,6 +1008,7 @@ class AgenteAtendimento:
         agent.pagamento_confirmado = data.get("pagamento_confirmado", False)
         agent.id_paciente_dietbox = data.get("id_paciente_dietbox")
         agent.id_agenda_dietbox = data.get("id_agenda_dietbox")
+        agent.id_transacao_dietbox = data.get("id_transacao_dietbox")
         agent.historico = data.get("historico", [])
         return agent
 
