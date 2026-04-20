@@ -44,6 +44,7 @@ ETAPAS = [
     "qualificacao",
     "apresentacao_planos",
     "escolha_plano",
+    "preferencia_horario",
     "agendamento",
     "forma_pagamento",
     "pagamento",
@@ -106,9 +107,20 @@ MSG_UPSELL = {
     ),
 }
 
+MSG_PREFERENCIA_HORARIO = (
+    "Para seguirmos com o agendamento, me informe qual horário atende melhor à sua rotina:\n\n"
+    "Segunda a Sexta-feira:\n"
+    "Manhã: 08h, 09h e 10h\n"
+    "Tarde: 15h, 16h e 17h\n"
+    "Noite: 18h e 19h (exceto sexta à noite)\n\n"
+    "Importante: só realizamos o agendamento do dia e horário da consulta mediante a "
+    "confirmação do pagamento. Quanto antes o sinal for enviado, maior a chance de "
+    "garantir o horário de sua preferência."
+)
+
 MSG_AGENDAMENTO_OPCOES = (
-    "Ótimo! Vou verificar os horários disponíveis agora... 📅\n\n"
-    "Tenho essas opções para {modalidade}:\n\n"
+    "Só um minutinho, já verifico pra você 💚\n\n"
+    "Tenho essas opções disponíveis para {modalidade}:\n\n"
     "{opcoes}\n\n"
     "Qual horário funciona melhor pra você?"
 )
@@ -423,6 +435,9 @@ class AgenteAtendimento:
         if etapa == "escolha_plano":
             return self._etapa_escolha_plano(msg)
 
+        if etapa == "preferencia_horario":
+            return self._etapa_preferencia_horario(msg)
+
         if etapa == "agendamento":
             return self._etapa_agendamento(msg)
 
@@ -681,11 +696,51 @@ class AgenteAtendimento:
             elif interpretacao.get("manter_plano"):
                 pass
 
+        self.etapa = "preferencia_horario"
+        return [MSG_PREFERENCIA_HORARIO]
+
+    def _etapa_preferencia_horario(self, msg: str) -> list[str]:
+        """Recebe preferência de turno/dia e consulta Dietbox filtrando por ela."""
+        msg_lower = msg.lower()
+
+        # Detecta turno preferido
+        HORAS_MANHA = {"08h", "09h", "10h"}
+        HORAS_TARDE = {"15h", "16h", "17h"}
+        HORAS_NOITE = {"18h", "19h"}
+
+        if any(w in msg_lower for w in ["manhã", "manha", "cedo", "8h", "9h", "10h", "08h", "09h", "10h"]):
+            horas_preferidas = HORAS_MANHA
+        elif any(w in msg_lower for w in ["tarde", "15h", "16h", "17h"]):
+            horas_preferidas = HORAS_TARDE
+        elif any(w in msg_lower for w in ["noite", "18h", "19h"]):
+            horas_preferidas = HORAS_NOITE
+        else:
+            horas_preferidas = None  # qualquer turno
+
+        # Detecta dia preferido
+        DIAS_MAP = {
+            "segunda": 0, "seg": 0,
+            "terça": 1, "terca": 1, "ter": 1,
+            "quarta": 2, "qua": 2,
+            "quinta": 3, "qui": 3,
+            "sexta": 4, "sex": 4,
+        }
+        dia_preferido: int | None = None
+        for palavra, weekday in DIAS_MAP.items():
+            if palavra in msg_lower:
+                dia_preferido = weekday
+                break
+
+        self._preferencia_horas = horas_preferidas
+        self._preferencia_dia = dia_preferido
         self.etapa = "agendamento"
         return self._iniciar_agendamento()
 
     def _iniciar_agendamento(self) -> list[str]:
-        # D-21: waiting indicator antes de chamar Dietbox
+        horas_preferidas: set[str] | None = getattr(self, "_preferencia_horas", None)
+        dia_preferido: int | None = getattr(self, "_preferencia_dia", None)
+        hoje_iso = date.today().isoformat()  # "2026-04-20"
+
         waiting = random.choice(_WAITING_MESSAGES)
 
         try:
@@ -700,19 +755,39 @@ class AgenteAtendimento:
         if not slots:
             return [MSG_SEM_HORARIOS]
 
-        # D-19: NUNCA oferecer horário no mesmo dia
-        hoje_fmt = date.today().strftime("%d/%m/%Y")
+        # D-19: nunca oferecer slot do dia atual
+        slots = [s for s in slots if not s.get("datetime", "").startswith(hoje_iso)]
 
-        # guarda 3 slots em dias DIFERENTES (excluindo hoje) para o paciente escolher
-        dias_usados: set[str] = set()
-        selecionados: list[dict] = []
+        if not slots:
+            return [MSG_SEM_HORARIOS]
+
+        # Filtra por preferência de turno e/ou dia
+        DIAS_PT_LOCAL = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
+
+        filtrados = []
         for slot in slots:
-            dia = slot.get("data_fmt", "")
-            if dia == hoje_fmt:
-                continue  # D-19: não oferecer o dia atual
-            if dia not in dias_usados:
+            if horas_preferidas and slot["hora"] not in horas_preferidas:
+                continue
+            if dia_preferido is not None and not slot["data_fmt"].startswith(DIAS_PT_LOCAL[dia_preferido]):
+                continue
+            filtrados.append(slot)
+
+        # Se não encontrou nada com filtro de dia, ignora filtro de dia mas mantém turno
+        if not filtrados and dia_preferido is not None:
+            filtrados = [s for s in slots if not horas_preferidas or s["hora"] in horas_preferidas]
+
+        # Se ainda vazio, usa todos os slots disponíveis
+        if not filtrados:
+            filtrados = slots
+
+        # Pega até 3 slots em horários DIFERENTES
+        selecionados: list[dict] = []
+        horas_usadas: set[str] = set()
+        for slot in filtrados:
+            hora = slot["hora"]
+            if hora not in horas_usadas:
                 selecionados.append(slot)
-                dias_usados.add(dia)
+                horas_usadas.add(hora)
             if len(selecionados) >= 3:
                 break
 

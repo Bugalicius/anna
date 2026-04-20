@@ -67,14 +67,19 @@ def test_fluxo_atendimento_pix_completo(mock_agendar, mock_slots):
     assert agente.plano_escolhido in ("ouro", "com_retorno", "unica", "premium")
     assert agente.modalidade == "presencial"
 
-    # Se upsell foi gerado, recusa e avança
+    # Se upsell foi gerado, recusa e avança para preferencia_horario
     if agente.etapa == "escolha_plano":
-        r5 = agente.processar("não, quero manter o ouro mesmo")
-    # Agora deve estar em agendamento
+        agente.processar("não, quero manter o ouro mesmo")
+
+    # Deve estar em preferencia_horario aguardando turno preferido
+    assert agente.etapa == "preferencia_horario"
+
+    # Informa preferência de horário → chama Dietbox e vai para agendamento
+    agente.processar("manhã")
     mock_slots.assert_called()
+    assert agente.etapa == "agendamento"
 
     # Avança para agendamento — escolhe opção 1
-    agente.etapa = "agendamento"
     agente._slots_oferecidos = SLOTS_FAKE
     r6 = agente.processar("quero o 1")
     assert agente.etapa == "forma_pagamento"
