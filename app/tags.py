@@ -20,6 +20,12 @@ from app.models import Contact
 
 logger = logging.getLogger(__name__)
 
+_LEGACY_STAGE_MAP = {
+    "new": "novo_lead",
+    "cold_lead": "novo_lead",
+    "remarketing_sequence": "remarketing",
+}
+
 
 class Tag(str, Enum):
     NOVO_LEAD = "novo_lead"
@@ -44,6 +50,7 @@ _TRANSICOES_VALIDAS: dict[Tag, set[Tag] | None] = {
 def get_tag(contact: Contact) -> Tag | None:
     """Retorna a tag atual do contato ou None se não definida."""
     raw = getattr(contact, "stage", None)
+    raw = _LEGACY_STAGE_MAP.get(raw, raw)
     try:
         return Tag(raw) if raw else None
     except ValueError:
