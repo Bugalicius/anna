@@ -47,6 +47,109 @@ def test_slots_exclui_ocupados():
     assert not any(ocupado_dt in dt for dt in datetimes)
 
 
+def test_slots_exclui_ocupados_com_start_e_espaco():
+    """Compromissos com campo Start e data com espaço também devem bloquear o slot."""
+    from app.agents.dietbox_worker import consultar_slots_disponiveis
+
+    from datetime import date
+    amanha = date.today() + timedelta(days=1)
+    dia_semana = amanha.weekday()
+    from app.agents.dietbox_worker import HORARIOS_POR_DIA
+    horarios = HORARIOS_POR_DIA.get(dia_semana, [])
+    if not horarios:
+        pytest.skip("Próximo dia é fim de semana")
+
+    primeiro_horario = horarios[0]
+    ocupado_dt = f"{amanha.isoformat()}T{primeiro_horario}"
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "Data": [{"Start": f"{amanha.isoformat()} {primeiro_horario}:00", "desmarcada": False}]
+    }
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.get", return_value=mock_resp), \
+         patch("app.agents.dietbox_worker._carregar_locais"), \
+         patch("app.agents.dietbox_worker._ID_LOCAL_PRESENCIAL", "LOCAL-001"):
+
+        slots = consultar_slots_disponiveis(modalidade="presencial", dias_a_frente=3)
+
+    datetimes = [s["datetime"] for s in slots]
+    assert not any(ocupado_dt in dt for dt in datetimes)
+
+
+def test_slots_exclui_ocupados_convertendo_utc_para_sao_paulo():
+    """Horários com offset UTC devem ser convertidos para o fuso da agenda antes de bloquear."""
+    from app.agents.dietbox_worker import consultar_slots_disponiveis
+
+    from datetime import date
+    amanha = date.today() + timedelta(days=1)
+    dia_semana = amanha.weekday()
+    from app.agents.dietbox_worker import HORARIOS_POR_DIA
+    horarios = HORARIOS_POR_DIA.get(dia_semana, [])
+    if "10:00" not in horarios:
+        pytest.skip("Próximo dia útil não contém 10:00")
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "Data": [{
+            "inicio": f"{amanha.isoformat()}T13:00:00+00:00",
+            "fim": f"{amanha.isoformat()}T14:00:00+00:00",
+            "timezone": "America/Sao_Paulo",
+            "desmarcada": False,
+        }]
+    }
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.get", return_value=mock_resp), \
+         patch("app.agents.dietbox_worker._carregar_locais"), \
+         patch("app.agents.dietbox_worker._ID_LOCAL_PRESENCIAL", "LOCAL-001"):
+
+        slots = consultar_slots_disponiveis(modalidade="presencial", dias_a_frente=3)
+
+    datetimes = [s["datetime"] for s in slots]
+    assert not any(f"{amanha.isoformat()}T10:00" in dt for dt in datetimes)
+
+
+def test_slots_exclui_evento_longo_em_todas_as_horas_intermediarias():
+    """Bloqueios longos devem ocupar todas as horas do intervalo, não só a inicial."""
+    from app.agents.dietbox_worker import consultar_slots_disponiveis
+
+    from datetime import date
+    amanha = date.today() + timedelta(days=1)
+    dia_semana = amanha.weekday()
+    from app.agents.dietbox_worker import HORARIOS_POR_DIA
+    horarios = HORARIOS_POR_DIA.get(dia_semana, [])
+    if not {"09:00", "10:00", "15:00"}.issubset(set(horarios)):
+        pytest.skip("Próximo dia útil não contém a grade necessária")
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "Data": [{
+            "inicio": f"{amanha.isoformat()}T12:00:00+00:00",
+            "fim": f"{amanha.isoformat()}T19:00:00+00:00",
+            "timezone": "America/Sao_Paulo",
+            "tipo": 9,
+            "desmarcada": False,
+        }]
+    }
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.get", return_value=mock_resp), \
+         patch("app.agents.dietbox_worker._carregar_locais"), \
+         patch("app.agents.dietbox_worker._ID_LOCAL_PRESENCIAL", "LOCAL-001"):
+
+        slots = consultar_slots_disponiveis(modalidade="presencial", dias_a_frente=3)
+
+    datetimes = [s["datetime"] for s in slots]
+    assert not any(f"{amanha.isoformat()}T09:00" in dt for dt in datetimes)
+    assert not any(f"{amanha.isoformat()}T10:00" in dt for dt in datetimes)
+    assert not any(f"{amanha.isoformat()}T15:00" in dt for dt in datetimes)
+
+
 def test_slots_sem_sabado_domingo():
     """Sábado (5) e domingo (6) nunca devem ter slots."""
     from app.agents.dietbox_worker import HORARIOS_POR_DIA

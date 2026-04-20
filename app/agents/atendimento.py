@@ -119,7 +119,6 @@ MSG_PREFERENCIA_HORARIO = (
 )
 
 MSG_AGENDAMENTO_OPCOES = (
-    "Só um minutinho, já verifico pra você 💚\n\n"
     "Tenho essas opções disponíveis para {modalidade}:\n\n"
     "{opcoes}\n\n"
     "Qual horário funciona melhor pra você?"

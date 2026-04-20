@@ -13,6 +13,7 @@ import os
 import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -38,6 +39,28 @@ _ID_LOCAL_PRESENCIAL: str | None = None
 _ID_LOCAL_ONLINE: str | None = None
 
 TOKEN_CACHE_PATH = Path(__file__).parent.parent.parent / "dietbox_token_cache.json"
+
+
+def _parse_agenda_datetime(value: str, timezone_name: str | None = None) -> datetime | None:
+    """Normaliza datetimes da API para o fuso da agenda."""
+    if not value:
+        return None
+
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+    tz = BRT
+    if timezone_name:
+        try:
+            tz = ZoneInfo(timezone_name)
+        except Exception:
+            tz = BRT
+
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=tz)
+    return dt.astimezone(tz)
 
 
 # ── Autenticação ──────────────────────────────────────────────────────────────
@@ -237,13 +260,20 @@ def consultar_slots_disponiveis(
     for item in ocupados_raw:
         if item.get("desmarcada"):
             continue
-        inicio_item = item.get("inicio", "")
-        if inicio_item:
-            try:
-                dt_str = inicio_item[:16]  # "2026-04-10T09:00"
-                ocupados.add(dt_str)
-            except Exception:
-                pass
+        timezone_item = item.get("timezone")
+        inicio_item = item.get("inicio", "") or item.get("Start", "") or item.get("start", "")
+        fim_item = item.get("fim", "") or item.get("End", "") or item.get("end", "")
+        dt_inicio = _parse_agenda_datetime(inicio_item, timezone_item)
+        if dt_inicio is None:
+            continue
+
+        dt_fim = _parse_agenda_datetime(fim_item, timezone_item) or (dt_inicio + timedelta(hours=1))
+        current = dt_inicio.replace(second=0, microsecond=0)
+        limite = dt_fim.replace(second=0, microsecond=0)
+
+        while current < limite:
+            ocupados.add(current.strftime("%Y-%m-%dT%H:%M"))
+            current += timedelta(hours=1)
 
     # Gera slots livres dentro do período
     DIAS_PT = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]

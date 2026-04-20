@@ -46,6 +46,27 @@ def test_waiting_indicator_antes_de_dietbox():
     )
 
 
+def test_agendamento_opcoes_nao_repete_waiting_indicator():
+    """A mensagem de opções não deve repetir o texto de espera já enviado separadamente."""
+    from app.agents.atendimento import AgenteAtendimento
+
+    agente = AgenteAtendimento(telefone="5531999990011", phone_hash="hash011")
+    agente.etapa = "agendamento"
+    agente.modalidade = "presencial"
+    agente.plano_escolhido = "unica"
+
+    slots_mock = [
+        {"data_fmt": "terça, 21/04", "hora": "9h", "datetime": "2026-04-21T09:00:00"},
+        {"data_fmt": "quarta, 22/04", "hora": "10h", "datetime": "2026-04-22T10:00:00"},
+    ]
+
+    with patch("app.agents.atendimento.consultar_slots_disponiveis", return_value=slots_mock):
+        respostas = agente._iniciar_agendamento()
+
+    assert len(respostas) >= 2
+    assert "Só um minutinho, já verifico pra você" not in respostas[1]
+
+
 def test_waiting_indicator_antes_de_pagamento_cartao():
     """D-21: _etapa_forma_pagamento retorna waiting indicator como primeiro item (cartão)."""
     from app.agents.atendimento import AgenteAtendimento
