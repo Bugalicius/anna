@@ -138,6 +138,14 @@ async def route_message(phone: str, phone_hash: str, text: str, meta_message_id:
     intencao = rota["intencao"]
     agente_destino = rota["agente"]
 
+    if _deve_manter_atendimento_sem_estado(agente_ativo, stage, text, intencao):
+        intencao = "agendar"
+        agente_destino = "atendimento"
+
+    if _deve_ignorar_interrupt_falso_positivo(agente_ativo, text, intencao):
+        intencao = "agendar"
+        agente_destino = "atendimento"
+
     logger.info(
         "route phone=%s stage=%s intencao=%s agente_destino=%s agente_ativo=%s",
         phone[-4:], stage, intencao, agente_destino, tipo_agente,
@@ -456,6 +464,56 @@ def _deve_deixar_agente_responder_duvida(agent, intencao: str) -> bool:
     return False
 
 
+def _deve_ignorar_interrupt_falso_positivo(agent, text: str, intencao: str) -> bool:
+    """Evita trocar para retenção quando o paciente ainda está escolhendo um novo agendamento."""
+    if intencao not in {"remarcar", "cancelar"}:
+        return False
+    if _tipo_agente(agent) != "AgenteAtendimento":
+        return False
+    if getattr(agent, "pagamento_confirmado", False):
+        return False
+
+    etapa = getattr(agent, "etapa", None)
+    if etapa not in {"preferencia_horario", "agendamento", "forma_pagamento", "pagamento"}:
+        return False
+
+    texto = text.lower()
+    marcadores_consulta_existente = (
+        "minha consulta",
+        "consulta marcada",
+        "consulta agendada",
+        "já tenho consulta",
+        "ja tenho consulta",
+        "já marquei",
+        "ja marquei",
+        "remarcar minha consulta",
+        "cancelar minha consulta",
+    )
+    return not any(marcador in texto for marcador in marcadores_consulta_existente)
+
+
+def _deve_manter_atendimento_sem_estado(agent, stage: str | None, text: str, intencao: str) -> bool:
+    """Mantém o fluxo de atendimento mesmo sem agente ativo se o contato ainda está no pipeline comercial."""
+    if agent is not None:
+        return False
+    if intencao not in {"remarcar", "cancelar"}:
+        return False
+    if stage not in {"collecting_info", "presenting", "scheduling", "aguardando_pagamento"}:
+        return False
+
+    texto = text.lower()
+    marcadores_consulta_existente = (
+        "minha consulta",
+        "consulta marcada",
+        "consulta agendada",
+        "já tenho consulta",
+        "ja tenho consulta",
+        "já marquei",
+        "ja marquei",
+    )
+    return not any(marcador in texto for marcador in marcadores_consulta_existente)
+
+
 def _salvar_nome_contact(phone_hash: str, nome: str) -> None:
     """Persiste nome coletado no Contact para reconhecimento futuro (D-13, D-14)."""
     try:
@@ -484,10 +542,17 @@ def _atualizar_contact_por_estado(phone_hash: str, agent) -> None:
 
             if agent.etapa == "finalizacao" and agent.pagamento_confirmado:
                 set_tag(db, contact, Tag.OK, force=True)
+                contact.stage = "agendado"
+            elif agent.etapa in ("boas_vindas", "qualificacao"):
+                contact.stage = "collecting_info"
             elif agent.etapa in ("agendamento", "forma_pagamento"):
                 set_tag(db, contact, Tag.AGUARDANDO_PAGAMENTO)
+                contact.stage = "aguardando_pagamento"
+            elif agent.etapa in ("apresentacao_planos", "escolha_plano", "preferencia_horario"):
+                contact.stage = "presenting"
             elif agent.etapa in ("cadastro_dietbox", "confirmacao", "finalizacao"):
                 set_tag(db, contact, Tag.AGENDADO)
+                contact.stage = "agendado"
 
             if agent.nome:
                 contact.collected_name = agent.nome

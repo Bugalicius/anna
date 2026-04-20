@@ -212,6 +212,79 @@ def test_agendamento_nunca_mesmo_dia():
     )
 
 
+def test_agendamento_rejeicao_de_slots_volta_para_preferencia():
+    """Quando a paciente pede algo mais próximo, o fluxo deve refazer a busca sem manter o turno anterior."""
+    from app.agents.atendimento import AgenteAtendimento
+
+    agente = AgenteAtendimento(telefone="5531999990005", phone_hash="hash005")
+    agente.etapa = "agendamento"
+    agente.modalidade = "presencial"
+    agente.plano_escolhido = "unica"
+    agente._preferencia_horas = {"10h"}
+    agente._preferencia_dia = 2
+    agente._slots_oferecidos = [
+        {"data_fmt": "quarta, 22/04", "hora": "10h", "datetime": "2026-04-22T10:00:00"},
+        {"data_fmt": "quarta, 29/04", "hora": "10h", "datetime": "2026-04-29T10:00:00"},
+        {"data_fmt": "quinta, 30/04", "hora": "10h", "datetime": "2026-04-30T10:00:00"},
+    ]
+
+    with patch.object(agente, "_iniciar_agendamento", return_value=["wait", "novas opções"]) as mock_iniciar:
+        respostas = agente.processar("não tem algo mais perto?")
+
+    assert respostas == ["wait", "novas opções"]
+    assert agente.etapa == "agendamento"
+    assert agente._preferencia_horas is None
+    assert agente._preferencia_dia is None
+    mock_iniciar.assert_called_once()
+
+
+def test_preferencia_horario_especifica_19h_e_explica_fallback():
+    """Se a paciente pedir 19h e não houver esse horário, o agente deve explicar e oferecer os mais próximos."""
+    from app.agents.atendimento import AgenteAtendimento
+
+    agente = AgenteAtendimento(telefone="5531999990006", phone_hash="hash006")
+    agente.etapa = "preferencia_horario"
+    agente.modalidade = "presencial"
+    agente.plano_escolhido = "unica"
+
+    slots_mock = [
+        {"data_fmt": "terça, 22/04", "hora": "10h", "datetime": "2026-04-22T10:00:00"},
+        {"data_fmt": "quarta, 23/04", "hora": "15h", "datetime": "2026-04-23T15:00:00"},
+        {"data_fmt": "quinta, 24/04", "hora": "18h", "datetime": "2026-04-24T18:00:00"},
+    ]
+
+    with patch("app.agents.atendimento.consultar_slots_disponiveis", return_value=slots_mock):
+        respostas = agente.processar("à noite 19h")
+
+    assert agente.etapa == "agendamento"
+    assert agente._preferencia_horas == {"19h"}
+    texto = " ".join(respostas).lower()
+    assert "não encontrei opções às 19h" in texto or "nao encontrei opcoes as 19h" in texto
+    assert "3 horários mais próximos" in texto or "3 horarios mais proximos" in texto
+
+
+def test_agendamento_reinterpreta_quando_paciente_reforca_noite():
+    """Se a paciente reclamar que pediu noite, o agente deve refazer a busca com essa restrição."""
+    from app.agents.atendimento import AgenteAtendimento
+
+    agente = AgenteAtendimento(telefone="5531999990007", phone_hash="hash007")
+    agente.etapa = "agendamento"
+    agente.modalidade = "presencial"
+    agente.plano_escolhido = "unica"
+    agente._slots_oferecidos = [
+        {"data_fmt": "terça, 22/04", "hora": "10h", "datetime": "2026-04-22T10:00:00"},
+        {"data_fmt": "quarta, 23/04", "hora": "15h", "datetime": "2026-04-23T15:00:00"},
+    ]
+
+    with patch.object(agente, "_iniciar_agendamento", return_value=["wait", "novas opções noite"]) as mock_iniciar:
+        respostas = agente.processar("mas eu falei à noite")
+
+    assert respostas == ["wait", "novas opções noite"]
+    assert agente._preferencia_horas == {"18h", "19h"}
+    assert agente._agendamento_modo == "preferencia"
+    mock_iniciar.assert_called_once()
+
+
 def test_formulario_nunca_oferecido_proativamente():
     """Regra: nenhuma MSG_* contém 'formulário' sendo oferecido proativamente."""
     from app.agents import atendimento
@@ -270,6 +343,36 @@ def test_escolha_plano_duvida_parcelamento_mantem_etapa():
     assert "cartão" in texto or "cartao" in texto
     assert "consulta única" in texto
     assert "plano ouro" in texto
+
+
+def test_boas_vindas_duvida_antes_do_nome_pede_identificacao():
+    """Mesmo com pergunta comercial, a primeira etapa deve manter a coleta de identificação."""
+    from app.agents.atendimento import AgenteAtendimento
+
+    agente = AgenteAtendimento(telefone="5531999990008", phone_hash="hash008")
+    agente.historico = [{"role": "assistant", "content": "Pra começar, me fala seu nome."}]
+
+    respostas = agente._etapa_boas_vindas("quanto custa a consulta online?")
+
+    texto = " ".join(respostas).lower()
+    assert "nome e sobrenome" in texto
+    assert "primeira consulta" in texto or "já é paciente" in texto or "ja e paciente" in texto
+
+
+def test_pagamento_duvida_politica_responde_sem_quebrar_fluxo():
+    """Na etapa de pagamento, dúvida sobre política deve ser respondida sem voltar para menu fixo."""
+    from app.agents.atendimento import AgenteAtendimento
+
+    agente = AgenteAtendimento(telefone="5531999990009", phone_hash="hash009")
+    agente.etapa = "pagamento"
+    agente.plano_escolhido = "unica"
+    agente.modalidade = "presencial"
+
+    respostas = agente._etapa_pagamento("precisa pagar antes?")
+
+    texto = " ".join(respostas).lower()
+    assert "pagamento" in texto or "agendamento só é confirmado" in texto or "agendamento so e confirmado" in texto
+    assert "comprovante" in texto
 
 
 # ── Test: FAQ aprendido ───────────────────────────────────────────────────────

@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import random
+import re
 from datetime import datetime, date, timedelta, timezone
 
 import anthropic
@@ -193,6 +194,18 @@ _WAITING_MESSAGES = [
     "Só um minutinho, já verifico pra você 💚",
     "Aguarda um instante que já te respondo 💚",
 ]
+
+HORAS_MANHA = {"8h", "9h", "10h"}
+HORAS_TARDE = {"15h", "16h", "17h"}
+HORAS_NOITE = {"18h", "19h"}
+DIAS_MAP = {
+    "segunda": 0, "seg": 0,
+    "terça": 1, "terca": 1, "ter": 1,
+    "quarta": 2, "qua": 2,
+    "quinta": 3, "qui": 3,
+    "sexta": 4, "sex": 4,
+}
+DIAS_PT_LOCAL = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
 
 MSG_SEM_HORARIOS = (
     "Poxa, não encontrei horários disponíveis nos próximos dias úteis. "
@@ -376,6 +389,239 @@ def _responder_duvida_pagamento(plano_atual: str, modalidade: str, plano_upgrade
     )
 
 
+def _detectar_modalidade(msg: str) -> str | None:
+    msg_lower = msg.lower()
+    if "online" in msg_lower:
+        return "online"
+    if any(w in msg_lower for w in ["presencial", "pessoal", "clínica", "clinica", "vespasiano"]):
+        return "presencial"
+    return None
+
+
+def _detectar_forma_pagamento(msg: str) -> str | None:
+    msg_lower = msg.lower()
+    if "pix" in msg_lower or "transferência" in msg_lower or "transferencia" in msg_lower:
+        return "pix"
+    if any(w in msg_lower for w in ["cartão", "cartao", "crédito", "credito", "link"]):
+        return "cartao"
+    return None
+
+
+def _detectar_status_paciente(msg: str) -> str | None:
+    msg_lower = msg.lower()
+    if any(w in msg_lower for w in ["já sou paciente", "sou paciente", "retorno", "segunda vez", "já fui"]):
+        return "retorno"
+    if any(w in msg_lower for w in ["primeira consulta", "primeira vez", "nova paciente", "sou nova"]):
+        return "novo"
+    return None
+
+
+def _eh_afirmacao(msg: str) -> bool:
+    msg_lower = msg.lower()
+    return any(w in msg_lower for w in ["sim", "pode", "vamos", "fechado", "quero", "prefiro esse", "pode ser"])
+
+
+def _eh_negacao(msg: str) -> bool:
+    msg_lower = msg.lower()
+    return any(w in msg_lower for w in ["não", "nao", "prefiro manter", "quero manter", "deixa", "melhor não", "melhor nao"])
+
+
+def _detectar_topico_duvida(msg: str) -> str | None:
+    msg_lower = msg.lower()
+    if any(w in msg_lower for w in ["pix", "cartão", "cartao", "parcela", "parcel", "desconto", "pagar", "pagamento", "sinal", "valor", "preço", "preco"]):
+        return "pagamento"
+    if any(w in msg_lower for w in ["online", "presencial", "videochamada", "vídeo", "whatsapp", "endereço", "endereco", "local"]):
+        return "modalidade"
+    if any(w in msg_lower for w in ["plano", "consulta", "retorno", "premium", "ouro", "formulário", "formulario"]):
+        return "planos"
+    if any(w in msg_lower for w in ["remarcar", "cancelar", "antecedência", "antecedencia", "política", "politica"]):
+        return "politica"
+    return None
+
+
+def _compreender_turno_atendimento(etapa: str, msg: str) -> dict:
+    """Extrai intenção operacional do turno antes da etapa reagir."""
+    topico_duvida = _detectar_topico_duvida(msg) if "?" in msg or any(w in msg.lower() for w in ["como", "qual", "quanto", "posso", "funciona", "divide", "parcel"]) else None
+    return {
+        "nome": _extrair_nome(msg),
+        "status_paciente": _detectar_status_paciente(msg),
+        "plano": _identificar_plano(msg),
+        "modalidade": _detectar_modalidade(msg),
+        "forma_pagamento": _detectar_forma_pagamento(msg),
+        "topico_duvida": topico_duvida,
+        "afirmacao": _eh_afirmacao(msg),
+        "negacao": _eh_negacao(msg),
+        "quer_agendar": any(w in msg.lower() for w in ["agendar", "marcar consulta", "marcar uma consulta"]),
+        "quer_remarcar": "remarcar" in msg.lower(),
+        "quer_cancelar": "cancelar" in msg.lower(),
+    }
+
+
+def _resposta_contextual_topico(topico: str, plano: str | None, modalidade: str | None) -> str:
+    if topico == "pagamento":
+        if plano and modalidade:
+            return (
+                f"{_resumo_pagamento_plano(plano, modalidade)}\n\n"
+                f"Política: {kb.get_politica('pagamento')}"
+            )
+        return kb.get_politica("pagamento")
+    if topico == "modalidade":
+        return (
+            "Funciona assim 😊\n\n"
+            "• *Presencial*: consulta na Aura Clinic, em Vespasiano\n"
+            "• *Online*: videochamada pelo WhatsApp no horário agendado"
+        )
+    if topico == "politica":
+        return (
+            f"Pagamento: {kb.get_politica('pagamento')}\n\n"
+            f"Remarcação/cancelamento: {kb.get_politica('cancelamento')}"
+        )
+    if topico == "planos":
+        return kb.resumo_planos_texto()
+    return ""
+
+
+def _descrever_preferencia_horario(horas_preferidas: set[str] | None, dia_preferido: int | None) -> str:
+    partes: list[str] = []
+    if dia_preferido is not None:
+        partes.append(f"na {DIAS_PT_LOCAL[dia_preferido]}")
+
+    if horas_preferidas:
+        if horas_preferidas == HORAS_MANHA:
+            partes.append("de manhã")
+        elif horas_preferidas == HORAS_TARDE:
+            partes.append("à tarde")
+        elif horas_preferidas == HORAS_NOITE:
+            partes.append("à noite")
+        elif len(horas_preferidas) == 1:
+            partes.append(f"às {next(iter(horas_preferidas))}")
+        else:
+            horas_txt = ", ".join(sorted(horas_preferidas))
+            partes.append(f"nos horários {horas_txt}")
+
+    return " ".join(partes).strip()
+
+
+def _interpretar_preferencia_horario(msg: str) -> dict:
+    """Interpreta preferência de agenda de forma estruturada antes de consultar o Dietbox."""
+    msg_lower = msg.lower().strip()
+    prioridade_proximidade = any(
+        trecho in msg_lower
+        for trecho in [
+            "mais perto",
+            "mais próximo",
+            "mais proximo",
+            "horário mais próximo",
+            "horario mais proximo",
+            "o mais próximo",
+            "o mais proximo",
+        ]
+    )
+
+    dia_preferido: int | None = None
+    for palavra, weekday in DIAS_MAP.items():
+        if re.search(rf"\b{re.escape(palavra)}\b", msg_lower):
+            dia_preferido = weekday
+            break
+
+    horas_preferidas: set[str] | None = None
+    horas_explicitas = {
+        f"{int(hora)}h"
+        for hora in re.findall(r"\b([01]?\d|2[0-3])\s*h\b", msg_lower)
+    }
+    horas_grade = {h for h in horas_explicitas if h in (HORAS_MANHA | HORAS_TARDE | HORAS_NOITE)}
+    if horas_grade:
+        horas_preferidas = horas_grade
+    elif any(w in msg_lower for w in ["manhã", "manha", "cedo", "de manhã", "pela manhã", "pela manha"]):
+        horas_preferidas = set(HORAS_MANHA)
+    elif any(w in msg_lower for w in ["tarde", "de tarde", "à tarde", "a tarde"]):
+        horas_preferidas = set(HORAS_TARDE)
+    elif any(w in msg_lower for w in ["noite", "à noite", "a noite", "de noite"]):
+        horas_preferidas = set(HORAS_NOITE)
+
+    aceita_qualquer_turno = any(
+        trecho in msg_lower
+        for trecho in [
+            "qualquer horário",
+            "qualquer horario",
+            "qualquer turno",
+            "tanto faz",
+            "indiferente",
+        ]
+    ) or prioridade_proximidade
+
+    acao = "buscar"
+    if not prioridade_proximidade and dia_preferido is None and horas_preferidas is None and not aceita_qualquer_turno:
+        acao = "esclarecer"
+
+    return {
+        "acao": acao,
+        "modo_busca": "proximidade" if prioridade_proximidade else "preferencia",
+        "horas_preferidas": None if aceita_qualquer_turno else horas_preferidas,
+        "dia_preferido": dia_preferido,
+        "descricao_preferencia": _descrever_preferencia_horario(
+            None if aceita_qualquer_turno else horas_preferidas,
+            dia_preferido,
+        ),
+        "aceita_qualquer_turno": aceita_qualquer_turno,
+    }
+
+
+def _selecionar_slots_agendamento(
+    slots: list[dict],
+    horas_preferidas: set[str] | None,
+    dia_preferido: int | None,
+    modo_busca: str,
+) -> tuple[list[dict], str | None]:
+    """Seleciona slots e retorna aviso se a preferência não puder ser atendida."""
+    if not slots:
+        return [], None
+
+    if modo_busca == "proximidade":
+        return slots[:3], None
+
+    def _match_preferencia(s: dict) -> bool:
+        dia_ok = dia_preferido is None or s["data_fmt"].startswith(DIAS_PT_LOCAL[dia_preferido])
+        hora_ok = not horas_preferidas or s["hora"] in horas_preferidas
+        return dia_ok and hora_ok
+
+    matches = [s for s in slots if _match_preferencia(s)]
+    if not matches and (horas_preferidas or dia_preferido is not None):
+        descricao = _descrever_preferencia_horario(horas_preferidas, dia_preferido)
+        aviso = (
+            f"Não encontrei opções {descricao} nos próximos dias úteis.\n\n"
+            "Para te ajudar sem te deixar travada, separei os 3 horários mais próximos disponíveis:"
+        ).replace("opções  nos", "opções nos")
+        return slots[:3], aviso
+
+    base = matches if matches else slots
+    slot1 = base[0]
+    selecionados: list[dict] = [slot1]
+    dias_usados: set[str] = {slot1["datetime"][:10]}
+
+    candidatos = [s for s in base[1:] if s["datetime"][:10] not in dias_usados]
+    ordenados = sorted(
+        candidatos,
+        key=lambda s: (0 if (horas_preferidas and s["hora"] in horas_preferidas) else 1, s["datetime"]),
+    )
+    for s in ordenados:
+        dia = s["datetime"][:10]
+        if dia not in dias_usados:
+            selecionados.append(s)
+            dias_usados.add(dia)
+        if len(selecionados) >= 3:
+            break
+
+    if len(selecionados) < 3:
+        for s in base[1:]:
+            if s not in selecionados:
+                selecionados.append(s)
+            if len(selecionados) >= 3:
+                break
+
+    return selecionados[:3], None
+
+
 # ── Classe principal do Agente 1 ──────────────────────────────────────────────
 
 class AgenteAtendimento:
@@ -465,13 +711,12 @@ class AgenteAtendimento:
 
     def _etapa_boas_vindas(self, msg: str) -> list[str]:
         """Primeiro contato: envia boas-vindas e aguarda nome."""
+        compreensao = _compreender_turno_atendimento("boas_vindas", msg)
         # Tenta extrair nome da mensagem atual
-        nome = _extrair_nome(msg)
+        nome = compreensao["nome"]
         if nome:
             self.nome = nome
-            status = "retorno" if any(
-                w in msg.lower() for w in ["já sou", "já fui", "retorno", "segunda vez", "paciente"]
-            ) else "novo"
+            status = compreensao["status_paciente"] or "novo"
             self.status_paciente = status
             self.etapa = "qualificacao"
 
@@ -497,11 +742,19 @@ class AgenteAtendimento:
         if len(self.historico) <= 1:
             return [MSG_BOAS_VINDAS]
 
+        if compreensao["topico_duvida"] or compreensao["plano"] or compreensao["modalidade"]:
+            return [
+                "Consigo te explicar isso sim 💚\n\n"
+                "Antes de avançar, só preciso confirmar seu *nome e sobrenome* "
+                "e se é sua *primeira consulta* ou se você *já é paciente*, combinado?"
+            ]
+
         return [_gerar_resposta_llm(self.historico, "boas_vindas",
                                      "Ainda precisa coletar o nome do paciente.")]
 
     def _etapa_qualificacao(self, msg: str) -> list[str]:
         msg_lower = msg.lower()
+        compreensao = _compreender_turno_atendimento("qualificacao", msg)
         # Paciente informa que é de retorno — não exibir fluxo de novo paciente
         _KEYWORDS_RETORNO = {"já sou paciente", "sou paciente", "já sou", "paciente", "retorno", "segunda vez"}
         if any(w in msg_lower for w in _KEYWORDS_RETORNO):
@@ -515,6 +768,18 @@ class AgenteAtendimento:
                 "👉 Tirar uma dúvida"
             ]
 
+        if compreensao["topico_duvida"]:
+            resposta = _resposta_contextual_topico(
+                compreensao["topico_duvida"],
+                self.plano_escolhido,
+                self.modalidade,
+            )
+            if resposta:
+                return [
+                    f"{resposta}\n\n"
+                    "E para eu te orientar da melhor forma, me conta: qual é o seu principal objetivo com o acompanhamento?"
+                ]
+
         self.objetivo = msg[:200]  # salva objetivo bruto
         self.etapa = "apresentacao_planos"
         # Envia: confirmação + [PDF seria enviado aqui] + mensagem sobre planos
@@ -527,14 +792,14 @@ class AgenteAtendimento:
     def _etapa_apresentacao_planos(self, msg: str) -> list[str]:
         """Identifica o plano de interesse e pergunta modalidade."""
         msg_lower = msg.lower()
+        compreensao = _compreender_turno_atendimento("apresentacao_planos", msg)
 
         # Captura modalidade mesmo sem plano escolhido
-        if "online" in msg_lower:
-            self.modalidade = "online"
-        elif any(w in msg_lower for w in ["presencial", "pessoal", "clínica", "clinica", "vespasiano"]):
-            self.modalidade = "presencial"
+        modalidade = compreensao["modalidade"]
+        if modalidade:
+            self.modalidade = modalidade
 
-        plano = _identificar_plano(msg)
+        plano = compreensao["plano"]
         if plano:
             self.plano_escolhido = plano
             if plano == "formulario":
@@ -560,6 +825,18 @@ class AgenteAtendimento:
                 "👉 Plano Premium\n"
                 "👉 Dieta por formulário"
             ]
+
+        if compreensao["topico_duvida"]:
+            resposta = _resposta_contextual_topico(
+                compreensao["topico_duvida"],
+                self.plano_escolhido,
+                self.modalidade,
+            )
+            if resposta:
+                return [
+                    f"{resposta}\n\n"
+                    "Agora me conta qual plano e modalidade fazem mais sentido pra você."
+                ]
 
         interpretacao = _interpretar_mensagem_etapa(
             self.historico,
@@ -622,11 +899,10 @@ class AgenteAtendimento:
 
     def _etapa_escolha_plano(self, msg: str) -> list[str]:
         """Captura modalidade e tenta upsell único."""
+        compreensao = _compreender_turno_atendimento("escolha_plano", msg)
         if self.modalidade is None:
-            if "online" in msg.lower():
-                self.modalidade = "online"
-            elif any(w in msg.lower() for w in ["presencial", "pessoal", "clínica", "clinica"]):
-                self.modalidade = "presencial"
+            if compreensao["modalidade"]:
+                self.modalidade = compreensao["modalidade"]
             else:
                 return ["Só confirmando: você prefere *presencial* ou *online*? 😊"]
 
@@ -660,9 +936,8 @@ class AgenteAtendimento:
 
             # Dúvidas sobre comparação/parcelamento devem manter o paciente na etapa
             # em vez de avançar direto para agendamento.
-            if any(w in msg.lower() for w in [
-                "duvida", "dúvida", "não sei", "nao sei", "divide", "parcel",
-                "cartão", "cartao", "valor", "preço", "preco", "?",
+            if compreensao["topico_duvida"] in {"pagamento", "planos"} or any(w in msg.lower() for w in [
+                "duvida", "dúvida", "não sei", "nao sei", "?",
             ]):
                 return [
                     _responder_duvida_pagamento(plano_atual, modal, plano_upgrade)
@@ -690,54 +965,37 @@ class AgenteAtendimento:
             if interpretacao.get("acao") in {"tirar_duvida", "resposta_livre"} and interpretacao.get("resposta_sugerida"):
                 return [interpretacao["resposta_sugerida"]]
 
-            if interpretacao.get("aceita_upgrade") or any(w in msg.lower() for w in ["premium", "sim", "pode", "vamos", "upgrade", "esse"]):
+            if interpretacao.get("aceita_upgrade") or (compreensao["afirmacao"] and not compreensao["negacao"]) or "premium" in msg.lower():
                 self.plano_escolhido = upgrades.get(self.plano_escolhido, self.plano_escolhido)
-            elif interpretacao.get("manter_plano"):
+            elif interpretacao.get("manter_plano") or compreensao["negacao"]:
                 pass
 
         self.etapa = "preferencia_horario"
         return [MSG_PREFERENCIA_HORARIO]
 
     def _etapa_preferencia_horario(self, msg: str) -> list[str]:
-        """Recebe preferência de turno/dia e consulta Dietbox filtrando por ela."""
-        msg_lower = msg.lower()
+        """Interpreta a necessidade da paciente e só então consulta a agenda."""
+        interpretacao = _interpretar_preferencia_horario(msg)
+        if interpretacao["acao"] != "buscar":
+            return [
+                "Me diz do jeito que for mais fácil 😊\n\n"
+                "Pode ser, por exemplo:\n"
+                "• quarta à tarde\n"
+                "• qualquer dia às 19h\n"
+                "• o horário mais próximo"
+            ]
 
-        # Detecta turno preferido
-        HORAS_MANHA = {"08h", "09h", "10h"}
-        HORAS_TARDE = {"15h", "16h", "17h"}
-        HORAS_NOITE = {"18h", "19h"}
-
-        if any(w in msg_lower for w in ["manhã", "manha", "cedo", "8h", "9h", "10h", "08h", "09h", "10h"]):
-            horas_preferidas = HORAS_MANHA
-        elif any(w in msg_lower for w in ["tarde", "15h", "16h", "17h"]):
-            horas_preferidas = HORAS_TARDE
-        elif any(w in msg_lower for w in ["noite", "18h", "19h"]):
-            horas_preferidas = HORAS_NOITE
-        else:
-            horas_preferidas = None  # qualquer turno
-
-        # Detecta dia preferido
-        DIAS_MAP = {
-            "segunda": 0, "seg": 0,
-            "terça": 1, "terca": 1, "ter": 1,
-            "quarta": 2, "qua": 2,
-            "quinta": 3, "qui": 3,
-            "sexta": 4, "sex": 4,
-        }
-        dia_preferido: int | None = None
-        for palavra, weekday in DIAS_MAP.items():
-            if palavra in msg_lower:
-                dia_preferido = weekday
-                break
-
-        self._preferencia_horas = horas_preferidas
-        self._preferencia_dia = dia_preferido
+        self._preferencia_horas = interpretacao["horas_preferidas"]
+        self._preferencia_dia = interpretacao["dia_preferido"]
+        self._agendamento_modo = interpretacao["modo_busca"]
+        self._preferencia_texto = interpretacao["descricao_preferencia"]
         self.etapa = "agendamento"
         return self._iniciar_agendamento()
 
     def _iniciar_agendamento(self) -> list[str]:
         horas_preferidas: set[str] | None = getattr(self, "_preferencia_horas", None)
         dia_preferido: int | None = getattr(self, "_preferencia_dia", None)
+        modo_busca: str = getattr(self, "_agendamento_modo", "preferencia")
         hoje_iso = date.today().isoformat()  # "2026-04-20"
 
         waiting = random.choice(_WAITING_MESSAGES)
@@ -760,45 +1018,12 @@ class AgenteAtendimento:
         if not slots:
             return [MSG_SEM_HORARIOS]
 
-        # Algoritmo de priorização (D-09 a D-13):
-        # Slot 1 = melhor match da preferência (dia + turno)
-        # Slots 2 e 3 = próximos disponíveis em dias DIFERENTES
-        DIAS_PT_LOCAL = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
-
-        def _slot_dia(s: dict) -> str:
-            """Extrai o dia do data_fmt para comparação."""
-            return s.get("data_fmt", "").split("T")[0] if "T" in s.get("data_fmt", "") else s.get("datetime", "")[:10]
-
-        def _match_preferencia(s: dict) -> bool:
-            dia_ok = dia_preferido is None or s["data_fmt"].startswith(DIAS_PT_LOCAL[dia_preferido])
-            hora_ok = not horas_preferidas or s["hora"] in horas_preferidas
-            return dia_ok and hora_ok
-
-        # Slot 1: primeiro que bate dia + turno
-        slot1 = next((s for s in slots if _match_preferencia(s)), None)
-
-        # Se não encontrou match exato, tenta só turno
-        if slot1 is None and horas_preferidas:
-            slot1 = next((s for s in slots if s["hora"] in horas_preferidas), None)
-
-        # Se ainda não achou, pega qualquer slot
-        if slot1 is None:
-            slot1 = slots[0]
-
-        selecionados: list[dict] = [slot1]
-        dias_usados: set[str] = {slot1["datetime"][:10]}
-
-        # Slots 2 e 3: próximos em dias diferentes, preferencialmente mesmo turno
-        candidatos = [s for s in slots if s["datetime"][:10] not in dias_usados]
-        # Prefere mesmo turno, mas não exige
-        ordenados = sorted(candidatos, key=lambda s: (0 if (horas_preferidas and s["hora"] in horas_preferidas) else 1))
-        for s in ordenados:
-            dia = s["datetime"][:10]
-            if dia not in dias_usados:
-                selecionados.append(s)
-                dias_usados.add(dia)
-            if len(selecionados) >= 3:
-                break
+        selecionados, aviso_preferencia = _selecionar_slots_agendamento(
+            slots=slots,
+            horas_preferidas=horas_preferidas,
+            dia_preferido=dia_preferido,
+            modo_busca=modo_busca,
+        )
 
         if not selecionados:
             return [MSG_SEM_HORARIOS]
@@ -808,21 +1033,33 @@ class AgenteAtendimento:
             f"{i+1}. {s['data_fmt']} às {s['hora']}"
             for i, s in enumerate(self._slots_oferecidos)
         )
+        mensagem_opcoes = MSG_AGENDAMENTO_OPCOES.format(
+            modalidade=self.modalidade,
+            opcoes=opcoes,
+        )
+        if aviso_preferencia:
+            mensagem_opcoes = f"{aviso_preferencia}\n\n{opcoes}\n\nQual horário funciona melhor pra você?"
         return [
             waiting,
-            MSG_AGENDAMENTO_OPCOES.format(
-                modalidade=self.modalidade,
-                opcoes=opcoes,
-            ),
+            mensagem_opcoes,
         ]
 
     def _etapa_agendamento(self, msg: str) -> list[str]:
         slots = getattr(self, "_slots_oferecidos", [])
+        interpretacao = _interpretar_preferencia_horario(msg)
+        msg_lower = msg.lower()
+
+        if interpretacao["acao"] == "buscar":
+            self._preferencia_horas = interpretacao["horas_preferidas"]
+            self._preferencia_dia = interpretacao["dia_preferido"]
+            self._agendamento_modo = interpretacao["modo_busca"]
+            self._preferencia_texto = interpretacao["descricao_preferencia"]
+            return self._iniciar_agendamento()
 
         # tenta identificar a escolha (1, 2 ou 3)
         escolha = None
         for i, word in enumerate(["1", "primeiro", "2", "segundo", "3", "terceiro"]):
-            if word in msg.lower():
+            if word in msg_lower:
                 idx = i // 2
                 if idx < len(slots):
                     escolha = slots[idx]
@@ -866,11 +1103,19 @@ class AgenteAtendimento:
 
     def _etapa_forma_pagamento(self, msg: str) -> list[str]:
         msg_lower = msg.lower()
-        if "pix" in msg_lower or "transferência" in msg_lower or "transferencia" in msg_lower:
+        compreensao = _compreender_turno_atendimento("forma_pagamento", msg)
+        if compreensao["forma_pagamento"] == "pix":
             self.forma_pagamento = "pix"
-        elif any(w in msg_lower for w in ["cartão", "cartao", "crédito", "credito", "link"]):
+        elif compreensao["forma_pagamento"] == "cartao":
             self.forma_pagamento = "cartao"
         else:
+            if compreensao["topico_duvida"] in {"pagamento", "politica"}:
+                plano = self.plano_escolhido or "unica"
+                modal = self.modalidade or "presencial"
+                return [
+                    f"{_resposta_contextual_topico('pagamento', plano, modal)}\n\n"
+                    "Qual opção prefere: *PIX* ou *cartão*?"
+                ]
             interpretacao = _interpretar_mensagem_etapa(
                 self.historico,
                 "forma_pagamento",
@@ -932,6 +1177,14 @@ class AgenteAtendimento:
     def _etapa_pagamento(self, msg: str) -> list[str]:
         """Aguarda confirmação de pagamento (comprovante ou confirmação verbal)."""
         msg_lower = msg.lower()
+        compreensao = _compreender_turno_atendimento("pagamento", msg)
+        if compreensao["topico_duvida"] in {"pagamento", "politica"}:
+            plano = self.plano_escolhido or "unica"
+            modal = self.modalidade or "presencial"
+            return [
+                f"{_resposta_contextual_topico(compreensao['topico_duvida'], plano, modal)}\n\n"
+                "Quando concluir, me manda o comprovante para eu confirmar sua consulta 😊"
+            ]
         confirmado = any(w in msg_lower for w in [
             "paguei", "pago", "feito", "fiz", "enviei", "transferi",
             "confirmado", "ok", "sim", "já paguei",
@@ -1070,6 +1323,10 @@ class AgenteAtendimento:
             "upsell_oferecido": self.upsell_oferecido,
             "slot_escolhido": self.slot_escolhido,
             "_slots_oferecidos": getattr(self, "_slots_oferecidos", []),
+            "_preferencia_horas": sorted(getattr(self, "_preferencia_horas", []) or []),
+            "_preferencia_dia": getattr(self, "_preferencia_dia", None),
+            "_agendamento_modo": getattr(self, "_agendamento_modo", "preferencia"),
+            "_preferencia_texto": getattr(self, "_preferencia_texto", ""),
             "forma_pagamento": self.forma_pagamento,
             "pagamento_confirmado": self.pagamento_confirmado,
             "id_paciente_dietbox": self.id_paciente_dietbox,
@@ -1091,6 +1348,10 @@ class AgenteAtendimento:
         agent.upsell_oferecido = data.get("upsell_oferecido", False)
         agent.slot_escolhido = data.get("slot_escolhido")
         agent._slots_oferecidos = data.get("_slots_oferecidos", [])
+        agent._preferencia_horas = set(data.get("_preferencia_horas", [])) or None
+        agent._preferencia_dia = data.get("_preferencia_dia")
+        agent._agendamento_modo = data.get("_agendamento_modo", "preferencia")
+        agent._preferencia_texto = data.get("_preferencia_texto", "")
         agent.forma_pagamento = data.get("forma_pagamento")
         agent.pagamento_confirmado = data.get("pagamento_confirmado", False)
         agent.id_paciente_dietbox = data.get("id_paciente_dietbox")

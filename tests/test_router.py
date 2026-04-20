@@ -332,6 +332,53 @@ async def test_interrupt_remarcar_troca_agente(state_mgr_mock, meta_mock):
     MockRetencao.assert_called_once()
 
 
+@pytest.mark.asyncio
+async def test_falso_positivo_remarcacao_em_agendamento_mantem_atendimento(state_mgr_mock, meta_mock):
+    """Mensagem ambígua no fluxo de novo agendamento não deve cair em retenção."""
+    from app.agents.atendimento import AgenteAtendimento
+    import app.router as router_module
+    router_module._state_mgr = state_mgr_mock
+
+    agente_ativo = AgenteAtendimento(telefone="5511999", phone_hash="hash123")
+    agente_ativo.etapa = "agendamento"
+    agente_ativo.nome = "Ana"
+    agente_ativo.modalidade = "presencial"
+    agente_ativo.plano_escolhido = "unica"
+    agente_ativo._slots_oferecidos = [
+        {"data_fmt": "quarta, 22/04", "hora": "10h", "datetime": "2026-04-22T10:00:00"},
+        {"data_fmt": "quarta, 29/04", "hora": "10h", "datetime": "2026-04-29T10:00:00"},
+    ]
+    state_mgr_mock.load = AsyncMock(return_value=agente_ativo)
+
+    contact = _make_contact(stage="presenting", collected_name="Ana")
+    db_mock = _make_db_mock(contact)
+
+    with patch("app.router.SessionLocal", return_value=db_mock), \
+         patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
+         patch("app.remarketing.cancel_pending_remarketing"), \
+         patch("app.router.rotear", return_value={
+             "agente": "retencao",
+             "intencao": "remarcar",
+             "confianca": 0.91,
+             "resposta_padrao": None,
+         }), \
+         patch("app.agents.atendimento.consultar_slots_disponiveis", return_value=[
+             {"data_fmt": "terça, 21/04", "hora": "8h", "datetime": "2026-04-21T08:00:00"},
+             {"data_fmt": "quarta, 22/04", "hora": "9h", "datetime": "2026-04-22T09:00:00"},
+             {"data_fmt": "quinta, 23/04", "hora": "15h", "datetime": "2026-04-23T15:00:00"},
+         ]), \
+         patch("app.router.AgenteRetencao") as MockRetencao:
+        await router_module.route_message("5511999", "hash123", "queria um horário mais próximo", "msg-id-1")
+
+    MockRetencao.assert_not_called()
+    state_mgr_mock.delete.assert_not_called()
+    state_mgr_mock.save.assert_called_once()
+    meta_mock.send_text.assert_called()
+    textos = [str(call) for call in meta_mock.send_text.call_args_list]
+    assert any("Tenho essas opções disponíveis" in texto for texto in textos)
+    assert any("terça, 21/04" in texto or "quarta, 22/04" in texto for texto in textos)
+
+
 # ── Test 5: inline — tirar_duvida responde sem trocar de agente ───────────────
 
 @pytest.mark.asyncio
