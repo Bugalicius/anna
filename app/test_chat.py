@@ -77,6 +77,8 @@ async def test_reset(body: ResetRequest):
         contact = db.query(Contact).filter_by(phone_hash=phone_hash).first()
         if contact:
             contact.stage = "new"
+            contact.collected_name = None
+            contact.first_name = None
             db.commit()
     return {"reset": True}
 

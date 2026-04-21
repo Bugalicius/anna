@@ -106,11 +106,14 @@ class ConversationEngine:
 
             if action == REDIRECT_RETENCAO:
                 state["goal"] = "remarcar"
+                turno = {**turno, "intent": "remarcar"}
                 continue
 
             if action == REDIRECT_ATENDIMENTO:
                 state["goal"] = "agendar_consulta"
                 state["tipo_remarcacao"] = None
+                state["collected_data"]["status_paciente"] = "novo"
+                turno = {**turno, "intent": "agendar"}
                 continue
 
             # Marca flags de progresso antes de executar
