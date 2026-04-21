@@ -423,6 +423,14 @@ def _ask_field(campo: str, nome: str, state: dict) -> list:
             "Antes de continuar, pode me informar seu *nome completo* "
             "e se é sua *primeira consulta* ou se você *já é paciente*? 😊"
         ]
+    if campo == "status_paciente":
+        return [
+            f"Obrigada, {nome.split()[0] if nome else ''}! 😊\n\n"
+            "É sua primeira consulta com a Thaynara ou você já é paciente?"
+        ]
+    if campo == "objetivo":
+        primeiro_nome = nome.split()[0] if nome else nome
+        return [MSG_OBJETIVOS.format(nome=primeiro_nome)]
     if campo == "plano":
         return [
             "Qual plano faz mais sentido pra você?\n\n"

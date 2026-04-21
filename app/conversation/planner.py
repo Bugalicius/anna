@@ -191,10 +191,17 @@ def _plan_agendar(state: dict, turno: dict) -> dict:
     if not cd["nome"]:
         return _plano(ASK_FIELD, ask_context="nome")
 
-    # Retorno: só redireciona para retencao se o intent foi explicitamente "remarcar".
-    # Paciente de retorno pode querer agendar nova consulta — não interromper o fluxo.
-    # O goal "remarcar" é ativado pelo intent "remarcar" em _atualizar_goal/decidir_acao.
-    # status_paciente="retorno" aqui apenas informa contexto, não força o fluxo.
+    # Etapa 1 incompleta: status não informado — perguntar (boas-vindas já pediu junto com nome)
+    if not cd["status_paciente"]:
+        return _plano(ASK_FIELD, ask_context="status_paciente")
+
+    # Paciente de retorno → fluxo de remarcação/retenção
+    if cd["status_paciente"] == "retorno":
+        return _plano(REDIRECT_RETENCAO)
+
+    # Etapa 2 (doc 4.2): coletar objetivo antes de enviar planos
+    if not cd["objetivo"]:
+        return _plano(ASK_FIELD, ask_context="objetivo")
 
     if not cd["plano"] and not flags["planos_enviados"]:
         return _plano(SEND_PLANOS)
