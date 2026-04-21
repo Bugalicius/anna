@@ -577,8 +577,50 @@ def _selecionar_slots_agendamento(
     if not slots:
         return [], None
 
+    def _turno_do_slot(slot: dict) -> str:
+        hora = slot.get("hora", "")
+        if hora in HORAS_MANHA:
+            return "manha"
+        if hora in HORAS_TARDE:
+            return "tarde"
+        if hora in HORAS_NOITE:
+            return "noite"
+        return "outro"
+
+    def _selecionar_diversificado(base: list[dict]) -> list[dict]:
+        selecionados: list[dict] = []
+        slots_por_dia: dict[str, list[dict]] = {}
+
+        # Passo 1: prioriza um slot por dia
+        for slot in base:
+            dia = slot["datetime"][:10]
+            if dia in slots_por_dia:
+                continue
+            selecionados.append(slot)
+            slots_por_dia[dia] = [slot]
+            if len(selecionados) >= 3:
+                return selecionados
+
+        # Passo 2: se ainda faltar, permite um segundo slot no mesmo dia,
+        # mas apenas se for de outro turno.
+        for slot in base:
+            dia = slot["datetime"][:10]
+            existentes = slots_por_dia.get(dia, [])
+            if not existentes or len(existentes) >= 2 or slot in selecionados:
+                continue
+            turnos_existentes = {_turno_do_slot(s) for s in existentes}
+            turno_atual = _turno_do_slot(slot)
+            if turno_atual in turnos_existentes:
+                continue
+            selecionados.append(slot)
+            existentes.append(slot)
+            if len(selecionados) >= 3:
+                return selecionados
+
+        return selecionados
+
     if modo_busca == "proximidade":
-        return slots[:3], None
+        return _selecionar_diversificado(slots), None
 
     def _match_preferencia(s: dict) -> bool:
         dia_ok = dia_preferido is None or s["data_fmt"].startswith(DIAS_PT_LOCAL[dia_preferido])
@@ -592,34 +634,15 @@ def _selecionar_slots_agendamento(
             f"Não encontrei opções {descricao} nos próximos dias úteis.\n\n"
             "Para te ajudar sem te deixar travada, separei os 3 horários mais próximos disponíveis:"
         ).replace("opções  nos", "opções nos")
-        return slots[:3], aviso
+        return _selecionar_diversificado(slots), aviso
 
     base = matches if matches else slots
-    slot1 = base[0]
-    selecionados: list[dict] = [slot1]
-    dias_usados: set[str] = {slot1["datetime"][:10]}
-
-    candidatos = [s for s in base[1:] if s["datetime"][:10] not in dias_usados]
-    ordenados = sorted(
-        candidatos,
+    complementares = [s for s in slots if s not in base]
+    base_ordenada = sorted(
+        base + complementares,
         key=lambda s: (0 if (horas_preferidas and s["hora"] in horas_preferidas) else 1, s["datetime"]),
     )
-    for s in ordenados:
-        dia = s["datetime"][:10]
-        if dia not in dias_usados:
-            selecionados.append(s)
-            dias_usados.add(dia)
-        if len(selecionados) >= 3:
-            break
-
-    if len(selecionados) < 3:
-        for s in base[1:]:
-            if s not in selecionados:
-                selecionados.append(s)
-            if len(selecionados) >= 3:
-                break
-
-    return selecionados[:3], None
+    return _selecionar_diversificado(base_ordenada)[:3], None
 
 
 # ── Classe principal do Agente 1 ──────────────────────────────────────────────

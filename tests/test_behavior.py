@@ -285,6 +285,34 @@ def test_agendamento_reinterpreta_quando_paciente_reforca_noite():
     mock_iniciar.assert_called_once()
 
 
+def test_agendamento_nao_oferece_tres_horarios_seguidos_no_mesmo_dia():
+    """Os 3 slots devem priorizar dias diferentes; fallback no mesmo dia só pode ocorrer em outro turno."""
+    from app.agents.atendimento import AgenteAtendimento
+
+    agente = AgenteAtendimento(telefone="5531999990010", phone_hash="hash010")
+    agente.etapa = "preferencia_horario"
+    agente.modalidade = "presencial"
+    agente.plano_escolhido = "unica"
+
+    slots_mock = [
+        {"data_fmt": "quarta, 22/04", "hora": "8h", "datetime": "2026-04-22T08:00:00"},
+        {"data_fmt": "quarta, 22/04", "hora": "9h", "datetime": "2026-04-22T09:00:00"},
+        {"data_fmt": "quarta, 22/04", "hora": "10h", "datetime": "2026-04-22T10:00:00"},
+        {"data_fmt": "quinta, 23/04", "hora": "15h", "datetime": "2026-04-23T15:00:00"},
+        {"data_fmt": "sexta, 24/04", "hora": "18h", "datetime": "2026-04-24T18:00:00"},
+    ]
+
+    with patch("app.agents.atendimento.consultar_slots_disponiveis", return_value=slots_mock):
+        respostas = agente.processar("08h")
+
+    texto = " ".join(respostas)
+    assert "quarta, 22/04 às 8h" in texto
+    assert "quinta, 23/04 às 15h" in texto
+    assert "sexta, 24/04 às 18h" in texto
+    assert "quarta, 22/04 às 9h" not in texto
+    assert "quarta, 22/04 às 10h" not in texto
+
+
 def test_formulario_nunca_oferecido_proativamente():
     """Regra: nenhuma MSG_* contém 'formulário' sendo oferecido proativamente."""
     from app.agents import atendimento

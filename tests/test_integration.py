@@ -280,99 +280,81 @@ def test_montar_lembrete_online():
 _FAKE_ENV = {"WHATSAPP_PHONE_NUMBER_ID": "123456789", "WHATSAPP_TOKEN": "fake-token"}
 
 
+def _make_db_mock_integration(stage: str = "new", collected_name: str | None = None):
+    contact = MagicMock()
+    contact.stage = stage
+    contact.collected_name = collected_name
+    contact.push_name = "Teste"
+    contact.first_name = None
+    contact.id = 1
+    session = MagicMock()
+    session.__enter__ = MagicMock(return_value=session)
+    session.__exit__ = MagicMock(return_value=False)
+    session.query.return_value.filter_by.return_value.first.return_value = contact
+    return session
+
+
+def _make_state_e2e(**kwargs):
+    return {
+        "goal": kwargs.get("goal", "desconhecido"),
+        "status": kwargs.get("status", "coletando"),
+        "collected_data": {"nome": kwargs.get("nome")},
+        "appointment": {"id_agenda": None},
+        "history": [],
+        "flags": {},
+    }
+
+
 @pytest.mark.asyncio
 @patch.dict("os.environ", _FAKE_ENV)
-@patch("app.router.rotear", return_value={
-    "agente": "atendimento",
-    "intencao": "novo_lead",
-    "confianca": 1.0,
-    "resposta_padrao": None,
-})
-@patch("app.router.set_tag")
-@patch("app.meta_api.MetaAPIClient")
-@patch("app.router.SessionLocal")
-async def test_route_message_atendimento(mock_db_cls, mock_meta_cls, mock_set_tag, mock_rotear):
-    from unittest.mock import AsyncMock as _AsyncMock
-    import app.router as router_module
+async def test_route_message_atendimento():
+    """route_message com novo paciente chama engine e envia resposta via Meta."""
     from app.router import route_message
 
-    # Mock do state_mgr (Redis) — sem estado ativo
-    state_mgr = MagicMock()
-    state_mgr.load = _AsyncMock(return_value=None)
-    state_mgr.save = _AsyncMock()
-    state_mgr.delete = _AsyncMock()
-    router_module._state_mgr = state_mgr
-
-    # Mock do banco
-    mock_contact = MagicMock()
-    mock_contact.stage = "new"
-    mock_contact.collected_name = None
-    mock_contact.push_name = "Teste"
-    mock_contact.first_name = None
-    mock_contact.id = 1
-
-    mock_session = MagicMock()
-    mock_session.__enter__ = MagicMock(return_value=mock_session)
-    mock_session.__exit__ = MagicMock(return_value=False)
-    mock_session.query.return_value.filter_by.return_value.first.return_value = mock_contact
-    mock_db_cls.return_value = mock_session
-
-    # Mock do Meta API
+    db_mock = _make_db_mock_integration(stage="new")
     mock_meta = MagicMock()
     mock_meta.send_text = AsyncMock()
-    mock_meta_cls.return_value = mock_meta
 
-    phone = "5531999990099"
-    phone_hash = "hash_e2e_001"
+    with patch("app.router.SessionLocal", return_value=db_mock), \
+         patch("app.meta_api.MetaAPIClient", return_value=mock_meta), \
+         patch("app.remarketing.cancel_pending_remarketing"), \
+         patch("app.conversation.engine.engine.handle_message",
+               new_callable=AsyncMock,
+               return_value=["Oi! Sou a Ana 💚 Assistente da Thaynara."]), \
+         patch("app.conversation.state.load_state",
+               new_callable=AsyncMock, return_value=_make_state_e2e()), \
+         patch("app.conversation.state.save_state", new_callable=AsyncMock):
+        await route_message("5531999990099", "hash_e2e_001", "oi", "msg-001")
 
-    await route_message(phone, phone_hash, "oi", "msg-001")
-
-    # Deve ter chamado send_text com boas-vindas
     assert mock_meta.send_text.called
     args = mock_meta.send_text.call_args[0]
-    assert phone in args
+    assert "5531999990099" in args
     assert "Ana" in args[1]
 
 
 @pytest.mark.asyncio
 @patch.dict("os.environ", _FAKE_ENV)
-@patch("app.router.rotear", return_value={
-    "agente": "padrao",
-    "intencao": "fora_de_contexto",
-    "confianca": 0.9,
-    "resposta_padrao": "Posso te ajudar com agendamentos!",
-})
-@patch("app.meta_api.MetaAPIClient")
-@patch("app.router.SessionLocal")
-async def test_route_message_fora_contexto(mock_db_cls, mock_meta_cls, mock_rotear):
-    from unittest.mock import AsyncMock as _AsyncMock
-    import app.router as router_module
+async def test_route_message_fora_contexto():
+    """route_message com mensagem fora de contexto envia resposta padrão."""
     from app.router import route_message
 
-    state_mgr = MagicMock()
-    state_mgr.load = _AsyncMock(return_value=None)
-    state_mgr.save = _AsyncMock()
-    state_mgr.delete = _AsyncMock()
-    router_module._state_mgr = state_mgr
-
-    mock_contact = MagicMock()
-    mock_contact.stage = "presenting"
-    mock_contact.collected_name = None
-    mock_contact.push_name = None
-    mock_contact.first_name = None
-    mock_contact.id = 2
-
-    mock_session = MagicMock()
-    mock_session.__enter__ = MagicMock(return_value=mock_session)
-    mock_session.__exit__ = MagicMock(return_value=False)
-    mock_session.query.return_value.filter_by.return_value.first.return_value = mock_contact
-    mock_db_cls.return_value = mock_session
-
+    db_mock = _make_db_mock_integration(stage="presenting")
     mock_meta = MagicMock()
     mock_meta.send_text = AsyncMock()
-    mock_meta_cls.return_value = mock_meta
 
-    await route_message("5531000000001", "hash_e2e_002", "qual o resultado do brasileirão?", "msg-002")
+    with patch("app.router.SessionLocal", return_value=db_mock), \
+         patch("app.meta_api.MetaAPIClient", return_value=mock_meta), \
+         patch("app.remarketing.cancel_pending_remarketing"), \
+         patch("app.conversation.engine.engine.handle_message",
+               new_callable=AsyncMock,
+               return_value=["Posso te ajudar com agendamentos!"]), \
+         patch("app.conversation.state.load_state",
+               new_callable=AsyncMock, return_value=_make_state_e2e()), \
+         patch("app.conversation.state.save_state", new_callable=AsyncMock):
+        await route_message(
+            "5531000000001", "hash_e2e_002",
+            "qual o resultado do brasileirão?", "msg-002",
+        )
 
     assert mock_meta.send_text.called
     args = mock_meta.send_text.call_args[0]
@@ -381,43 +363,28 @@ async def test_route_message_fora_contexto(mock_db_cls, mock_meta_cls, mock_rote
 
 @pytest.mark.asyncio
 @patch.dict("os.environ", _FAKE_ENV)
-@patch("app.escalation.escalar_para_humano", new_callable=AsyncMock)
-@patch("app.router.rotear", return_value={
-    "agente": "escalacao",
-    "intencao": "duvida_clinica",
-    "confianca": 0.9,
-    "resposta_padrao": None,
-})
-@patch("app.meta_api.MetaAPIClient")
-@patch("app.router.SessionLocal")
-async def test_route_message_escalacao(mock_db_cls, mock_meta_cls, mock_rotear, mock_escalar):
-    from unittest.mock import AsyncMock as _AsyncMock
-    import app.router as router_module
+async def test_route_message_escalacao():
+    """route_message com dúvida clínica aciona escalar_para_humano."""
     from app.router import route_message
 
-    state_mgr = MagicMock()
-    state_mgr.load = _AsyncMock(return_value=None)
-    state_mgr.save = _AsyncMock()
-    state_mgr.delete = _AsyncMock()
-    router_module._state_mgr = state_mgr
-
-    mock_contact = MagicMock()
-    mock_contact.stage = "presenting"
-    mock_contact.collected_name = "Joana"
-    mock_contact.push_name = None
-    mock_contact.first_name = None
-    mock_contact.id = 3
-
-    mock_session = MagicMock()
-    mock_session.__enter__ = MagicMock(return_value=mock_session)
-    mock_session.__exit__ = MagicMock(return_value=False)
-    mock_session.query.return_value.filter_by.return_value.first.return_value = mock_contact
-    mock_db_cls.return_value = mock_session
-
+    db_mock = _make_db_mock_integration(stage="presenting", collected_name="Joana")
     mock_meta = MagicMock()
     mock_meta.send_text = AsyncMock()
-    mock_meta_cls.return_value = mock_meta
 
-    await route_message("5531000000002", "hash_e2e_003", "tenho diabetes, posso comer pão?", "msg-003")
+    with patch("app.router.SessionLocal", return_value=db_mock), \
+         patch("app.meta_api.MetaAPIClient", return_value=mock_meta), \
+         patch("app.remarketing.cancel_pending_remarketing"), \
+         patch("app.conversation.engine.engine.handle_message",
+               new_callable=AsyncMock,
+               return_value=[{"_meta_action": "escalate"}]), \
+         patch("app.conversation.state.load_state",
+               new_callable=AsyncMock, return_value=_make_state_e2e(nome="Joana")), \
+         patch("app.conversation.state.save_state", new_callable=AsyncMock), \
+         patch("app.escalation.escalar_para_humano",
+               new_callable=AsyncMock) as mock_escalar:
+        await route_message(
+            "5531000000002", "hash_e2e_003",
+            "tenho diabetes, posso comer pão?", "msg-003",
+        )
 
     mock_escalar.assert_called_once()

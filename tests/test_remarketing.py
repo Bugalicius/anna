@@ -206,44 +206,56 @@ MSG_ENCERRAMENTO_ESPERADA = (
 )
 
 
-@pytest.mark.asyncio
-async def test_router_recusou_remarketing_envia_mensagem_encerramento():
-    """Quando intencao=recusou_remarketing, Ana envia a mensagem de encerramento exata."""
-    from app.router import route_message
-
+def _make_remarketing_mocks(contact_id: str = "contact-id-1"):
     contact_mock = MagicMock()
     contact_mock.stage = "remarketing"
-    contact_mock.collected_name = "Maria"
-    contact_mock.push_name = "Maria"
-    contact_mock.first_name = "Maria"
-    contact_mock.id = "contact-id-1"
-    contact_mock.phone_e164 = "+5531999999999"
-
+    contact_mock.collected_name = None
+    contact_mock.push_name = None
+    contact_mock.first_name = None
+    contact_mock.id = contact_id
     db_mock = MagicMock()
     db_mock.query.return_value.filter_by.return_value.first.return_value = contact_mock
     db_mock.__enter__ = MagicMock(return_value=db_mock)
     db_mock.__exit__ = MagicMock(return_value=False)
-
     meta_mock = AsyncMock()
+    return contact_mock, db_mock, meta_mock
+
+
+def _recusou_state():
+    return {
+        "goal": "recusou_remarketing",
+        "status": "recusou_remarketing",
+        "collected_data": {"nome": None},
+        "appointment": {"id_agenda": None},
+        "history": [],
+        "flags": {},
+    }
+
+
+@pytest.mark.asyncio
+async def test_router_recusou_remarketing_envia_mensagem_encerramento():
+    """Quando engine retorna MSG_ENCERRAMENTO_REMARKETING, Ana envia a mensagem."""
+    from app.router import route_message, MSG_ENCERRAMENTO_REMARKETING
+
+    _, db_mock, meta_mock = _make_remarketing_mocks("contact-id-1")
     enviadas = []
 
-    async def capturar_send_text(phone, msg):
+    async def capturar(phone, msg):
         enviadas.append(msg)
 
-    meta_mock.send_text.side_effect = capturar_send_text
+    meta_mock.send_text.side_effect = capturar
 
     with (
         patch("app.router.SessionLocal", return_value=db_mock),
-        patch("app.router._state_mgr", None),
-        patch("app.router.rotear", return_value={
-            "agente": "remarketing_recusa",
-            "intencao": "recusou_remarketing",
-            "confianca": 0.95,
-            "resposta_padrao": None,
-        }),
+        patch("app.meta_api.MetaAPIClient", return_value=meta_mock),
         patch("app.router.cancel_pending_remarketing"),
         patch("app.router.set_tag"),
-        patch("app.meta_api.MetaAPIClient", return_value=meta_mock),
+        patch("app.conversation.engine.engine.handle_message",
+              new_callable=AsyncMock, return_value=[MSG_ENCERRAMENTO_REMARKETING]),
+        patch("app.conversation.state.load_state",
+              new_callable=AsyncMock, return_value=_recusou_state()),
+        patch("app.conversation.state.save_state", new_callable=AsyncMock),
+        patch("app.conversation.state.delete_state", new_callable=AsyncMock),
     ):
         await route_message(
             phone="+5531999999999",
@@ -257,37 +269,23 @@ async def test_router_recusou_remarketing_envia_mensagem_encerramento():
 
 @pytest.mark.asyncio
 async def test_router_recusou_remarketing_chama_set_tag_lead_perdido():
-    """Apos recusou_remarketing, contact.stage deve mudar para lead_perdido."""
-    from app.router import route_message
+    """Apos recusou_remarketing, set_tag(LEAD_PERDIDO) deve ser chamado."""
+    from app.router import route_message, MSG_ENCERRAMENTO_REMARKETING
     from app.tags import Tag
 
-    contact_mock = MagicMock()
-    contact_mock.stage = "remarketing"
-    contact_mock.collected_name = None
-    contact_mock.push_name = None
-    contact_mock.first_name = None
-    contact_mock.id = "contact-id-2"
-    contact_mock.phone_e164 = "+5531999999998"
-
-    db_mock = MagicMock()
-    db_mock.query.return_value.filter_by.return_value.first.return_value = contact_mock
-    db_mock.__enter__ = MagicMock(return_value=db_mock)
-    db_mock.__exit__ = MagicMock(return_value=False)
-
-    meta_mock = AsyncMock()
+    _, db_mock, meta_mock = _make_remarketing_mocks("contact-id-2")
 
     with (
         patch("app.router.SessionLocal", return_value=db_mock),
-        patch("app.router._state_mgr", None),
-        patch("app.router.rotear", return_value={
-            "agente": "remarketing_recusa",
-            "intencao": "recusou_remarketing",
-            "confianca": 0.95,
-            "resposta_padrao": None,
-        }),
+        patch("app.meta_api.MetaAPIClient", return_value=meta_mock),
         patch("app.router.cancel_pending_remarketing"),
         patch("app.router.set_tag") as mock_set_tag,
-        patch("app.meta_api.MetaAPIClient", return_value=meta_mock),
+        patch("app.conversation.engine.engine.handle_message",
+              new_callable=AsyncMock, return_value=[MSG_ENCERRAMENTO_REMARKETING]),
+        patch("app.conversation.state.load_state",
+              new_callable=AsyncMock, return_value=_recusou_state()),
+        patch("app.conversation.state.save_state", new_callable=AsyncMock),
+        patch("app.conversation.state.delete_state", new_callable=AsyncMock),
     ):
         await route_message(
             phone="+5531999999998",
@@ -296,43 +294,28 @@ async def test_router_recusou_remarketing_chama_set_tag_lead_perdido():
             meta_message_id="msg-002",
         )
 
-    set_tag_calls = mock_set_tag.call_args_list
-    tags_usadas = [call.args[2] for call in set_tag_calls if len(call.args) >= 3]
+    tags_usadas = [call.args[2] for call in mock_set_tag.call_args_list if len(call.args) >= 3]
     assert Tag.LEAD_PERDIDO in tags_usadas
 
 
 @pytest.mark.asyncio
 async def test_router_recusou_remarketing_chama_cancel_pending():
     """Apos recusou_remarketing, cancel_pending_remarketing deve ser chamado."""
-    from app.router import route_message
+    from app.router import route_message, MSG_ENCERRAMENTO_REMARKETING
 
-    contact_mock = MagicMock()
-    contact_mock.stage = "remarketing"
-    contact_mock.collected_name = None
-    contact_mock.push_name = None
-    contact_mock.first_name = None
-    contact_mock.id = "contact-id-3"
-    contact_mock.phone_e164 = "+5531999999997"
-
-    db_mock = MagicMock()
-    db_mock.query.return_value.filter_by.return_value.first.return_value = contact_mock
-    db_mock.__enter__ = MagicMock(return_value=db_mock)
-    db_mock.__exit__ = MagicMock(return_value=False)
-
-    meta_mock = AsyncMock()
+    _, db_mock, meta_mock = _make_remarketing_mocks("contact-id-3")
 
     with (
         patch("app.router.SessionLocal", return_value=db_mock),
-        patch("app.router._state_mgr", None),
-        patch("app.router.rotear", return_value={
-            "agente": "remarketing_recusa",
-            "intencao": "recusou_remarketing",
-            "confianca": 0.95,
-            "resposta_padrao": None,
-        }),
+        patch("app.meta_api.MetaAPIClient", return_value=meta_mock),
         patch("app.router.cancel_pending_remarketing") as mock_cancel,
         patch("app.router.set_tag"),
-        patch("app.meta_api.MetaAPIClient", return_value=meta_mock),
+        patch("app.conversation.engine.engine.handle_message",
+              new_callable=AsyncMock, return_value=[MSG_ENCERRAMENTO_REMARKETING]),
+        patch("app.conversation.state.load_state",
+              new_callable=AsyncMock, return_value=_recusou_state()),
+        patch("app.conversation.state.save_state", new_callable=AsyncMock),
+        patch("app.conversation.state.delete_state", new_callable=AsyncMock),
     ):
         await route_message(
             phone="+5531999999997",
@@ -346,38 +329,23 @@ async def test_router_recusou_remarketing_chama_cancel_pending():
 
 @pytest.mark.asyncio
 async def test_router_recusou_remarketing_deleta_estado_redis():
-    """Se ha estado Redis ativo, deve ser deletado apos recusou_remarketing."""
-    from app.router import route_message
+    """Apos recusou_remarketing, delete_state deve ser chamado para limpar Redis."""
+    from app.router import route_message, MSG_ENCERRAMENTO_REMARKETING
 
-    contact_mock = MagicMock()
-    contact_mock.stage = "remarketing"
-    contact_mock.collected_name = None
-    contact_mock.push_name = None
-    contact_mock.first_name = None
-    contact_mock.id = "contact-id-4"
-    contact_mock.phone_e164 = "+5531999999996"
-
-    db_mock = MagicMock()
-    db_mock.query.return_value.filter_by.return_value.first.return_value = contact_mock
-    db_mock.__enter__ = MagicMock(return_value=db_mock)
-    db_mock.__exit__ = MagicMock(return_value=False)
-
-    meta_mock = AsyncMock()
-    state_mgr_mock = AsyncMock()
-    state_mgr_mock.load.return_value = None
+    _, db_mock, meta_mock = _make_remarketing_mocks("contact-id-4")
 
     with (
         patch("app.router.SessionLocal", return_value=db_mock),
-        patch("app.router._state_mgr", state_mgr_mock),
-        patch("app.router.rotear", return_value={
-            "agente": "remarketing_recusa",
-            "intencao": "recusou_remarketing",
-            "confianca": 0.95,
-            "resposta_padrao": None,
-        }),
+        patch("app.meta_api.MetaAPIClient", return_value=meta_mock),
         patch("app.router.cancel_pending_remarketing"),
         patch("app.router.set_tag"),
-        patch("app.meta_api.MetaAPIClient", return_value=meta_mock),
+        patch("app.conversation.engine.engine.handle_message",
+              new_callable=AsyncMock, return_value=[MSG_ENCERRAMENTO_REMARKETING]),
+        patch("app.conversation.state.load_state",
+              new_callable=AsyncMock, return_value=_recusou_state()),
+        patch("app.conversation.state.save_state", new_callable=AsyncMock),
+        patch("app.conversation.state.delete_state",
+              new_callable=AsyncMock) as mock_del,
     ):
         await route_message(
             phone="+5531999999996",
@@ -386,7 +354,7 @@ async def test_router_recusou_remarketing_deleta_estado_redis():
             meta_message_id="msg-004",
         )
 
-    state_mgr_mock.delete.assert_called_once_with("abc000hash")
+    mock_del.assert_called_once_with("abc000hash")
 
 
 def test_msg_encerramento_constante_existe_no_router():

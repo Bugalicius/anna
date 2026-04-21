@@ -69,8 +69,8 @@ class ResetRequest(BaseModel):
 @router.post("/test/reset")
 async def test_reset(body: ResetRequest):
     phone_hash = hashlib.sha256(body.phone.encode()).hexdigest()[:64]
-    if _router._state_mgr:
-        await _router._state_mgr.delete(phone_hash)
+    from app.conversation.state import delete_state
+    await delete_state(phone_hash)
     from app.database import SessionLocal
     from app.models import Contact
     with SessionLocal() as db:

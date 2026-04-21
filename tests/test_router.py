@@ -192,376 +192,241 @@ def test_agent_state_dict_removido():
     )
 
 
-# ── Test 1: route_message carrega estado do Redis no início ──────────────────
+# ── Helpers de estado ────────────────────────────────────────────────────────
+
+
+def _make_state(
+    goal: str = "desconhecido",
+    status: str = "coletando",
+    nome: str | None = None,
+    id_agenda: str | None = None,
+):
+    """Cria um state dict mínimo para mocks de load_state."""
+    return {
+        "goal": goal,
+        "status": status,
+        "collected_data": {"nome": nome},
+        "appointment": {"id_agenda": id_agenda},
+        "history": [],
+        "flags": {},
+    }
+
+
+# ── Test 1: engine.handle_message chamado com args corretos ──────────────────
 
 @pytest.mark.asyncio
-async def test_route_message_carrega_redis_no_inicio(state_mgr_mock, meta_mock):
-    """Test 1: load() do state_mgr é chamado no início de route_message."""
-    import app.router as router_module
-    router_module._state_mgr = state_mgr_mock
+async def test_engine_chamado_com_args_corretos():
+    """route_message deve chamar engine.handle_message(phone_hash, text, phone=phone)."""
+    from app.router import route_message
 
     contact = _make_contact(stage="presenting")
     db_mock = _make_db_mock(contact)
-
-    agente_mock = MagicMock()
-    agente_mock.processar = MagicMock(return_value=["olá"])
-    agente_mock.etapa = "coleta_nome"
+    meta = MagicMock()
+    meta.send_text = AsyncMock()
 
     with patch("app.router.SessionLocal", return_value=db_mock), \
-         patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
+         patch("app.meta_api.MetaAPIClient", return_value=meta), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.router.rotear", return_value={
-             "agente": "atendimento",
-             "intencao": "novo_lead",
-             "confianca": 1.0,
-             "resposta_padrao": None,
-         }), \
-         patch("app.router.AgenteAtendimento") as MockAgente:
-        instance = MockAgente.return_value
-        instance.processar.return_value = ["oi paciente"]
-        instance.etapa = "coleta_nome"
-        instance.nome = None
-        instance.to_dict = MagicMock(return_value={"_tipo": "atendimento", "etapa": "coleta_nome"})
-        await router_module.route_message("5511999", "hash123", "oi", "msg-id-1")
+         patch("app.conversation.engine.engine.handle_message",
+               new_callable=AsyncMock, return_value=["oi"]) as mock_engine, \
+         patch("app.conversation.state.load_state",
+               new_callable=AsyncMock, return_value=_make_state()), \
+         patch("app.conversation.state.save_state", new_callable=AsyncMock):
+        await route_message("5511999", "hash123", "oi", "msg-id-1")
 
-    state_mgr_mock.load.assert_called_once_with("hash123")
+    mock_engine.assert_called_once_with("hash123", "oi", phone="5511999")
 
 
-# ── Test 2: route_message salva estado no Redis após processar ────────────────
+# ── Test 2: respostas de texto enviadas ao paciente ──────────────────────────
 
 @pytest.mark.asyncio
-async def test_route_message_salva_redis_apos_processar(state_mgr_mock, meta_mock):
-    """Test 2: save() do state_mgr é chamado após agente processar (etapa não finalizada)."""
-    import app.router as router_module
-    router_module._state_mgr = state_mgr_mock
+async def test_respostas_texto_enviadas():
+    """Strings retornadas pelo engine são enviadas via meta.send_text."""
+    from app.router import route_message
 
     contact = _make_contact(stage="presenting")
     db_mock = _make_db_mock(contact)
+    meta = MagicMock()
+    meta.send_text = AsyncMock()
 
     with patch("app.router.SessionLocal", return_value=db_mock), \
-         patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
+         patch("app.meta_api.MetaAPIClient", return_value=meta), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.router.rotear", return_value={
-             "agente": "atendimento",
-             "intencao": "novo_lead",
-             "confianca": 1.0,
-             "resposta_padrao": None,
-         }), \
-         patch("app.router.AgenteAtendimento") as MockAgente:
-        instance = MockAgente.return_value
-        instance.processar.return_value = ["oi paciente"]
-        instance.etapa = "coleta_nome"  # não finalizado
-        instance.nome = None
-        instance.to_dict = MagicMock(return_value={"_tipo": "atendimento", "etapa": "coleta_nome"})
-        await router_module.route_message("5511999", "hash123", "oi", "msg-id-1")
+         patch("app.conversation.engine.engine.handle_message",
+               new_callable=AsyncMock, return_value=["msg A", "msg B"]), \
+         patch("app.conversation.state.load_state",
+               new_callable=AsyncMock, return_value=_make_state()), \
+         patch("app.conversation.state.save_state", new_callable=AsyncMock):
+        await route_message("5511999", "hash123", "oi", "msg-id-1")
 
-    state_mgr_mock.save.assert_called_once()
+    assert meta.send_text.call_count == 2
+    textos = [call.args[1] for call in meta.send_text.call_args_list]
+    assert textos == ["msg A", "msg B"]
 
 
-# ── Test 3: route_message deleta estado quando fluxo finalizado ───────────────
+# ── Test 3: sentinel de escalação aciona escalar_para_humano ─────────────────
 
 @pytest.mark.asyncio
-async def test_route_message_deleta_redis_em_finalizacao(state_mgr_mock, meta_mock):
-    """Test 3: delete() chamado quando AgenteAtendimento.etapa == 'finalizacao'."""
-    import app.router as router_module
-    router_module._state_mgr = state_mgr_mock
+async def test_sentinel_escalacao():
+    """Sentinel {"_meta_action": "escalate"} deve acionar escalar_para_humano."""
+    from app.router import route_message
 
     contact = _make_contact(stage="presenting")
     db_mock = _make_db_mock(contact)
+    meta = MagicMock()
+    meta.send_text = AsyncMock()
 
     with patch("app.router.SessionLocal", return_value=db_mock), \
-         patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
+         patch("app.meta_api.MetaAPIClient", return_value=meta), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.router.rotear", return_value={
-             "agente": "atendimento",
-             "intencao": "novo_lead",
-             "confianca": 1.0,
-             "resposta_padrao": None,
-         }), \
-         patch("app.router.AgenteAtendimento") as MockAgente:
-        instance = MockAgente.return_value
-        instance.processar.return_value = ["consulta agendada com sucesso!"]
-        instance.etapa = "finalizacao"  # fluxo finalizado
-        instance.nome = "Maria"
-        instance.pagamento_confirmado = False
-        # _tipo permite que _fluxo_finalizado identifique o tipo via getattr fallback
-        instance._tipo = "AgenteAtendimento"
-        instance.to_dict = MagicMock(return_value={"_tipo": "atendimento", "etapa": "finalizacao"})
-        await router_module.route_message("5511999", "hash123", "ok", "msg-id-1")
+         patch("app.conversation.engine.engine.handle_message",
+               new_callable=AsyncMock, return_value=[{"_meta_action": "escalate"}]), \
+         patch("app.conversation.state.load_state",
+               new_callable=AsyncMock, return_value=_make_state()), \
+         patch("app.conversation.state.save_state", new_callable=AsyncMock), \
+         patch("app.escalation.escalar_para_humano", new_callable=AsyncMock) as mock_escalar:
+        await route_message("5511999", "hash123", "tenho diabetes", "msg-id-1")
 
-    state_mgr_mock.delete.assert_called_once_with("hash123")
-    state_mgr_mock.save.assert_not_called()
+    mock_escalar.assert_called_once()
 
 
-# ── Test 4: interrupt detection — remarcar troca de agente ────────────────────
+# ── Test 4: paciente de retorno tem nome pré-populado no state ────────────────
 
 @pytest.mark.asyncio
-async def test_interrupt_remarcar_troca_agente(state_mgr_mock, meta_mock):
-    """Test 4: com AgenteAtendimento ativo + intenção 'remarcar' → troca para AgenteRetencao."""
-    from app.agents.atendimento import AgenteAtendimento
-    import app.router as router_module
-    router_module._state_mgr = state_mgr_mock
-
-    # Agente de atendimento ativo no Redis
-    agente_ativo = AgenteAtendimento(telefone="5511999", phone_hash="hash123")
-    agente_ativo.etapa = "escolha_plano"
-    agente_ativo.nome = "Carlos"
-    state_mgr_mock.load = AsyncMock(return_value=agente_ativo)
-
-    contact = _make_contact(stage="presenting", collected_name="Carlos")
-    db_mock = _make_db_mock(contact)
-
-    with patch("app.router.SessionLocal", return_value=db_mock), \
-         patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
-         patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.router.rotear", return_value={
-             "agente": "retencao",
-             "intencao": "remarcar",
-             "confianca": 0.95,
-             "resposta_padrao": None,
-         }), \
-         patch("app.router.AgenteRetencao") as MockRetencao:
-        instance = MockRetencao.return_value
-        instance.processar_remarcacao.return_value = ["vamos remarcar!"]
-        instance.etapa = "aguardando_slot"
-        instance.to_dict = MagicMock(return_value={"_tipo": "retencao", "etapa": "aguardando_slot"})
-        await router_module.route_message("5511999", "hash123", "quero remarcar", "msg-id-1")
-
-    # Deve ter deletado o estado antigo e criado AgenteRetencao
-    state_mgr_mock.delete.assert_called()
-    MockRetencao.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_falso_positivo_remarcacao_em_agendamento_mantem_atendimento(state_mgr_mock, meta_mock):
-    """Mensagem ambígua no fluxo de novo agendamento não deve cair em retenção."""
-    from app.agents.atendimento import AgenteAtendimento
-    import app.router as router_module
-    router_module._state_mgr = state_mgr_mock
-
-    agente_ativo = AgenteAtendimento(telefone="5511999", phone_hash="hash123")
-    agente_ativo.etapa = "agendamento"
-    agente_ativo.nome = "Ana"
-    agente_ativo.modalidade = "presencial"
-    agente_ativo.plano_escolhido = "unica"
-    agente_ativo._slots_oferecidos = [
-        {"data_fmt": "quarta, 22/04", "hora": "10h", "datetime": "2026-04-22T10:00:00"},
-        {"data_fmt": "quarta, 29/04", "hora": "10h", "datetime": "2026-04-29T10:00:00"},
-    ]
-    state_mgr_mock.load = AsyncMock(return_value=agente_ativo)
-
-    contact = _make_contact(stage="presenting", collected_name="Ana")
-    db_mock = _make_db_mock(contact)
-
-    with patch("app.router.SessionLocal", return_value=db_mock), \
-         patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
-         patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.router.rotear", return_value={
-             "agente": "retencao",
-             "intencao": "remarcar",
-             "confianca": 0.91,
-             "resposta_padrao": None,
-         }), \
-         patch("app.agents.atendimento.consultar_slots_disponiveis", return_value=[
-             {"data_fmt": "terça, 21/04", "hora": "8h", "datetime": "2026-04-21T08:00:00"},
-             {"data_fmt": "quarta, 22/04", "hora": "9h", "datetime": "2026-04-22T09:00:00"},
-             {"data_fmt": "quinta, 23/04", "hora": "15h", "datetime": "2026-04-23T15:00:00"},
-         ]), \
-         patch("app.router.AgenteRetencao") as MockRetencao:
-        await router_module.route_message("5511999", "hash123", "queria um horário mais próximo", "msg-id-1")
-
-    MockRetencao.assert_not_called()
-    state_mgr_mock.delete.assert_not_called()
-    state_mgr_mock.save.assert_called_once()
-    meta_mock.send_text.assert_called()
-    textos = [str(call) for call in meta_mock.send_text.call_args_list]
-    assert any("Tenho essas opções disponíveis" in texto for texto in textos)
-    assert any("terça, 21/04" in texto or "quarta, 22/04" in texto for texto in textos)
-
-
-# ── Test 5: inline — tirar_duvida responde sem trocar de agente ───────────────
-
-@pytest.mark.asyncio
-async def test_tirar_duvida_em_etapa_sensivel_deixa_agente_responder(state_mgr_mock, meta_mock):
-    """Com agente ativo em etapa sensível, dúvida contextual deve ser tratada pelo próprio agente."""
-    from app.agents.atendimento import AgenteAtendimento
-    import app.router as router_module
-    router_module._state_mgr = state_mgr_mock
-
-    agente_ativo = AgenteAtendimento(telefone="5511999", phone_hash="hash123")
-    agente_ativo.etapa = "escolha_plano"
-    agente_ativo.nome = "Ana"
-    state_mgr_mock.load = AsyncMock(return_value=agente_ativo)
-
-    contact = _make_contact(stage="presenting", collected_name="Ana")
-    db_mock = _make_db_mock(contact)
-
-    with patch("app.router.SessionLocal", return_value=db_mock), \
-        patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
-         patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.router.rotear", return_value={
-             "agente": "atendimento",
-             "intencao": "tirar_duvida",
-             "confianca": 0.88,
-             "resposta_padrao": None,
-         }):
-        agente_ativo.processar = MagicMock(return_value=["explicação contextual"])
-        await router_module.route_message("5511999", "hash123", "quanto custa?", "msg-id-1")
-
-    agente_ativo.processar.assert_called_once_with("quanto custa?")
-    state_mgr_mock.save.assert_called_once()
-    # send_text deve ter sido chamado com a resposta do próprio agente
-    meta_mock.send_text.assert_called_once()
-    assert "explicação contextual" in str(meta_mock.send_text.call_args)
-
-
-@pytest.mark.asyncio
-async def test_agente_ativo_atendimento_atualiza_tag_e_nome_no_contact(state_mgr_mock, meta_mock):
-    """Agente ativo de atendimento deve persistir stage e nome ao avançar o fluxo."""
-    from app.agents.atendimento import AgenteAtendimento
-    import app.router as router_module
-    router_module._state_mgr = state_mgr_mock
-
-    agente_ativo = AgenteAtendimento(telefone="5511999", phone_hash="hash123")
-    agente_ativo.etapa = "agendamento"
-    agente_ativo.nome = "Ana Maria"
-    agente_ativo.processar = MagicMock(return_value=["vamos para pagamento"])
-    state_mgr_mock.load = AsyncMock(return_value=agente_ativo)
-
-    contact = _make_contact(stage="novo_lead", collected_name=None)
-    db_mock = _make_db_mock(contact)
-
-    def _processar(_text):
-        agente_ativo.etapa = "forma_pagamento"
-        agente_ativo.nome = "Ana Maria"
-        return ["vamos para pagamento"]
-
-    agente_ativo.processar = MagicMock(side_effect=_processar)
-
-    with patch("app.router.SessionLocal", return_value=db_mock), \
-        patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
-         patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.router.rotear", return_value={
-             "agente": "atendimento",
-             "intencao": "novo_lead",
-             "confianca": 0.99,
-             "resposta_padrao": None,
-         }):
-        await router_module.route_message("5511999", "hash123", "1", "msg-id-1")
-
-    assert contact.stage == "aguardando_pagamento"
-    assert contact.collected_name == "Ana Maria"
-    assert contact.first_name == "Ana"
-    state_mgr_mock.save.assert_called_once()
-
-
-# ── Test 6: inline — fora_de_contexto mantém agente ativo ────────────────────
-
-@pytest.mark.asyncio
-async def test_inline_fora_contexto_mantem_agente_ativo(state_mgr_mock, meta_mock):
-    """Test 6: com agente ativo + intenção 'fora_de_contexto' → responde inline, agente NÃO troca."""
-    from app.agents.atendimento import AgenteAtendimento
-    import app.router as router_module
-    router_module._state_mgr = state_mgr_mock
-
-    agente_ativo = AgenteAtendimento(telefone="5511999", phone_hash="hash123")
-    agente_ativo.etapa = "coleta_nome"
-    state_mgr_mock.load = AsyncMock(return_value=agente_ativo)
-
-    contact = _make_contact(stage="presenting")
-    db_mock = _make_db_mock(contact)
-
-    with patch("app.router.SessionLocal", return_value=db_mock), \
-         patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
-         patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.router.rotear", return_value={
-             "agente": "padrao",
-             "intencao": "fora_de_contexto",
-             "confianca": 0.9,
-             "resposta_padrao": "Posso ajudar com agendamentos 💚",
-         }):
-        await router_module.route_message("5511999", "hash123", "quem ganhou a copa?", "msg-id-1")
-
-    # Agente deve ter sido salvo (não deletado)
-    state_mgr_mock.save.assert_called_once()
-    state_mgr_mock.delete.assert_not_called()
-    meta_mock.send_text.assert_called_once()
-
-
-# ── Test 7: paciente com first_name recebe saudação personalizada ─────────────
-
-@pytest.mark.asyncio
-async def test_paciente_retorno_saudacao_por_nome(state_mgr_mock, meta_mock):
-    """Test 7: Contact.first_name='Marcela' → saudação personalizada com nome (D-14)."""
-    import app.router as router_module
-    router_module._state_mgr = state_mgr_mock
-
-    # Sem agente ativo no Redis (nova sessão)
-    state_mgr_mock.load = AsyncMock(return_value=None)
+async def test_paciente_retorno_prepopula_nome():
+    """Contato com collected_name deve ter nome pré-populado no state antes do engine."""
+    from app.router import route_message
 
     contact = _make_contact(
-        first_name="Marcela",
-        stage="agendado",  # não é primeiro contato
+        first_name="Marcela", collected_name="Marcela Silva", stage="agendado"
     )
     db_mock = _make_db_mock(contact)
+    meta = MagicMock()
+    meta.send_text = AsyncMock()
+
+    state_vazio = _make_state()  # nome=None
+    state_gravado: dict = {}
+
+    async def fake_save(phone_hash, state):
+        state_gravado.update(state)
 
     with patch("app.router.SessionLocal", return_value=db_mock), \
-         patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
+         patch("app.meta_api.MetaAPIClient", return_value=meta), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.router.rotear", return_value={
-             "agente": "retencao",
-             "intencao": "remarcar",
-             "confianca": 0.9,
-             "resposta_padrao": None,
-         }), \
-         patch("app.router.AgenteRetencao") as MockRetencao:
-        instance = MockRetencao.return_value
-        instance.processar_remarcacao.return_value = ["vamos remarcar!"]
-        instance.etapa = "aguardando_slot"
-        instance.to_dict = MagicMock(return_value={"_tipo": "retencao", "etapa": "aguardando_slot"})
-        await router_module.route_message("5511999", "hash123", "oi quero remarcar", "msg-id-1")
+         patch("app.conversation.engine.engine.handle_message",
+               new_callable=AsyncMock, return_value=["olá"]), \
+         patch("app.conversation.state.load_state",
+               new_callable=AsyncMock, return_value=state_vazio), \
+         patch("app.conversation.state.save_state", side_effect=fake_save):
+        await route_message("5511999", "hash123", "oi", "msg-id-1")
 
-    # Deve ter enviado saudação personalizada (primeiro send_text)
-    calls = meta_mock.send_text.call_args_list
-    assert len(calls) >= 1
-    # Pelo menos uma das mensagens deve conter o nome
-    textos = [str(c) for c in calls]
-    assert any("Marcela" in t for t in textos), (
-        f"Nome 'Marcela' não encontrado nas mensagens enviadas: {textos}"
-    )
+    # _reconhecer_paciente_retorno deve ter preenchido o nome no state
+    assert state_vazio["collected_data"].get("nome") == "Marcela Silva"
 
 
-# ── Test 8: falha do Redis não trava o sistema ───────────────────────────────
+# ── Test 5: contato não encontrado retorna sem crash ─────────────────────────
 
 @pytest.mark.asyncio
-async def test_redis_failure_nao_trava(state_mgr_mock, meta_mock):
-    """Test 8: Redis load retorna None (falha) → fluxo normal sem crash (D-15)."""
-    import app.router as router_module
-    router_module._state_mgr = state_mgr_mock
+async def test_contato_nao_encontrado_retorna_sem_crash():
+    """Quando contact não existe no banco, route_message retorna silenciosamente."""
+    from app.router import route_message
 
-    # Redis retorna None (simulando falha ou ausência de estado)
-    state_mgr_mock.load = AsyncMock(return_value=None)
+    db_mock = MagicMock()
+    db_mock.__enter__ = MagicMock(return_value=db_mock)
+    db_mock.__exit__ = MagicMock(return_value=False)
+    db_mock.query.return_value.filter_by.return_value.first.return_value = None
+
+    meta = MagicMock()
+    meta.send_text = AsyncMock()
+
+    with patch("app.router.SessionLocal", return_value=db_mock), \
+         patch("app.meta_api.MetaAPIClient", return_value=meta), \
+         patch("app.conversation.engine.engine.handle_message",
+               new_callable=AsyncMock) as mock_engine:
+        await route_message("5511999", "hash123", "oi", "msg-id-1")
+
+    mock_engine.assert_not_called()
+    meta.send_text.assert_not_called()
+
+
+# ── Test 6: _atualizar_contact persiste nome e stage após engine ──────────────
+
+@pytest.mark.asyncio
+async def test_atualizar_contact_persiste_nome_e_stage():
+    """Após engine processar, nome e stage do Contact são atualizados no banco."""
+    from app.router import route_message
+
+    contact = _make_contact(stage="presenting", collected_name=None)
+    db_mock = _make_db_mock(contact)
+    meta = MagicMock()
+    meta.send_text = AsyncMock()
+
+    state_concluido = _make_state(
+        goal="agendar_consulta", status="concluido",
+        nome="Ana Maria", id_agenda="agenda-001",
+    )
+
+    with patch("app.router.SessionLocal", return_value=db_mock), \
+         patch("app.meta_api.MetaAPIClient", return_value=meta), \
+         patch("app.remarketing.cancel_pending_remarketing"), \
+         patch("app.conversation.engine.engine.handle_message",
+               new_callable=AsyncMock, return_value=["agendado!"]), \
+         patch("app.conversation.state.load_state",
+               new_callable=AsyncMock, return_value=state_concluido), \
+         patch("app.conversation.state.save_state", new_callable=AsyncMock):
+        await route_message("5511999", "hash123", "ok", "msg-id-1")
+
+    assert contact.collected_name == "Ana Maria"
+    assert contact.first_name == "Ana"
+    assert contact.stage == "agendado"
+
+
+# ── Test 7: remarketing — contato no stage remarketing cancela fila ───────────
+
+@pytest.mark.asyncio
+async def test_remarketing_stage_cancela_fila_pendente():
+    """Contato em stage=remarketing deve ter cancel_pending_remarketing chamado."""
+    from app.router import route_message
+
+    contact = _make_contact(stage="remarketing")
+    db_mock = _make_db_mock(contact)
+    meta = MagicMock()
+    meta.send_text = AsyncMock()
+
+    with patch("app.router.SessionLocal", return_value=db_mock), \
+         patch("app.meta_api.MetaAPIClient", return_value=meta), \
+         patch("app.router.cancel_pending_remarketing") as mock_cancel, \
+         patch("app.conversation.engine.engine.handle_message",
+               new_callable=AsyncMock, return_value=["olá"]), \
+         patch("app.conversation.state.load_state",
+               new_callable=AsyncMock, return_value=_make_state()), \
+         patch("app.conversation.state.save_state", new_callable=AsyncMock):
+        await route_message("5511999", "hash123", "oi", "msg-id-1")
+
+    mock_cancel.assert_called_once()
+
+
+# ── Test 8: Redis indisponível não trava o sistema ────────────────────────────
+
+@pytest.mark.asyncio
+async def test_redis_failure_nao_trava():
+    """load_state retornando estado vazio (Redis indisponível) não causa crash."""
+    from app.router import route_message
 
     contact = _make_contact(stage="new")
     db_mock = _make_db_mock(contact)
+    meta = MagicMock()
+    meta.send_text = AsyncMock()
 
     with patch("app.router.SessionLocal", return_value=db_mock), \
-         patch("app.meta_api.MetaAPIClient", return_value=meta_mock), \
+         patch("app.meta_api.MetaAPIClient", return_value=meta), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.router.rotear", return_value={
-             "agente": "atendimento",
-             "intencao": "novo_lead",
-             "confianca": 1.0,
-             "resposta_padrao": None,
-         }), \
-         patch("app.router.AgenteAtendimento") as MockAgente:
-        instance = MockAgente.return_value
-        instance.processar.return_value = ["Olá! Bem-vinda!"]
-        instance.etapa = "coleta_nome"
-        instance.nome = None
-        instance.to_dict = MagicMock(return_value={"_tipo": "atendimento", "etapa": "coleta_nome"})
+         patch("app.conversation.engine.engine.handle_message",
+               new_callable=AsyncMock, return_value=["Olá! Bem-vinda!"]), \
+         patch("app.conversation.state.load_state",
+               new_callable=AsyncMock, return_value=_make_state()), \
+         patch("app.conversation.state.save_state", new_callable=AsyncMock):
         # Não deve lançar exceção
-        await router_module.route_message("5511999", "hash123", "oi", "msg-id-1")
+        await route_message("5511999", "hash123", "oi", "msg-id-1")
 
-    # Deve ter criado novo agente e enviado resposta
-    meta_mock.send_text.assert_called()
+    meta.send_text.assert_called()
