@@ -74,7 +74,10 @@ async def decidir_acao(turno: dict, state: dict) -> dict:
     Chamado repetidamente pelo Engine após mutações de estado intermediárias
     (ex: aplicar upgrade, confirmar slot, confirmar pagamento).
     """
-    # 1. Dúvida clínica / escalação — sempre prioridade
+    # 0. Corrige intent com base no estado atual do fluxo (override determinístico)
+    turno = _corrigir_intent_pelo_fluxo(turno, state)
+
+    # 1. Dúvida clínica / escalação — só escalona se realmente há pergunta clínica
     if turno.get("intent") == "duvida_clinica" or (
         turno.get("tem_pergunta") and turno.get("topico_pergunta") == "clinica"
     ):
@@ -141,6 +144,40 @@ def _momento_critico(state: dict) -> bool:
         or (state["last_slots_offered"] and not state["appointment"]["slot_escolhido"])
         or state.get("status") == "aguardando_pagamento"
     )
+
+
+def _corrigir_intent_pelo_fluxo(turno: dict, state: dict) -> dict:
+    """
+    Corrige classificações incorretas do LLM com base no estado atual do fluxo.
+
+    O LLM pode errar em contextos ambíguos. Aqui aplicamos regras determinísticas
+    que consultam o estado para sobrescrever intent quando necessário.
+    """
+    intent = turno.get("intent")
+    goal = state.get("goal", "desconhecido")
+    flags = state.get("flags", {})
+
+    # Durante fluxo ativo, "recusou_remarketing" é impossível.
+    # Remarketing só ocorre em recontato automático após dias de silêncio.
+    # Se há um goal ativo (agendar, remarcar, cancelar), reinterpretar como agendar.
+    if intent == "recusou_remarketing" and goal in ("agendar_consulta", "remarcar", "cancelar"):
+        turno = {**turno, "intent": "agendar"}
+
+    # Se upsell foi oferecido e paciente rejeitou (aceita_upgrade=False),
+    # o intent deve ser agendar independente do que o LLM classificou.
+    if flags.get("upsell_oferecido") and turno.get("aceita_upgrade") is False:
+        turno = {**turno, "intent": "agendar"}
+
+    # "duvida_clinica" sem tem_pergunta=True durante fluxo de agendamento ativo
+    # significa que o paciente está explicando contexto/motivação, não fazendo pergunta clínica.
+    if (
+        intent == "duvida_clinica"
+        and not turno.get("tem_pergunta")
+        and goal == "agendar_consulta"
+    ):
+        turno = {**turno, "intent": "agendar"}
+
+    return turno
 
 
 # ── Fluxo de agendamento ──────────────────────────────────────────────────────
