@@ -1,15 +1,17 @@
 """
 ConversationEngine — motor central de conversação.
 
-Substitui o sistema de múltiplos agentes FSM por um único loop inteligente:
+Fluxo linear por turno:
   1. Carrega estado
-  2. Interpreta turno (LLM)
-  3. Decide ação (Planner)
-  4. Executa tool (se houver)
-  5. Atualiza estado
-  6. Gera resposta
+  2. Interpreta turno (LLM — interpreter)
+  3. Aplica extrações ao estado
+  4. Decide ação (LLM — planner)
+  5. Aplica mutações de estado declaradas pelo planner
+  6. Executa tool (se houver)
+  7. Gera resposta
+  8. Persiste estado
 
-Integração com o router atual via engine_instance.handle_message().
+O Planner LLM decide tudo em um único passo — sem loop de re-planejamento.
 """
 from __future__ import annotations
 
@@ -20,125 +22,61 @@ from app.conversation.state import (
     apply_correction,
     apply_tool_result,
     apply_turno_updates,
-    create_state,
     delete_state,
     load_state,
     save_state,
 )
 from app.conversation.interpreter import interpretar_turno
-from app.conversation.planner import (
-    decidir_acao,
-    APPLY_UPGRADE,
-    SLOT_CONFIRMED,
-    PAGAMENTO_CONFIRMADO,
-    OFFER_UPSELL,
-    SEND_PLANOS,
-    REDIRECT_RETENCAO,
-    REDIRECT_ATENDIMENTO,
-    ASK_MOTIVO_CANCEL,
-)
+from app.conversation.planner import decidir_acao
 from app.conversation.responder import gerar_resposta
 
 logger = logging.getLogger(__name__)
 
-# Máximo de re-planejamentos por turno (evita loop infinito)
-_MAX_REPLANS = 4
-
 
 class ConversationEngine:
     """
-    Motor central de conversação.
-    Uma instância global é suficiente — stateless entre chamadas.
+    Motor central de conversação — stateless entre chamadas.
+    Uma instância global é suficiente.
     """
 
     async def handle_message(self, phone_hash: str, message: str, phone: str = "") -> list:
         """
         Processa uma mensagem e retorna lista de respostas.
 
-        phone_hash: hash do telefone (nunca o número real — LGPD)
+        phone_hash: hash do telefone (LGPD — nunca o número real)
         message:    texto recebido do paciente
-        phone:      número real (necessário para tools que chamam Dietbox/Rede)
+        phone:      número real (necessário para tools Dietbox/Rede)
         """
         # 1. Carregar estado
         state = await load_state(phone_hash, phone)
         add_message(state, "user", message)
 
-        # 2. Interpretar turno
+        # 2. Interpretar turno (LLM)
         turno = await interpretar_turno(message, state)
 
-        # 3. Aplicar extração e correções ao estado (antes do planner)
+        # 3. Aplicar extrações e correções ao estado
         apply_turno_updates(state, turno)
         if turno.get("correcao"):
             c = turno["correcao"]
             apply_correction(state, c["campo"], c["valor_novo"])
 
-        # 4. Atualiza goal baseado na intenção interpretada
+        # 4. Atualizar goal para persistência entre turnos
         self._atualizar_goal(state, turno)
 
-        # 5. Loop de planejamento (permite re-planejar após mutações intermediárias)
+        # 5. Decidir ação (LLM — planner)
+        plano = await decidir_acao(turno, state)
+
+        # 6. Aplicar mutações de estado declaradas pelo planner
+        self._aplicar_mutacoes(state, plano)
+
+        # 7. Executar tool (se houver)
         resultado_tool = None
-        plano = None
-
-        for _ in range(_MAX_REPLANS):
-            plano = await decidir_acao(turno, state)
-            action = plano["action"]
-
-            # Mutações intermediárias que exigem re-planejamento imediato
-            if action == APPLY_UPGRADE:
-                plano_upgrade = plano["meta"]["plano_upgrade"]
-                state["collected_data"]["plano"] = plano_upgrade
-                state["flags"]["upsell_oferecido"] = True
-                logger.info("Upgrade aplicado: %s", plano_upgrade)
-                continue
-
-            if action == SLOT_CONFIRMED:
-                idx = plano["ask_context"]
-                state["appointment"]["slot_escolhido"] = state["last_slots_offered"][idx]
-                turno["escolha_slot"] = None  # evita reprocessamento
-                logger.info("Slot confirmado: idx=%d", idx)
-                continue
-
-            if action == PAGAMENTO_CONFIRMADO:
-                state["flags"]["pagamento_confirmado"] = True
-                state["status"] = "coletando"
-                logger.info("Pagamento confirmado")
-                continue
-
-            if action == REDIRECT_RETENCAO:
-                state["goal"] = "remarcar"
-                turno = {**turno, "intent": "remarcar"}
-                continue
-
-            if action == REDIRECT_ATENDIMENTO:
-                state["goal"] = "agendar_consulta"
-                state["tipo_remarcacao"] = None
-                state["collected_data"]["status_paciente"] = "novo"
-                turno = {**turno, "intent": "agendar"}
-                continue
-
-            # Marca flags de progresso antes de executar
-            if action == OFFER_UPSELL:
-                state["flags"]["upsell_oferecido"] = True
-
-            if action == SEND_PLANOS:
-                state["flags"]["planos_enviados"] = True
-
-            if action == ASK_MOTIVO_CANCEL:
-                state["flags"]["aguardando_motivo_cancel"] = True
-                # Salva motivo da mensagem atual se for resposta ao pedido anterior
-                if state["flags"].get("aguardando_motivo_cancel") and message:
-                    state["collected_data"]["motivo_cancelamento"] = message[:200]
-
-            # 6. Executar tool (se houver)
-            if plano.get("tool"):
-                resultado_tool = await self._executar_tool(plano, state)
-                apply_tool_result(state, plano["tool"], resultado_tool or {})
-                state["last_action"] = plano["tool"]
-
-            break  # Sai do loop — plano final encontrado
-
-        # 7. Atualizar estado via plano
-        state = self._atualizar_estado(state, turno, plano, resultado_tool)
+        if plano.get("tool"):
+            resultado_tool = await self._executar_tool(plano, state)
+            apply_tool_result(state, plano["tool"], resultado_tool or {})
+            state["last_action"] = plano["tool"]
+        else:
+            state["last_action"] = plano.get("action")
 
         # 8. Gerar resposta
         resposta = await gerar_resposta(state, plano, resultado_tool)
@@ -155,6 +93,30 @@ class ConversationEngine:
             await save_state(phone_hash, state)
 
         return resposta
+
+    # ── Helpers internos ──────────────────────────────────────────────────────
+
+    def _aplicar_mutacoes(self, state: dict, plano: dict) -> None:
+        """
+        Aplica ao estado as mutações declaradas pelo planner LLM.
+
+        O planner pode declarar updates em:
+          - collected_data (update_data)
+          - appointment    (update_appointment)
+          - flags          (update_flags)
+          - status         (new_status)
+        """
+        if plano.get("update_data"):
+            state["collected_data"].update(plano["update_data"])
+
+        if plano.get("update_appointment"):
+            state["appointment"].update(plano["update_appointment"])
+
+        if plano.get("update_flags"):
+            state["flags"].update(plano["update_flags"])
+
+        if plano.get("new_status"):
+            state["status"] = plano["new_status"]
 
     async def _executar_tool(self, plano: dict, state: dict) -> dict | None:
         """Despacha para a tool correta com base no nome."""
@@ -195,29 +157,11 @@ class ConversationEngine:
         logger.warning("Tool desconhecida: %s", tool_name)
         return None
 
-    def _atualizar_estado(self, state: dict, turno: dict, plano: dict, resultado: dict | None) -> dict:
-        """
-        Aplica mutações finais ao estado após execução do plano.
-
-        Atualiza last_action, collected_data e status conforme o plano.
-        """
-        # Atualiza ação registrada
-        state["last_action"] = plano.get("action")
-
-        # Aplica atualizações de campos coletados declaradas pelo planner
-        if plano.get("update_data"):
-            state["collected_data"].update(plano["update_data"])
-
-        # Aplica novo status se declarado
-        if plano.get("new_status"):
-            state["status"] = plano["new_status"]
-
-        return state
-
-    # ── Helpers internos ──────────────────────────────────────────────────────
-
     def _atualizar_goal(self, state: dict, turno: dict) -> None:
-        """Atualiza o goal do estado baseado na intenção do turno."""
+        """
+        Atualiza state.goal com base na intenção do turno.
+        Usado pelo router para atualizar o stage do contato no banco.
+        """
         _MAP = {
             "agendar":             "agendar_consulta",
             "remarcar":            "remarcar",
@@ -232,7 +176,6 @@ class ConversationEngine:
         if new_goal and state.get("goal") == "desconhecido":
             state["goal"] = new_goal
         elif new_goal and intent in ("remarcar", "cancelar"):
-            # Intents de interrupt sobrescrevem o goal atual
             state["goal"] = new_goal
 
 
