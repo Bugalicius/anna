@@ -52,7 +52,11 @@ Regras críticas:
 - "correcao" APENAS quando paciente contradiz algo já dito (ex: "na verdade prefiro tarde")
 - "confirmou_pagamento": true se disse "paguei", "enviei comprovante", ou enviou imagem
 - "escolha_slot": 1/2/3 somente quando há slots listados e paciente escolhe por número/posição
-- "aceita_upgrade": true/false SOMENTE quando houve oferta de upgrade explícita no histórico
+- "aceita_upgrade": true/false SOMENTE quando houve oferta de upgrade explícita no histórico recente
+- Se houve oferta de upgrade (Ana perguntou "Quer manter X ou prefere Y?") e paciente rejeita (ex: "quero X mesmo", "pode deixar", "não quero"), use intent="agendar" e aceita_upgrade=false. NUNCA use recusou_remarketing nesse caso.
+- "recusou_remarketing" APENAS quando a Ana enviou mensagem de recontato automático após dias de silêncio e o paciente não quer mais ser contactado. Durante fluxo ativo de agendamento, NUNCA use recusou_remarketing.
+- "duvida_clinica" APENAS para perguntas médicas explícitas sobre sintomas, diagnóstico, medicamentos ou condições de saúde (ex: "posso comer X tendo diabetes", "tenho refluxo, pode?"). Paciente falando sobre objetivos, razões para escolher um plano, ou o que espera da consulta → intent="agendar", tem_pergunta=false.
+- Quando o paciente está no meio do agendamento (goal=agendar_consulta) e diz algo que explica sua motivação ou objetivo, mantenha intent="agendar" e siga o fluxo.
 """
 
 # ── Valores aceitos ────────────────────────────────────────────────────────────
