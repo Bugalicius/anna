@@ -37,6 +37,7 @@ HORARIOS_POR_DIA = {
 _LOCAIS_ONLINE: set[str] | None = None
 _ID_LOCAL_PRESENCIAL: str | None = None
 _ID_LOCAL_ONLINE: str | None = None
+_TODOS_IDS_LOCAIS: list[str] = []   # todos os locais conhecidos (para query extra)
 
 TOKEN_CACHE_PATH = Path(__file__).parent.parent.parent / "dietbox_token_cache.json"
 
@@ -191,7 +192,7 @@ def _headers() -> dict:
 # ── Locais de atendimento ─────────────────────────────────────────────────────
 
 def _carregar_locais() -> None:
-    global _LOCAIS_ONLINE, _ID_LOCAL_PRESENCIAL, _ID_LOCAL_ONLINE
+    global _LOCAIS_ONLINE, _ID_LOCAL_PRESENCIAL, _ID_LOCAL_ONLINE, _TODOS_IDS_LOCAIS
     if _LOCAIS_ONLINE is not None:
         return
     try:
@@ -200,6 +201,8 @@ def _carregar_locais() -> None:
         _LOCAIS_ONLINE = set()
         for loc in (locais if isinstance(locais, list) else []):
             lid = str(loc.get("id", "")).upper()
+            if lid and lid not in _TODOS_IDS_LOCAIS:
+                _TODOS_IDS_LOCAIS.append(lid)
             if loc.get("videoconferencia"):
                 _LOCAIS_ONLINE.add(lid)
                 if _ID_LOCAL_ONLINE is None:
@@ -253,6 +256,28 @@ def consultar_slots_disponiveis(
     except Exception as e:
         logger.error(f"Erro ao buscar agenda: {e}")
         ocupados_raw = []
+
+    # Query adicional por local: a API às vezes omite agendamentos de locais
+    # secundários na query sem filtro. Fazemos uma query por cada local conhecido
+    # e unimos os resultados para garantir que todos os slots ocupados sejam capturados.
+    _carregar_locais()
+    seen_ids: set = {item.get("id") or item.get("Id") for item in ocupados_raw if item.get("id") or item.get("Id")}
+    for loc_id in _TODOS_IDS_LOCAIS:
+        try:
+            r2 = requests.get(
+                f"{DIETBOX_API}/agenda",
+                headers=_headers(),
+                params={"Start": start_str, "End": end_str, "IdLocalAtendimento": loc_id},
+                timeout=20,
+            )
+            r2.raise_for_status()
+            for item in r2.json().get("Data", []):
+                item_id = item.get("id") or item.get("Id")
+                if item_id and item_id not in seen_ids:
+                    ocupados_raw.append(item)
+                    seen_ids.add(item_id)
+        except Exception as e:
+            logger.warning("Query agenda por local %s falhou: %s", loc_id, e)
 
     # Constrói set de datetimes ocupados
     # API retorna horários sem timezone (já em BRT) — nunca converter com astimezone

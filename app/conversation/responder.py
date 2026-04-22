@@ -209,6 +209,11 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
 
     # ── Perguntar campo ───────────────────────────────────────────────────────
     if action == "ask_field":
+        draft = plano.get("draft_message")
+        history = state.get("history", [])
+        # Usa draft do planner para turnos além da primeira mensagem
+        if draft and len(history) > 1:
+            return [draft]
         return _ask_field(plano["ask_context"], nome, state)
 
     # ── Enviar planos ─────────────────────────────────────────────────────────
@@ -334,11 +339,12 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
 
     if action == "ask_motivo_cancelamento":
         politica = kb.get_politica("cancelamento")
-        return [
+        draft = plano.get("draft_message")
+        texto = draft if draft else (
             f"Tudo bem, {nome}. Vou registrar o cancelamento da sua consulta.\n\n"
-            "Só para saber: o que aconteceu? Ficou alguma dúvida ou posso ajudar de outra forma?",
-            f"_Política de cancelamento: {politica}_",
-        ]
+            "Só para saber: o que aconteceu? Ficou alguma dúvida ou posso ajudar de outra forma?"
+        )
+        return [texto, f"_Política de cancelamento: {politica}_"]
 
     if action == "execute_tool" and plano.get("tool") == "cancelar":
         if resultado_tool and resultado_tool.get("sucesso"):
@@ -355,8 +361,11 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
             ca = resultado_tool.get("consulta_atual")
             if ca:
                 try:
-                    from datetime import datetime as _dt
+                    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+                    _BRT = _tz(_td(hours=-3))
                     dt = _dt.fromisoformat(ca["inicio"])
+                    if dt.tzinfo:
+                        dt = dt.astimezone(_BRT)
                     data_fmt = dt.strftime("%d/%m/%Y")
                     hora_fmt = dt.strftime("%Hh")
                     return [
@@ -384,6 +393,9 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
 
     # ── Resposta a dúvida do KB ───────────────────────────────────────────────
     if action == "answer_question":
+        draft = plano.get("draft_message")
+        if draft:
+            return [draft]
         return [_answer_from_kb(plano["ask_context"], cd)]
 
     # ── Escalação ─────────────────────────────────────────────────────────────
@@ -397,6 +409,9 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
 
     # ── Fora de contexto ──────────────────────────────────────────────────────
     if action == "respond_fora_de_contexto":
+        draft = plano.get("draft_message")
+        if draft:
+            return [draft]
         return [MSG_FORA_CONTEXTO]
 
     # ── Redirect (sem resposta — Engine re-planeja) ───────────────────────────

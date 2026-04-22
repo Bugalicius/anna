@@ -204,7 +204,16 @@ ETAPA 7 — Confirmação:
 ## FORMATO DE SAÍDA
 JSON puro, sem markdown. Inclua apenas campos necessários:
 
-{{"action":"<ação>","tool":null,"params":{{}},"ask_context":null,"new_status":null,"update_data":{{}},"update_appointment":{{}},"update_flags":{{}}}}
+{{"action":"<ação>","tool":null,"params":{{}},"ask_context":null,"new_status":null,"update_data":{{}},"update_appointment":{{}},"update_flags":{{}},"draft_message":null}}
+
+## DRAFT_MESSAGE — mensagem que a Ana enviará ao paciente
+Use para ações conversacionais: ask_field, answer_question, respond_fora_de_contexto, ask_motivo_cancelamento.
+Regras:
+- Se o paciente disse algo relevante (dúvida, condição médica, informação pessoal), reconheça brevemente antes de perguntar
+- Pergunte/responda o que a ação requer de forma natural e acolhedora
+- Tom informal, português brasileiro. Máx 4 linhas. Emojis com moderação.
+- NÃO inclua valores financeiros, chaves PIX, links ou datas precisas (isso fica nos templates)
+- Para execute_tool, send_planos, offer_upsell, await_payment, ask_forma_pagamento, send_confirmacao*, escalate → draft_message: null
 
 Retorne SOMENTE o JSON. Nenhum texto antes ou depois.\
 """
@@ -319,7 +328,7 @@ async def decidir_acao(turno: dict, state: dict) -> dict:
     try:
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=512,
+            max_tokens=700,
             messages=[{"role": "user", "content": prompt}],
         )
         raw = response.content[0].text.strip()
@@ -406,6 +415,7 @@ def _parse_plano(data: dict, state: dict) -> dict:
     if action == EXECUTE_TOOL and not tool:
         action = FORA_DE_CONTEXTO
 
+    draft = data.get("draft_message")
     return {
         "action":           action,
         "tool":             tool,
@@ -416,6 +426,7 @@ def _parse_plano(data: dict, state: dict) -> dict:
         "update_appointment": data.get("update_appointment") or {},
         "update_flags":     data.get("update_flags") or {},
         "meta":             data.get("meta") or {},
+        "draft_message":    str(draft).strip() if draft and str(draft).strip() else None,
     }
 
 
@@ -431,6 +442,7 @@ def _plano(action: str, **kwargs) -> dict:
         "update_appointment": kwargs.get("update_appointment", {}),
         "update_flags": kwargs.get("update_flags", {}),
         "meta": kwargs.get("meta", {}),
+        "draft_message": kwargs.get("draft_message"),
     }
 
 
