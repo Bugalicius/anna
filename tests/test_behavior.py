@@ -294,23 +294,24 @@ def test_agendamento_nao_oferece_tres_horarios_seguidos_no_mesmo_dia():
     agente.modalidade = "presencial"
     agente.plano_escolhido = "unica"
 
+    # Datas em maio — nunca coincidem com "hoje" para evitar filtro D-19
     slots_mock = [
-        {"data_fmt": "quarta, 22/04", "hora": "8h", "datetime": "2026-04-22T08:00:00"},
-        {"data_fmt": "quarta, 22/04", "hora": "9h", "datetime": "2026-04-22T09:00:00"},
-        {"data_fmt": "quarta, 22/04", "hora": "10h", "datetime": "2026-04-22T10:00:00"},
-        {"data_fmt": "quinta, 23/04", "hora": "15h", "datetime": "2026-04-23T15:00:00"},
-        {"data_fmt": "sexta, 24/04", "hora": "18h", "datetime": "2026-04-24T18:00:00"},
+        {"data_fmt": "segunda, 04/05", "hora": "8h", "datetime": "2026-05-04T08:00:00"},
+        {"data_fmt": "segunda, 04/05", "hora": "9h", "datetime": "2026-05-04T09:00:00"},
+        {"data_fmt": "segunda, 04/05", "hora": "10h", "datetime": "2026-05-04T10:00:00"},
+        {"data_fmt": "terça, 05/05", "hora": "15h", "datetime": "2026-05-05T15:00:00"},
+        {"data_fmt": "quarta, 06/05", "hora": "18h", "datetime": "2026-05-06T18:00:00"},
     ]
 
     with patch("app.agents.atendimento.consultar_slots_disponiveis", return_value=slots_mock):
         respostas = agente.processar("08h")
 
     texto = " ".join(respostas)
-    assert "quarta, 22/04 às 8h" in texto
-    assert "quinta, 23/04 às 15h" in texto
-    assert "sexta, 24/04 às 18h" in texto
-    assert "quarta, 22/04 às 9h" not in texto
-    assert "quarta, 22/04 às 10h" not in texto
+    assert "segunda, 04/05 às 8h" in texto
+    assert "terça, 05/05 às 15h" in texto
+    assert "quarta, 06/05 às 18h" in texto
+    assert "segunda, 04/05 às 9h" not in texto
+    assert "segunda, 04/05 às 10h" not in texto
 
 
 def test_formulario_nunca_oferecido_proativamente():

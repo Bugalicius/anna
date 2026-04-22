@@ -72,7 +72,7 @@ class ConversationEngine:
         # 7. Executar tool (se houver)
         resultado_tool = None
         if plano.get("tool"):
-            resultado_tool = await self._executar_tool(plano, state)
+            resultado_tool = await self._executar_tool(plano, state, turno)
             apply_tool_result(state, plano["tool"], resultado_tool or {})
             state["last_action"] = plano["tool"]
         else:
@@ -118,10 +118,21 @@ class ConversationEngine:
         if plano.get("new_status"):
             state["status"] = plano["new_status"]
 
-    async def _executar_tool(self, plano: dict, state: dict) -> dict | None:
+    async def _executar_tool(self, plano: dict, state: dict, turno: dict | None = None) -> dict | None:
         """Despacha para a tool correta com base no nome."""
         tool_name = plano["tool"]
         params = plano.get("params", {})
+
+        # Helper: resolve slot object from last_slots_offered using escolha_slot
+        def _resolver_slot() -> dict | None:
+            idx = (turno or {}).get("escolha_slot")
+            slots = state.get("last_slots_offered", [])
+            if idx and 1 <= int(idx) <= len(slots):
+                return slots[int(idx) - 1]
+            appt_slot = state.get("appointment", {}).get("slot_escolhido")
+            if isinstance(appt_slot, dict) and appt_slot.get("datetime"):
+                return appt_slot
+            return slots[0] if slots else None
 
         if tool_name == "consultar_slots":
             from app.tools.scheduling import consultar_slots
@@ -133,10 +144,22 @@ class ConversationEngine:
 
         if tool_name == "agendar":
             from app.tools.scheduling import agendar
+            # Resolve slot: usa _resolver_slot() se LLM não passou ou passou null
+            if not isinstance(params.get("slot"), dict) or not params["slot"].get("datetime"):
+                params = {**params, "slot": _resolver_slot()}
             return await agendar(**params)
 
         if tool_name == "remarcar_dietbox":
             from app.tools.scheduling import remarcar
+            # Resolve novo_slot: usa _resolver_slot() se LLM passou objeto incompleto
+            if not isinstance(params.get("novo_slot"), dict) or not params["novo_slot"].get("datetime"):
+                params = {**params, "novo_slot": _resolver_slot()}
+            # Resolve ids do estado quando LLM não passou
+            appt = state.get("appointment", {})
+            if not params.get("consulta_atual"):
+                params = {**params, "consulta_atual": appt.get("consulta_atual")}
+            if not params.get("id_agenda_original"):
+                params = {**params, "id_agenda_original": appt.get("id_agenda")}
             return await remarcar(**params)
 
         if tool_name == "cancelar":

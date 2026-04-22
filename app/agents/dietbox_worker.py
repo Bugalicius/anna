@@ -302,41 +302,75 @@ def buscar_paciente_por_telefone(telefone: str) -> dict | None:
     """
     Busca paciente pelo número de telefone (formato E.164 ou DDD+número).
     Retorna dict com {id, nome, email, telefone} ou None.
+
+    Estratégia dupla:
+    1. Busca direta por nome/telefone nos pacientes (API do Dietbox não indexa phone)
+    2. Fallback: percorre agenda (últimos 180 + próximos 180 dias) filtrando phonePatient
     """
-    # Normaliza: remove não-dígitos, garante prefixo 55
+    # Normaliza: remove não-dígitos, descarta prefixo 55 para comparação
     digitos = "".join(filter(str.isdigit, telefone))
     if digitos.startswith("55") and len(digitos) > 11:
-        numero_busca = digitos[2:]  # remove prefixo 55 para busca
+        numero_busca = digitos[2:]
     else:
         numero_busca = digitos
 
+    # ── Estratégia 1: busca direta nos pacientes ────────────────────────────
     try:
         resp = requests.get(
             f"{DIETBOX_API}/patients",
             headers=_headers(),
-            params={"Search": numero_busca, "Take": 5},
+            params={"Search": numero_busca, "Take": 10},
             timeout=15,
         )
-        if resp.status_code != 200:
-            return None
-        data = resp.json()
-        items = data.get("Data") or data.get("data") or []
-        if isinstance(items, dict):
-            items = items.get("Items") or items.get("items") or []
+        if resp.status_code == 200:
+            data = resp.json()
+            items = data.get("Data") or data.get("data") or []
+            if isinstance(items, dict):
+                items = items.get("Items") or items.get("items") or []
+            for p in items:
+                for campo in ("MobilePhone", "mobilePhone", "Phone", "phone"):
+                    tel = "".join(filter(str.isdigit, str(p.get(campo, "") or "")))
+                    if numero_busca in tel or tel.endswith(numero_busca[-8:]):
+                        return {
+                            "id": p.get("Id") or p.get("id"),
+                            "nome": p.get("Name") or p.get("name") or p.get("nome"),
+                            "email": p.get("Email") or p.get("email") or "",
+                            "telefone": telefone,
+                        }
+    except Exception as e:
+        logger.warning("Busca direta de paciente falhou: %s", e)
 
-        for p in items:
-            # Verifica se o telefone bate
-            for campo in ("MobilePhone", "mobilePhone", "Phone", "phone"):
-                tel = "".join(filter(str.isdigit, str(p.get(campo, "") or "")))
-                if numero_busca in tel or tel.endswith(numero_busca[-8:]):
+    # ── Estratégia 2: busca via campo phonePatient na agenda ────────────────
+    try:
+        hoje = date.today()
+        start = (hoje - timedelta(days=180)).isoformat()
+        end = (hoje + timedelta(days=180)).isoformat()
+        resp = requests.get(
+            f"{DIETBOX_API}/agenda",
+            headers=_headers(),
+            params={"start": start, "end": end, "per_page": 5000},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        items = resp.json().get("Data") or []
+        for a in items:
+            phone_ag = "".join(filter(str.isdigit, str(a.get("phonePatient") or "")))
+            if not phone_ag:
+                continue
+            if numero_busca in phone_ag or phone_ag.endswith(numero_busca[-8:]):
+                patient = a.get("patient") or {}
+                pid = patient.get("id")
+                pname = patient.get("name") or a.get("namePatient") or ""
+                if pid and int(pid) > 0:
                     return {
-                        "id": p.get("Id") or p.get("id"),
-                        "nome": p.get("Name") or p.get("name") or p.get("nome"),
-                        "email": p.get("Email") or p.get("email") or "",
+                        "id": pid,
+                        "nome": pname,
+                        "email": a.get("emailPatient") or "",
                         "telefone": telefone,
                     }
     except Exception as e:
-        logger.error(f"Erro ao buscar paciente por telefone: {e}")
+        logger.error("Busca por agenda falhou ao localizar paciente: %s", e)
+
     return None
 
 
@@ -527,11 +561,43 @@ def alterar_agendamento(
         novo_dt_inicio = novo_dt_inicio.replace(tzinfo=BRT)
     novo_dt_fim = novo_dt_inicio + timedelta(minutes=duracao_minutos)
 
+    # Fetch current appointment to preserve required scalar fields
+    try:
+        get_resp = requests.get(
+            f"{DIETBOX_API}/agenda/{id_agenda}", headers=_headers(), timeout=15
+        )
+        get_resp.raise_for_status()
+        current = get_resp.json().get("Data") or get_resp.json()
+    except Exception as e:
+        logger.error("Falha ao buscar agendamento antes de alterar %s: %s", id_agenda, e)
+        return False  # Não prosseguir sem dados atuais
+
+    def _get(*keys):
+        for k in keys:
+            v = current.get(k)
+            if v is not None:
+                return v
+        return None
+
+    # Payload mínimo — apenas campos escalares necessários.
+    # Não espalhar current inteiro para evitar objetos aninhados (servico, paciente,
+    # localAtendimento, etc.) que o Dietbox rejeita com 500.
     payload = {
-        "Start": novo_dt_inicio.isoformat(),
-        "End": novo_dt_fim.isoformat(),
-        "Observacao": observacao,
+        "inicio": novo_dt_inicio.isoformat(),
+        "fim": novo_dt_fim.isoformat(),
+        "timezone": _get("timezone", "Timezone") or "America/Sao_Paulo",
+        "idPaciente": _get("idPaciente", "IdPaciente"),
+        "idLocalAtendimento": _get("idLocalAtendimento", "IdLocalAtendimento"),
+        "idServico": _get("idServico", "IdServico"),
+        "tipo": _get("tipo", "Type") or 1,
+        "isOnline": _get("isOnline", "IsOnline") or False,
+        "isVideoConference": _get("isVideoConference", "IsVideoConference") or False,
+        "alert": True,
+        "allDay": False,
+        "descricao": observacao or _get("descricao", "Descricao") or "",
     }
+    payload = {k: v for k, v in payload.items() if v is not None}
+
     try:
         resp = requests.put(
             f"{DIETBOX_API}/agenda/{id_agenda}",
@@ -539,7 +605,12 @@ def alterar_agendamento(
             json=payload,
             timeout=20,
         )
-        resp.raise_for_status()
+        if not resp.ok:
+            logger.error(
+                "Falha PUT agendamento %s: status=%s body=%s",
+                id_agenda, resp.status_code, resp.text[:500],
+            )
+            return False
         logger.info(
             "Agendamento alterado: id=%s, novo_inicio=%s",
             id_agenda,

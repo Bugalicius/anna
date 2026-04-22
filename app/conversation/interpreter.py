@@ -132,7 +132,27 @@ async def interpretar_turno(message: str, state: dict) -> dict:
             if raw.startswith("json"):
                 raw = raw[4:]
         data = json.loads(raw)
-        return _parse_turno(data)
+        turno = _parse_turno(data)
+
+        # Heurística pós-LLM: mensagem é só um número 1-3 com slots disponíveis
+        # O LLM às vezes não extrai escolha_slot de mensagens muito curtas.
+        import re as _re
+        if turno["escolha_slot"] is None and state.get("last_slots_offered"):
+            if _re.match(r"^\s*[1-3]\s*$", message):
+                turno["escolha_slot"] = int(message.strip())
+
+        # Heurística: paciente menciona nome do dia de um slot oferecido
+        # Ex: "quarta" quando slot 1 é "quarta, 29/04 às 10h"
+        if turno["escolha_slot"] is None and state.get("last_slots_offered"):
+            msg_norm = message.lower().strip()
+            for i, s in enumerate(state["last_slots_offered"]):
+                data_fmt = s.get("data_fmt", "").lower()
+                dia = data_fmt.split(",")[0].strip()  # "quarta, 29/04" → "quarta"
+                if dia and (msg_norm == dia or msg_norm.startswith(dia + " ") or msg_norm.startswith(dia + ",")):
+                    turno["escolha_slot"] = i + 1
+                    break
+
+        return turno
 
     except Exception as e:
         logger.error("Erro ao interpretar turno: %s", e)

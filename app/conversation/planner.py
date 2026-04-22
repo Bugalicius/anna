@@ -213,6 +213,93 @@ Retorne SOMENTE o JSON. Nenhum texto antes ou depois.\
 # ── Função pública ─────────────────────────────────────────────────────────────
 
 
+def _override_deterministic(turno: dict, state: dict) -> dict | None:
+    """
+    Regras determinísticas que o LLM não pode pular — executadas ANTES do LLM.
+
+    Cobre dois casos críticos onde o LLM tende a ser inconsistente:
+      1. Enviar o PDF de planos antes de perguntar qual plano o paciente quer.
+      2. Oferecer upsell antes de perguntar a modalidade (quando plano é elegível).
+    """
+    cd = state["collected_data"]
+    flags = state["flags"]
+    goal = state.get("goal", "desconhecido")
+    intent = turno.get("intent", "fora_de_contexto")
+
+    # Aplica apenas no fluxo de agendamento
+    if goal not in ("agendar_consulta", "desconhecido"):
+        return None
+    if intent in ("remarcar", "cancelar", "tirar_duvida", "duvida_clinica",
+                  "fora_de_contexto", "recusou_remarketing"):
+        return None
+
+    # ── Regra 1: send_planos antes de ask_field plano ──────────────────────
+    # Ativa quando: objetivo preenchido, planos ainda não enviados, plano não
+    # escolhido nem nesta mensagem.
+    if (
+        cd.get("objetivo")
+        and not flags.get("planos_enviados")
+        and not cd.get("plano")
+        and not turno.get("plano")       # paciente não mencionou plano já
+    ):
+        return _plano(SEND_PLANOS, update_flags={"planos_enviados": True})
+
+    # ── Regra 2: offer_upsell antes de ask_field modalidade ────────────────
+    # Ativa quando: plano elegível escolhido, upsell ainda não oferecido,
+    # modalidade não preenchida e paciente não respondeu sobre upgrade nesta msg.
+    plano_atual = turno.get("plano") or cd.get("plano")
+    if (
+        plano_atual in ("unica", "com_retorno", "ouro")
+        and not flags.get("upsell_oferecido")
+        and not cd.get("modalidade")
+        and turno.get("aceita_upgrade") is None  # não respondeu upgrade nesta msg
+    ):
+        return _plano(OFFER_UPSELL, ask_context=plano_atual,
+                      update_flags={"upsell_oferecido": True})
+
+    appt = state.get("appointment", {})
+    slots = state.get("last_slots_offered", [])
+
+    # ── Regra 3: ask preferencia_horario antes de consultar slots ──────────
+    # O LLM tende a pular para ask_forma_pagamento; este override impede isso.
+    if (
+        cd.get("plano") and cd.get("modalidade")
+        and not cd.get("preferencia_horario")
+        and not slots
+        and not appt.get("slot_escolhido")
+        and state.get("tipo_remarcacao") != "retorno"
+    ):
+        return _plano(ASK_FIELD, ask_context="preferencia_horario")
+
+    # ── Regra 4: consultar_slots quando preferencia preenchida mas sem slots ─
+    if (
+        cd.get("plano") and cd.get("modalidade")
+        and cd.get("preferencia_horario")
+        and not slots
+        and not appt.get("slot_escolhido")
+        and state.get("last_action") != "consultar_slots"
+        and state.get("tipo_remarcacao") != "retorno"
+    ):
+        return _plano(
+            EXECUTE_TOOL, tool="consultar_slots",
+            params={"modalidade": cd["modalidade"],
+                    "preferencia": cd["preferencia_horario"]},
+        )
+
+    # ── Regra 5: confirmar slot quando escolha_slot válida ─────────────────
+    # O LLM tende a ignorar escolha_slot e repetir ask_slot_choice.
+    # Este override captura a escolha e avança para pagamento deterministicamente.
+    escolha = turno.get("escolha_slot")
+    if (
+        escolha and 1 <= int(escolha) <= len(slots)
+        and not appt.get("slot_escolhido")
+    ):
+        slot_obj = slots[int(escolha) - 1]
+        return _plano(ASK_FORMA_PAGAMENTO, update_appointment={"slot_escolhido": slot_obj})
+
+    return None
+
+
 async def decidir_acao(turno: dict, state: dict) -> dict:
     """
     Chama Claude Haiku para decidir a próxima ação.
@@ -220,6 +307,12 @@ async def decidir_acao(turno: dict, state: dict) -> dict:
     Recebe o estado completo + turno interpretado.
     Retorna um plano com action, tool, params, mutations (update_data, etc.).
     """
+    # Regras determinísticas têm prioridade sobre o LLM
+    override = _override_deterministic(turno, state)
+    if override:
+        logger.info("Planner (override): action=%s", override["action"])
+        return override
+
     prompt = _build_prompt(turno, state)
     client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 
