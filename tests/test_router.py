@@ -430,3 +430,25 @@ async def test_redis_failure_nao_trava():
         await route_message("5511999", "hash123", "oi", "msg-id-1")
 
     meta.send_text.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_enviar_midia_refaz_upload_quando_media_id_em_cache_falha():
+    """Em caso de 400/erro com media_id em cache, o router deve refazer upload e reenviar."""
+    from app.router import _enviar_midia
+
+    meta = MagicMock()
+    meta.upload_media = AsyncMock(side_effect=["cached-media-id", "fresh-media-id"])
+    meta.send_image = AsyncMock(side_effect=[Exception("400 Bad Request"), None])
+
+    with patch("app.router._get_or_upload_media", new_callable=AsyncMock) as mock_get_media:
+        mock_get_media.side_effect = ["cached-media-id", "fresh-media-id"]
+        await _enviar_midia(meta, "5511999", {
+            "media_type": "image",
+            "media_key": "img_preparo_presencial",
+            "caption": "Teste",
+        })
+
+    assert mock_get_media.await_args_list[0].kwargs.get("force_refresh", False) is False
+    assert mock_get_media.await_args_list[1].kwargs.get("force_refresh") is True
+    assert meta.send_image.await_count == 2

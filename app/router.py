@@ -234,14 +234,32 @@ async def _enviar_midia(meta, phone: str, media_msg: dict) -> None:
         return
 
     caption = media_msg.get("caption", "")
-    if media_msg["media_type"] == "document":
-        await meta.send_document(to=phone, media_id=media_id,
-                                  filename=info["filename"], caption=caption)
-    elif media_msg["media_type"] == "image":
-        await meta.send_image(to=phone, media_id=media_id, caption=caption)
+    try:
+        if media_msg["media_type"] == "document":
+            await meta.send_document(
+                to=phone, media_id=media_id, filename=info["filename"], caption=caption,
+            )
+        elif media_msg["media_type"] == "image":
+            await meta.send_image(to=phone, media_id=media_id, caption=caption)
+    except Exception as e:
+        logger.warning("Falha ao enviar mídia '%s' com cache atual: %s. Tentando novo upload.", key, e)
+        media_id = await _get_or_upload_media(meta, key, info, force_refresh=True)
+        if not media_id:
+            raise
+        if media_msg["media_type"] == "document":
+            await meta.send_document(
+                to=phone, media_id=media_id, filename=info["filename"], caption=caption,
+            )
+        elif media_msg["media_type"] == "image":
+            await meta.send_image(to=phone, media_id=media_id, caption=caption)
 
 
-async def _get_or_upload_media(meta, media_key: str, info: dict) -> str | None:
+async def _get_or_upload_media(
+    meta,
+    media_key: str,
+    info: dict,
+    force_refresh: bool = False,
+) -> str | None:
     """Retorna media_id do cache Redis ou faz upload e cacheia por 23h."""
     import os
     import redis.asyncio as _aioredis
@@ -252,10 +270,11 @@ async def _get_or_upload_media(meta, media_key: str, info: dict) -> str | None:
     r = None
     try:
         r = _aioredis.Redis.from_url(redis_url, decode_responses=True)
-        cached = await r.get(cache_key)
-        if cached:
-            await r.aclose()
-            return cached
+        if not force_refresh:
+            cached = await r.get(cache_key)
+            if cached:
+                await r.aclose()
+                return cached
     except Exception:
         r = None  # Redis indisponível — faz upload direto
 
