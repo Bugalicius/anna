@@ -29,6 +29,47 @@ class MetaAPIClient:
             "Content-Type": "application/json",
         }
 
+    async def send_interactive_buttons(self, to: str, body: str, buttons: list[dict]) -> dict:
+        """Envia mensagem interativa com botões de resposta rápida (max 3)."""
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": "interactive",
+            "interactive": {
+                "type": "button",
+                "body": {"text": body},
+                "action": {
+                    "buttons": [
+                        {"type": "reply", "reply": {"id": b["id"], "title": b["title"][:20]}}
+                        for b in buttons[:3]
+                    ]
+                },
+            },
+        }
+        return await self._post(payload)
+
+    async def send_interactive_list(
+        self, to: str, body: str, button_label: str, rows: list[dict]
+    ) -> dict:
+        """Envia mensagem interativa com lista de seleção (max 10 itens)."""
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": "interactive",
+            "interactive": {
+                "type": "list",
+                "body": {"text": body},
+                "action": {
+                    "button": button_label[:20],
+                    "sections": [{"rows": [
+                        {"id": r["id"], "title": r["title"][:24]}
+                        for r in rows[:10]
+                    ]}],
+                },
+            },
+        }
+        return await self._post(payload)
+
     async def send_text(self, to: str, text: str) -> dict:
         payload = {
             "messaging_product": "whatsapp",

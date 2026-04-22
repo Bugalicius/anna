@@ -176,6 +176,12 @@ async def _enviar_respostas(
                     await _handle_escalation(meta, phone, phone_hash, contact)
                 elif "media_type" in msg:
                     await _enviar_midia(meta, phone, msg)
+                elif msg.get("_interactive") == "button":
+                    await meta.send_interactive_buttons(phone, msg["body"], msg["buttons"])
+                elif msg.get("_interactive") == "list":
+                    await meta.send_interactive_list(
+                        phone, msg["body"], msg.get("button_label", "Escolher"), msg["rows"]
+                    )
                 else:
                     logger.warning("Tipo de mensagem desconhecido: %s", msg)
             elif isinstance(msg, str):

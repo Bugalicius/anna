@@ -211,10 +211,14 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
     if action == "ask_field":
         draft = plano.get("draft_message")
         history = state.get("history", [])
+        ask_context = plano.get("ask_context", "")
+        # Campos com UI interativa — sempre usar template (ignorar draft)
+        if ask_context == "objetivo":
+            return _ask_field(ask_context, nome, state)
         # Usa draft do planner para turnos além da primeira mensagem
         if draft and len(history) > 1:
             return [draft]
-        return _ask_field(plano["ask_context"], nome, state)
+        return _ask_field(ask_context, nome, state)
 
     # ── Enviar planos ─────────────────────────────────────────────────────────
     if action == "send_planos":
@@ -233,18 +237,8 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
     if action == "execute_tool" and plano.get("tool") in ("consultar_slots", "consultar_slots_remarcar"):
         if resultado_tool and resultado_tool.get("slots"):
             slots = resultado_tool["slots"]
-            opcoes = "\n".join(
-                f"{i+1}. {s['data_fmt']} às {s['hora']}"
-                for i, s in enumerate(slots)
-            )
             aviso = resultado_tool.get("aviso_preferencia", "")
-            corpo = MSG_AGENDAMENTO_OPCOES.format(
-                modalidade=cd.get("modalidade") or "presencial",
-                opcoes=opcoes,
-            )
-            if aviso:
-                corpo = f"{aviso}\n\n{opcoes}\n\nQual horário funciona melhor pra você?"
-            return [random.choice(_WAITING), corpo]
+            return [random.choice(_WAITING), _build_slot_buttons(slots, aviso)]
         return [MSG_SEM_HORARIOS]
 
     # ── Escolha de slot / pede escolha ────────────────────────────────────────
@@ -252,12 +246,11 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
         slots = state.get("last_slots_offered", [])
         if not slots:
             return [MSG_SEM_HORARIOS]
-        opcoes = "\n".join(f"{i+1}. {s['data_fmt']} às {s['hora']}" for i, s in enumerate(slots))
-        return [f"Pode me dizer qual horário prefere? 😊\n\n{opcoes}"]
+        return ["Pode me dizer qual horário prefere? 😊", _build_slot_buttons(slots)]
 
     # ── Forma de pagamento ────────────────────────────────────────────────────
     if action == "ask_forma_pagamento":
-        return [_build_forma_pagamento(cd, nome)]
+        return [_build_forma_pagamento_interactive(cd, nome)]
 
     # ── Aguarda pagamento ─────────────────────────────────────────────────────
     if action == "await_payment":
@@ -445,7 +438,7 @@ def _ask_field(campo: str, nome: str, state: dict) -> list:
         ]
     if campo == "objetivo":
         primeiro_nome = nome.split()[0] if nome else nome
-        return [MSG_OBJETIVOS.format(nome=primeiro_nome)]
+        return [_build_objetivo_list(primeiro_nome)]
     if campo == "plano":
         return [
             "Qual plano faz mais sentido pra você?\n\n"
@@ -553,6 +546,67 @@ def _answer_from_kb(topico: str, cd: dict) -> str:
     if topico == "planos":
         return kb.resumo_planos_texto()
     return "Posso te ajudar com agendamentos e informações sobre as consultas 💚"
+
+
+def _build_slot_buttons(slots: list, aviso: str = "") -> dict:
+    """Retorna dict de mensagem interativa com botões para escolha de slot."""
+    body_parts = []
+    if aviso:
+        body_parts.append(aviso)
+    body_parts.append("Qual horário funciona melhor pra você?")
+    return {
+        "_interactive": "button",
+        "body": "\n\n".join(body_parts),
+        "buttons": [
+            {"id": f"slot_{i+1}", "title": f"{s['data_fmt']} {s['hora']}"}
+            for i, s in enumerate(slots[:3])
+        ],
+    }
+
+
+def _build_forma_pagamento_interactive(cd: dict, nome: str) -> dict:
+    """Retorna dict de mensagem interativa com botões PIX / Cartão."""
+    plano_key = cd.get("plano") or "unica"
+    modal = cd.get("modalidade") or "presencial"
+    plano_dados = kb.get_plano(plano_key) or {}
+    valor = kb.get_valor(plano_key, modal)
+    parcelas = kb.get_parcelas(plano_key)
+    parcela = plano_dados.get(f"parcela_{modal}", valor / max(parcelas, 1))
+    body = (
+        f"Perfeito, {nome}! 😊\n\n"
+        f"Para confirmar seu agendamento, é necessário o pagamento antecipado. "
+        f"Essa é uma política da clínica — garante que seu horário fique reservado exclusivamente pra você 💚\n\n"
+        f"*{plano_dados.get('nome', plano_key)}* ({modal}):\n"
+        f"• PIX com desconto: *R${valor:.0f}* (sinal de 50%: *R${valor * 0.5:.0f}*)\n"
+        f"• Cartão: *{parcelas}x de R${parcela:.0f}* sem juros (valor integral)\n\n"
+        f"Qual opção prefere?"
+    )
+    return {
+        "_interactive": "button",
+        "body": body,
+        "buttons": [
+            {"id": "pix", "title": "PIX"},
+            {"id": "cartao", "title": "Cartão de crédito"},
+        ],
+    }
+
+
+def _build_objetivo_list(nome: str) -> dict:
+    """Retorna dict de mensagem interativa com lista de objetivos."""
+    return {
+        "_interactive": "list",
+        "body": (
+            f"Ótimo, {nome}! 😊\n\n"
+            "Me conta: qual é o seu principal objetivo com o acompanhamento nutricional?"
+        ),
+        "button_label": "Meu objetivo",
+        "rows": [
+            {"id": "emagrecer",    "title": "Emagrecer"},
+            {"id": "ganhar_massa", "title": "Ganhar massa"},
+            {"id": "lipedema",     "title": "Tratar lipedema"},
+            {"id": "outro",        "title": "Outro objetivo"},
+        ],
+    }
 
 
 async def _resposta_livre(state: dict) -> str:

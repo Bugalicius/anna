@@ -141,6 +141,12 @@ async def interpretar_turno(message: str, state: dict) -> dict:
             if _re.match(r"^\s*[1-3]\s*$", message):
                 turno["escolha_slot"] = int(message.strip())
 
+        # Heurística: botão interativo de slot (slot_1, slot_2, slot_3)
+        if turno["escolha_slot"] is None and state.get("last_slots_offered"):
+            m = _re.match(r"^slot_([1-3])$", msg_lower)
+            if m:
+                turno["escolha_slot"] = int(m.group(1))
+
         # Heurística: paciente menciona nome do dia de um slot oferecido
         # Ex: "quarta" quando slot 1 é "quarta, 29/04 às 10h"
         if turno["escolha_slot"] is None and state.get("last_slots_offered"):
@@ -151,6 +157,28 @@ async def interpretar_turno(message: str, state: dict) -> dict:
                 if dia and (msg_norm == dia or msg_norm.startswith(dia + " ") or msg_norm.startswith(dia + ",")):
                     turno["escolha_slot"] = i + 1
                     break
+
+        # Heurística pós-LLM: resposta de botão interativo (ID normalizado)
+        msg_lower = message.lower().strip()
+        if turno["forma_pagamento"] is None and msg_lower in ("pix", "cartao"):
+            turno["forma_pagamento"] = msg_lower
+            if turno["intent"] == "fora_de_contexto":
+                turno["intent"] = "agendar"
+        if turno["modalidade"] is None and msg_lower in ("presencial", "online"):
+            turno["modalidade"] = msg_lower
+            if turno["intent"] == "fora_de_contexto":
+                turno["intent"] = "agendar"
+        if turno["plano"] is None and msg_lower in _PLANOS:
+            turno["plano"] = msg_lower
+            if turno["intent"] == "fora_de_contexto":
+                turno["intent"] = "agendar"
+
+        # Heurística: botão interativo de objetivo
+        _OBJETIVO_BUTTONS = {"emagrecer", "ganhar_massa", "lipedema", "outro"}
+        if turno["objetivo"] is None and msg_lower in _OBJETIVO_BUTTONS:
+            turno["objetivo"] = msg_lower.replace("_", " ")
+            if turno["intent"] == "fora_de_contexto":
+                turno["intent"] = "agendar"
 
         return turno
 

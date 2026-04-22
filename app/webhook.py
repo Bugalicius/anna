@@ -78,7 +78,18 @@ async def process_message(message: dict, metadata: dict):
 
     meta_id = message.get("id", "")
     phone = message.get("from", "")
-    text = message.get("text", {}).get("body", "") or "[mídia]"
+    msg_type = message.get("type", "")
+    if msg_type == "interactive":
+        interactive = message.get("interactive", {})
+        itype = interactive.get("type", "")
+        if itype == "button_reply":
+            text = interactive.get("button_reply", {}).get("id", "") or "[mídia]"
+        elif itype == "list_reply":
+            text = interactive.get("list_reply", {}).get("id", "") or "[mídia]"
+        else:
+            text = "[mídia]"
+    else:
+        text = message.get("text", {}).get("body", "") or "[mídia]"
 
     # Deduplicacao atomica via Redis SET NX (camada primaria)
     if await _is_duplicate_message(meta_id):

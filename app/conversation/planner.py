@@ -306,6 +306,31 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
         slot_obj = slots[int(escolha) - 1]
         return _plano(ASK_FORMA_PAGAMENTO, update_appointment={"slot_escolhido": slot_obj})
 
+    # ── Regra 6: forma_pagamento capturada deterministicamente ─────────────
+    # Após ask_forma_pagamento o LLM às vezes ignora t_pagamento e retorna
+    # respond_fora_de_contexto. Este override captura pix/cartao diretamente.
+    t_pagamento = turno.get("forma_pagamento")
+    if (
+        t_pagamento in ("pix", "cartao")
+        and not cd.get("forma_pagamento")
+        and appt.get("slot_escolhido")
+    ):
+        if t_pagamento == "cartao":
+            return _plano(
+                EXECUTE_TOOL, tool="gerar_link_cartao",
+                params={
+                    "plano": cd.get("plano", "unica"),
+                    "modalidade": cd.get("modalidade", "presencial"),
+                    "phone_hash": state.get("phone_hash", ""),
+                },
+                update_data={"forma_pagamento": "cartao"},
+            )
+        return _plano(
+            AWAIT_PAYMENT,
+            update_data={"forma_pagamento": "pix"},
+            new_status="aguardando_pagamento",
+        )
+
     return None
 
 

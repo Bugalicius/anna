@@ -85,6 +85,8 @@ class ConversationEngine:
         for msg in resposta:
             if isinstance(msg, str):
                 add_message(state, "assistant", msg)
+            elif isinstance(msg, dict) and msg.get("_interactive") and msg.get("body"):
+                add_message(state, "assistant", msg["body"])
 
         # 10. Persistir ou deletar estado
         if state.get("status") == "concluido":
