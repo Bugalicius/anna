@@ -119,6 +119,7 @@ async def interpretar_turno(message: str, state: dict) -> dict:
     )
 
     client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+    msg_lower = message.lower().strip()
 
     try:
         response = client.messages.create(
@@ -159,7 +160,6 @@ async def interpretar_turno(message: str, state: dict) -> dict:
                     break
 
         # Heurística pós-LLM: resposta de botão interativo (ID normalizado)
-        msg_lower = message.lower().strip()
         if turno["forma_pagamento"] is None and msg_lower in ("pix", "cartao"):
             turno["forma_pagamento"] = msg_lower
             if turno["intent"] == "fora_de_contexto":
