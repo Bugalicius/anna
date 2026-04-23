@@ -214,6 +214,11 @@ def apply_tool_result(state: dict, tool: str, result: dict) -> None:
 
     if "tipo_remarcacao" in result:
         state["tipo_remarcacao"] = result["tipo_remarcacao"]
+        if result["tipo_remarcacao"] == "nova_consulta":
+            state["goal"] = "agendar_consulta"
+            state["collected_data"]["status_paciente"] = "novo"
+            appt["consulta_atual"] = None
+            appt["id_agenda"] = None
 
     if "link_url" in result:
         state["link_pagamento"] = {
