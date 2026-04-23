@@ -1,0 +1,20 @@
+== Acessos do Projeto Agente Ana ==
+
+VPS (código atualizado):
+  Host: 187.45.255.62
+  User: root
+  Auth: chave SSH em C:/Users/Breno/.ssh/id_ed25519
+  Path: /root/agente
+  Comando: ssh -i C:/Users/Breno/.ssh/id_ed25519 root@187.45.255.62
+
+GitHub (desatualizado — precisa de PAT para push):
+  Repo: https://github.com/Bugalicius/anna
+  User: Bugalicius
+  Nota: GitHub exige Personal Access Token, não senha.
+        Gerar em: https://github.com/settings/tokens
+
+Notas:
+  - O código real e atualizado está na VPS em /root/agente
+  - Trabalhar via SSH direto na VPS
+  - Docker stack: docker compose up -d
+  - Testes: docker run --rm -v /root/agente:/workspace -w /workspace agente-app python -m pytest -q
