@@ -701,7 +701,13 @@ async def _resposta_livre(state: dict) -> str:
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=512,
-            system=kb.system_prompt(),
+            system=[
+                {
+                    "type": "text",
+                    "text": kb.system_prompt(),
+                    "cache_control": {"type": "ephemeral"}
+                }
+            ],
             messages=msgs,
         )
         return response.content[0].text.strip()
