@@ -13,8 +13,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import re
-from datetime import date, datetime
 
 import anthropic
 from app.knowledge_base import kb
@@ -72,43 +70,15 @@ def _campos_cadastro_faltantes(cd: dict) -> list[str]:
     faltantes: list[str] = []
     if not _nome_completo(cd.get("nome")):
         faltantes.append("nome")
-    if not _normalizar_data_nascimento(cd.get("data_nascimento")):
+    if not cd.get("data_nascimento"):
         faltantes.append("data_nascimento")
-    if not _email_valido(cd.get("email")):
+    if not stateful_value(cd.get("email")):
         faltantes.append("email")
     return faltantes
 
 
 def stateful_value(value: str | None) -> bool:
     return bool(str(value).strip()) if value is not None else False
-
-
-def _email_valido(value: str | None) -> bool:
-    if not value:
-        return False
-    return bool(re.search(r"\b[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}\b", str(value), re.I))
-
-
-def _normalizar_data_nascimento(value: str | None) -> str | None:
-    if not value:
-        return None
-    raw = str(value).strip().lower()
-    m = re.search(r"\b(\d{4})-(\d{2})-(\d{2})\b", raw)
-    if m:
-        try:
-            return date(int(m.group(1)), int(m.group(2)), int(m.group(3))).isoformat()
-        except ValueError:
-            return None
-    m = re.search(r"\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b", raw)
-    if m:
-        dia, mes, ano = int(m.group(1)), int(m.group(2)), int(m.group(3))
-        if ano < 100:
-            ano += 2000 if ano <= datetime.now().year % 100 else 1900
-        try:
-            return date(ano, mes, dia).isoformat()
-        except ValueError:
-            return None
-    return None
 
 # ── Prompt ────────────────────────────────────────────────────────────────────
 

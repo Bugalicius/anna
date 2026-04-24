@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "WebSearch",
-      "Bash(ls -lh /c/Users/Breno/Desktop/thay/*.json)"
+      "Bash(ls -lh /c/Users/Breno/Desktop/thay/*.json)",
+      "Bash(tree /F C:\\\\Users\\\\Breno\\\\Desktop\\\\agente)",
+      "Bash(echo \"Exit: $?\")"
     ]
   }
 }

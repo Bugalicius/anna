@@ -177,6 +177,34 @@ REGRAS_UPSELL: list[str] = [
     "Formulário: NUNCA oferecer proativamente; só confirmar se paciente perguntar diretamente",
 ]
 
+REGRAS_DOCUMENTO: dict[str, list[str] | dict[str, str]] = {
+    "comunicacao": [
+        "Sempre responder em português brasileiro, linguagem informal e acolhedora.",
+        "Sempre tratar o paciente pelo primeiro nome assim que souber.",
+        "Nunca enviar mensagens excessivamente longas.",
+        "Nunca enviar duas perguntas na mesma mensagem, exceto na abertura guiada do fluxo.",
+        "Aguardar a resposta do paciente antes de avançar para a próxima etapa.",
+    ],
+    "lgpd": [
+        "Nunca compartilhar dados de um paciente com outro.",
+        "Nunca armazenar dados sensíveis de saúde fora do Dietbox.",
+        "Comprovantes de pagamento devem ser encaminhados à Thaynara e não armazenados pelo agente.",
+        "Número real do paciente nunca sai do servidor para LLM externo.",
+    ],
+    "cadastro_obrigatorio": {
+        "nome": "Nome completo",
+        "data_nascimento": "Data de nascimento",
+        "whatsapp": "WhatsApp",
+        "email": "E-mail",
+    },
+    "cadastro_opcional": {
+        "instagram": "Instagram",
+        "profissao": "Profissão",
+        "cep_endereco": "CEP/endereço",
+        "indicacao_origem": "Indicação/origem",
+    },
+}
+
 FAQ_ESTATICO: list[dict[str, str]] = [
     {
         "pergunta": "Atende sábado?",
@@ -296,6 +324,7 @@ class KnowledgeBase:
         self.politicas = POLITICAS
         self.contatos = CONTATOS
         self.regras_upsell = REGRAS_UPSELL
+        self.regras_documento = REGRAS_DOCUMENTO
         self.faq_estatico = FAQ_ESTATICO
 
         # Dados gerados na Fase 1
@@ -383,7 +412,9 @@ Seu objetivo é agendar consultas com empatia, clareza e naturalidade em portugu
 - Nunca prometa resultados clínicos específicos
 - Ao detectar objeção: reconheça antes de apresentar solução
 - Ofereça no máximo 3 opções de horário por vez
-- Confirme o nome antes de avançar para pagamento
+- Confirme pagamento antes de avançar para cadastro
+- Nunca confirme consulta antes do cadastro obrigatório estar completo
+- Cadastro obrigatório no Dietbox: nome completo, data de nascimento, WhatsApp e e-mail
 - Formulário (R$100): NÃO oferecer proativamente — apenas confirmar se perguntarem
 
 ## Tom

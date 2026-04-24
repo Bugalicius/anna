@@ -303,14 +303,6 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
 
     # ── Agendamento no Dietbox ────────────────────────────────────────────────
     if action == "execute_tool" and plano.get("tool") == "agendar":
-        if resultado_tool and resultado_tool.get("erro") == "cadastro_incompleto":
-            campos = resultado_tool.get("campos_pendentes") or []
-            if "data_nascimento" in campos:
-                return ["Recebi seus dados, mas fiquei com dúvida na *data de nascimento*. Pode me mandar novamente no formato DD/MM/AAAA, por favor?"]
-            if "email" in campos:
-                return ["Recebi seus dados, mas preciso confirmar seu *e-mail* para cadastro. Pode me mandar novamente, por favor?"]
-            if "nome" in campos:
-                return ["Recebi seus dados, mas preciso confirmar seu *nome e sobrenome* para cadastro. Pode me mandar novamente, por favor?"]
         if resultado_tool and resultado_tool.get("sucesso"):
             return [random.choice(_WAITING)] + _build_confirmacao(state)
         return [random.choice(_WAITING), MSG_ERRO_AGENDAMENTO]

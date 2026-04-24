@@ -13,7 +13,6 @@ import json
 import logging
 import os
 import re
-from datetime import datetime
 
 import anthropic
 
@@ -127,20 +126,9 @@ def _extract_birthdate(message: str) -> str | None:
     m = re.search(r"\b(\d{2})/(\d{2})/(\d{4})\b", message)
     if m:
         return f"{m.group(3)}-{m.group(2)}-{m.group(1)}"
-    m = re.search(r"\b(\d{1,2})/(\d{1,2})/(\d{2})\b", message)
-    if m:
-        ano = int(m.group(3))
-        ano += 2000 if ano <= datetime.now().year % 100 else 1900
-        return f"{ano:04d}-{int(m.group(2)):02d}-{int(m.group(1)):02d}"
-    m = re.search(r"\b(\d{1,2})-(\d{1,2})-(\d{4})\b", message)
-    if m:
-        return f"{m.group(3)}-{int(m.group(2)):02d}-{int(m.group(1)):02d}"
     m = re.search(r"\b(\d{4})-(\d{2})-(\d{2})\b", message)
     if m:
         return m.group(0)
-    m = re.search(r"\b(\d{2})(\d{2})(\d{4})\b", message)
-    if m:
-        return f"{m.group(3)}-{m.group(2)}-{m.group(1)}"
     return None
 
 

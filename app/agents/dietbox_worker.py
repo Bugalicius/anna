@@ -415,8 +415,10 @@ def cadastrar_paciente(dados: dict) -> int:
         digitos = "55" + digitos
     telefone = "+" + digitos
 
-    # Birthdate é obrigatório no Dietbox; usa placeholder se não informado
+    # Birthdate é obrigatório no Dietbox; Dietbox aceita melhor ISO com horário.
     birthdate = dados.get("data_nascimento") or "1990-01-01T00:00:00"
+    if isinstance(birthdate, str) and len(birthdate) == 10 and birthdate.count("-") == 2:
+        birthdate = f"{birthdate}T00:00:00"
 
     payload = {
         "Name": dados["nome"],

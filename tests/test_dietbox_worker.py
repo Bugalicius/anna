@@ -237,6 +237,50 @@ def test_cadastrar_paciente_sem_id_levanta_erro():
             cadastrar_paciente({"nome": "Teste", "telefone": "5531900000000"})
 
 
+def test_cadastrar_paciente_normaliza_birthdate_para_iso_com_horario():
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"Data": {"Id": 99}}
+    mock_resp.raise_for_status = MagicMock()
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("app.agents.dietbox_worker._carregar_locais"), \
+         patch("app.agents.dietbox_worker._ID_LOCAL_PRESENCIAL", "LOCAL-001"), \
+         patch("requests.post", return_value=mock_resp) as mock_post:
+        from app.agents.dietbox_worker import cadastrar_paciente
+        cadastrar_paciente({
+            "nome": "João Teste",
+            "data_nascimento": "1990-05-15",
+            "telefone": "5531988887777",
+            "email": "joao@email.com",
+        })
+
+    payload = mock_post.call_args.kwargs["json"]
+    assert payload["Birthdate"] == "1990-05-15T00:00:00"
+
+
+@pytest.mark.asyncio
+async def test_agendar_nao_chama_dietbox_com_cadastro_duvidoso():
+    from app.tools.scheduling import agendar
+
+    with patch("app.integrations.dietbox.processar_agendamento") as mock_processar:
+        result = await agendar(
+            nome="Breno Alvim",
+            telefone="5531999990000",
+            plano="ouro",
+            modalidade="presencial",
+            slot={"datetime": "2026-05-04T10:00:00"},
+            forma_pagamento="pix",
+            data_nascimento="data estranha",
+            email="email estranho",
+        )
+
+    assert result["sucesso"] is False
+    assert result["erro"] == "cadastro_incompleto"
+    assert set(result["campos_pendentes"]) == {"data_nascimento", "email"}
+    mock_processar.assert_not_called()
+
+
 # ── agendar_consulta ──────────────────────────────────────────────────────────
 
 def test_agendar_consulta_retorna_id():

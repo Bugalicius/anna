@@ -71,6 +71,7 @@ async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
 async def process_message(message: dict, metadata: dict):
     """Processa uma mensagem em background. Deduplicação + roteamento."""
     from app.database import SessionLocal
+    from app.media_handler import analisar_comprovante_pagamento, processar_midia
     from app.models import Message, Contact, Conversation
     from app.router import route_message
     import hashlib
@@ -88,6 +89,24 @@ async def process_message(message: dict, metadata: dict):
             text = interactive.get("list_reply", {}).get("id", "") or "[mídia]"
         else:
             text = "[mídia]"
+    elif msg_type == "audio":
+        media_id = message.get("audio", {}).get("id", "")
+        text = "[mídia]"
+        if media_id:
+            media = await processar_midia(media_id)
+            if media.get("transcricao"):
+                text = media["transcricao"]
+    elif msg_type in ("image", "document"):
+        media_id = message.get(msg_type, {}).get("id", "")
+        text = "[mídia]"
+        if media_id:
+            media = await processar_midia(media_id)
+            analise = analisar_comprovante_pagamento(media.get("bytes", b""), media.get("mime_type", ""))
+            if analise.get("eh_comprovante"):
+                valor = analise.get("valor")
+                valor_txt = f"{valor:.2f}" if isinstance(valor, (float, int)) else "null"
+                favorecido = (analise.get("favorecido") or "").replace("|", " ")[:120]
+                text = f"[comprovante valor={valor_txt} favorecido={favorecido}]"
     else:
         text = message.get("text", {}).get("body", "") or "[mídia]"
 

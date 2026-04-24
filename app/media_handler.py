@@ -13,11 +13,15 @@ Fluxo:
 """
 from __future__ import annotations
 
+import base64
+import json
 import logging
 import os
+import re
 import tempfile
 from pathlib import Path
 
+import anthropic
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -166,3 +170,77 @@ async def processar_midia(media_id: str) -> dict:
         "mime_type": mime_type,
         "transcricao": transcricao,
     }
+
+
+def analisar_comprovante_pagamento(content: bytes, mime_type: str) -> dict:
+    """Lê comprovante em imagem e tenta extrair o valor pago."""
+    if mime_type not in MIME_IMAGENS:
+        return {"eh_comprovante": False, "valor": None, "texto_extraido": "", "favorecido": None}
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        logger.warning("ANTHROPIC_API_KEY não configurado — leitura de comprovante indisponível")
+        return {"eh_comprovante": False, "valor": None, "texto_extraido": "", "favorecido": None}
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        encoded = base64.b64encode(content).decode("ascii")
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=300,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": mime_type,
+                            "data": encoded,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": (
+                            "Analise a imagem e responda SOMENTE JSON válido com os campos "
+                            '{"eh_comprovante":true|false,"valor":number|null,"favorecido":string|null,"texto_extraido":string}. '
+                            "Se não parecer comprovante bancário/PIX, use eh_comprovante=false."
+                        ),
+                    },
+                ],
+            }],
+        )
+        raw = response.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        data = json.loads(raw)
+        valor = data.get("valor")
+        try:
+            valor = float(valor) if valor is not None else None
+        except Exception:
+            valor = _parse_brl_value(str(valor))
+        return {
+            "eh_comprovante": bool(data.get("eh_comprovante")),
+            "valor": valor,
+            "texto_extraido": str(data.get("texto_extraido", ""))[:1500],
+            "favorecido": data.get("favorecido"),
+        }
+    except Exception as e:
+        logger.error("Erro ao analisar comprovante: %s", e)
+        return {"eh_comprovante": False, "valor": None, "texto_extraido": "", "favorecido": None}
+
+
+def _parse_brl_value(text: str) -> float | None:
+    text = text.strip()
+    if not text:
+        return None
+    m = re.search(r"(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:[.,]\d{2})?)", text)
+    if not m:
+        return None
+    raw = m.group(1).replace(".", "").replace(",", ".")
+    try:
+        return float(raw)
+    except ValueError:
+        return None

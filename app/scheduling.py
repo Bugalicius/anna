@@ -22,87 +22,6 @@ BRT = timezone(timedelta(hours=-3))
 _HORAS_MANHA = {"8h", "9h", "10h"}
 _HORAS_TARDE = {"15h", "16h", "17h"}
 _HORAS_NOITE = {"18h", "19h"}
-_EMAIL_RE = re.compile(r"\b[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}\b", re.I)
-_MESES_PT = {
-    "janeiro": 1, "fevereiro": 2, "marco": 3, "março": 3, "abril": 4,
-    "maio": 5, "junho": 6, "julho": 7, "agosto": 8, "setembro": 9,
-    "outubro": 10, "novembro": 11, "dezembro": 12,
-}
-
-
-def _normalizar_email(texto: str | None) -> str | None:
-    if not texto:
-        return None
-    m = _EMAIL_RE.search(str(texto).strip())
-    return m.group(0).lower() if m else None
-
-
-def _normalizar_data_nascimento(texto: str | None) -> str | None:
-    if not texto:
-        return None
-    raw = str(texto).strip().lower()
-
-    m = re.search(r"\b(\d{4})-(\d{2})-(\d{2})\b", raw)
-    if m:
-        try:
-            return date(int(m.group(1)), int(m.group(2)), int(m.group(3))).isoformat()
-        except ValueError:
-            return None
-
-    m = re.search(r"\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b", raw)
-    if m:
-        dia, mes, ano = int(m.group(1)), int(m.group(2)), int(m.group(3))
-        if ano < 100:
-            ano += 2000 if ano <= datetime.now().year % 100 else 1900
-        try:
-            return date(ano, mes, dia).isoformat()
-        except ValueError:
-            return None
-
-    m = re.search(r"\b(\d{2})(\d{2})(\d{4})\b", raw)
-    if m:
-        try:
-            return date(int(m.group(3)), int(m.group(2)), int(m.group(1))).isoformat()
-        except ValueError:
-            return None
-
-    m = re.search(r"\b(\d{1,2})\s+de\s+([a-zçã]+)\s+de\s+(\d{2,4})\b", raw)
-    if m:
-        dia = int(m.group(1))
-        mes = _MESES_PT.get(m.group(2))
-        ano = int(m.group(3))
-        if ano < 100:
-            ano += 2000 if ano <= datetime.now().year % 100 else 1900
-        if mes:
-            try:
-                return date(ano, mes, dia).isoformat()
-            except ValueError:
-                return None
-
-    return None
-
-
-def _validar_cadastro(nome: str, telefone: str, data_nascimento: str | None, email: str | None) -> dict:
-    pendentes: list[str] = []
-    if len([p for p in str(nome or "").strip().split() if len(p) >= 2]) < 2:
-        pendentes.append("nome")
-    if not telefone or len(re.sub(r"\D", "", telefone)) < 10:
-        pendentes.append("telefone")
-
-    data_norm = _normalizar_data_nascimento(data_nascimento)
-    if not data_norm:
-        pendentes.append("data_nascimento")
-
-    email_norm = _normalizar_email(email)
-    if not email_norm:
-        pendentes.append("email")
-
-    return {
-        "ok": not pendentes,
-        "pendentes": pendentes,
-        "data_nascimento": data_norm,
-        "email": email_norm,
-    }
 
 
 # ── consultar_slots ───────────────────────────────────────────────────────────
@@ -208,14 +127,6 @@ async def agendar(
     from app.knowledge_base import kb
 
     try:
-        validacao = _validar_cadastro(nome, telefone, data_nascimento, email)
-        if not validacao["ok"]:
-            return {
-                "sucesso": False,
-                "erro": "cadastro_incompleto",
-                "campos_pendentes": validacao["pendentes"],
-            }
-
         dt_str = slot["datetime"]
         dt = datetime.fromisoformat(dt_str)
         if dt.tzinfo is None:
@@ -228,8 +139,8 @@ async def agendar(
                 dados_paciente={
                     "nome": nome,
                     "telefone": telefone,
-                    "email": validacao["email"] or "",
-                    "data_nascimento": validacao["data_nascimento"],
+                    "email": email or "",
+                    "data_nascimento": data_nascimento,
                     "instagram": instagram,
                     "profissao": profissao,
                     "cep_endereco": cep_endereco,
