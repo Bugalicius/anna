@@ -204,7 +204,7 @@ async def agendar(
     indicacao_origem: str | None = None,
 ) -> dict:
     """Cadastra paciente e agenda consulta no Dietbox."""
-    from app.integrations.dietbox import processar_agendamento, confirmar_pagamento
+    from app.integrations.dietbox import processar_agendamento
     from app.knowledge_base import kb
 
     try:
@@ -242,14 +242,6 @@ async def agendar(
                 forma_pagamento=forma_pagamento,
             ),
         )
-
-        if resultado.get("sucesso") and resultado.get("id_transacao"):
-            try:
-                await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: confirmar_pagamento(resultado["id_transacao"])
-                )
-            except Exception as exc:
-                logger.warning("Falha ao confirmar pagamento Dietbox: %s", exc)
 
         return resultado
 
