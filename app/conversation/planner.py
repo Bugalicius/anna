@@ -58,6 +58,7 @@ _VALID_ACTIONS = {
 _VALID_TOOLS = {
     "consultar_slots", "consultar_slots_remarcar", "agendar", "remarcar_dietbox",
     "cancelar", "gerar_link_cartao", "detectar_tipo_remarcacao", "perda_retorno",
+    "confirmar_pagamento_dietbox",
 }
 
 
@@ -451,6 +452,14 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                     f"e o sinal dessa opção é R${valor_esperado:.2f}. "
                     "Confere pra mim e, se precisar, me envie o comprovante novamente 😊"
                 ),
+            )
+        id_transacao = appt.get("id_transacao")
+        if id_transacao:
+            return _plano(
+                EXECUTE_TOOL,
+                tool="confirmar_pagamento_dietbox",
+                params={"id_transacao": id_transacao},
+                update_flags={"pagamento_confirmado": True},
             )
         faltantes = _campos_cadastro_faltantes(cd)
         if faltantes:

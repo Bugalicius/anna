@@ -30,3 +30,16 @@ async def gerar_link(plano: str, modalidade: str, phone_hash: str) -> dict:
     except Exception as e:
         logger.error("Erro ao gerar link pagamento: %s", e)
         return {"sucesso": False, "erro": str(e)}
+
+
+async def confirmar_pagamento_dietbox(id_transacao: str) -> dict:
+    """Marca transação financeira como paga no Dietbox."""
+    from app.integrations.dietbox import confirmar_pagamento
+    try:
+        await asyncio.get_event_loop().run_in_executor(
+            None, lambda: confirmar_pagamento(id_transacao)
+        )
+        return {"sucesso": True}
+    except Exception as e:
+        logger.error("Erro ao confirmar pagamento Dietbox: %s", e)
+        return {"sucesso": False, "erro": str(e)}

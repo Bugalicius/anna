@@ -179,6 +179,10 @@ class ConversationEngine:
         if tool_name == "perda_retorno":
             return {"sucesso": True, "tipo": "perda_retorno"}
 
+        if tool_name == "confirmar_pagamento_dietbox":
+            from app.tools.payments import confirmar_pagamento_dietbox
+            return await confirmar_pagamento_dietbox(**params)
+
         logger.warning("Tool desconhecida: %s", tool_name)
         return None
 
