@@ -748,7 +748,10 @@ def _build_prompt(turno: dict, state: dict) -> str:
         for i, s in enumerate(slots)
     ) or "  (nenhum)"
 
-    return _PROMPT.format(
+    version = os.environ.get("PLANNER_PROMPT_VERSION", "v1")
+    template = _PROMPT_V2 if version == "v2" else _PROMPT
+    logger.debug("Planner usando prompt version=%s", version)
+    return template.format(
         phone=state.get("phone", ""),
         phone_hash=state.get("phone_hash", ""),
         goal=state.get("goal", "desconhecido"),
