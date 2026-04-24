@@ -23,22 +23,9 @@ logger = logging.getLogger(__name__)
 
 # ── Prompt ────────────────────────────────────────────────────────────────────
 
-_PROMPT = """\
+_SYSTEM_PROMPT = """\
 Você interpreta mensagens de pacientes num sistema de agendamento nutricional \
 (nutricionista Thaynara Teixeira).
-
-## Contexto da conversa
-Goal atual: {goal}
-Status: {status}
-Dados coletados: {collected_summary}
-Slots oferecidos: {slots_summary}
-Última mensagem da Ana: {last_assistant}
-
-## Histórico recente
-{history}
-
-## Mensagem atual do paciente
-{message}
 
 ## Instruções
 Retorne SOMENTE JSON válido sem markdown. Não invente dados — use null se não houver evidência.
@@ -59,6 +46,21 @@ Regras críticas:
 - "recusou_remarketing" APENAS quando a Ana enviou mensagem de recontato automático após dias de silêncio e o paciente não quer mais ser contactado. Durante fluxo ativo de agendamento, NUNCA use recusou_remarketing.
 - "duvida_clinica" APENAS para perguntas médicas explícitas sobre sintomas, diagnóstico, medicamentos ou condições de saúde (ex: "posso comer X tendo diabetes", "tenho refluxo, pode?"). Paciente falando sobre objetivos, razões para escolher um plano, ou o que espera da consulta → intent="agendar", tem_pergunta=false.
 - Quando o paciente está no meio do agendamento (goal=agendar_consulta) e diz algo que explica sua motivação ou objetivo, mantenha intent="agendar" e siga o fluxo.
+"""
+
+_CONTEXT_TEMPLATE = """\
+## Contexto da conversa
+Goal atual: {goal}
+Status: {status}
+Dados coletados: {collected_summary}
+Slots oferecidos: {slots_summary}
+Última mensagem da Ana: {last_assistant}
+
+## Histórico recente
+{history}
+
+## Mensagem atual do paciente
+{message}
 """
 
 # ── Valores aceitos ────────────────────────────────────────────────────────────
@@ -179,24 +181,30 @@ async def interpretar_turno(message: str, state: dict) -> dict:
         for m in history_clean
     ) or "(sem histórico)"
 
-    prompt = _PROMPT.format(
-        goal=state.get("goal", "desconhecido"),
-        status=state.get("status", "coletando"),
-        collected_summary=collected_summary,
-        slots_summary=slots_summary,
-        last_assistant=last_assistant[:400],
-        history=history_txt,
-        message=message,
-    )
-
     client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
     msg_lower = message.lower().strip()
 
     try:
+        context = _CONTEXT_TEMPLATE.format(
+            goal=state.get("goal", "desconhecido"),
+            status=state.get("status", "coletando"),
+            collected_summary=collected_summary,
+            slots_summary=slots_summary,
+            last_assistant=last_assistant[:400],
+            history=history_txt,
+            message=message,
+        )
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=450,
-            messages=[{"role": "user", "content": prompt}],
+            system=[
+                {
+                    "type": "text",
+                    "text": _SYSTEM_PROMPT,
+                    "cache_control": {"type": "ephemeral"}
+                }
+            ],
+            messages=[{"role": "user", "content": context}],
         )
         raw = response.content[0].text.strip()
         if raw.startswith("```"):
