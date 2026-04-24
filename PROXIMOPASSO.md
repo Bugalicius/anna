@@ -78,10 +78,10 @@
 ## 3. 🚨 Problemas pendentes (priorizados)
 
 ### Alta
-- Alinhar financeiro com a regra comercial real:
+- ✅ Alinhar financeiro com a regra comercial real:
   - hoje a conversa fala em sinal de 50%
   - mas o lançamento ainda usa o valor integral
-- Marcar pagamento como pago no Dietbox quando o comprovante for aceito.
+- ✅ Marcar pagamento como pago no Dietbox quando o comprovante for aceito.
 - Melhorar handoff explícito `retencao -> atendimento` em:
   - `nova_consulta`
   - `perda_retorno`

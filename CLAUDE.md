@@ -102,7 +102,7 @@ Agente de WhatsApp "Ana" para a nutricionista Thaynara Teixeira (CRN9 31020). Ba
 - Module-level constants: `SCREAMING_SNAKE_CASE` — `ETAPAS`, `MSG_BOAS_VINDAS`, `REMARKETING_SEQ`, `BRT`, `META_API_BASE`
 - Local variables: `snake_case` — `msg_lower`, `phone_hash`, `plano_dados`
 - Private module-level dicts/sets: leading underscore — `_INTENCOES_AGENTE1`, `_AGENT_STATE`, `_NAO_NOMES`
-- `Literal` types defined at module level: `IntencaoType = Literal["novo_lead", ...]` in `app/agents/orchestrator.py`
+- `Literal` types defined at module level: `IntencaoType = Literal["novo_lead", ...]` em `app/conversation/interpreter.py`
 ## Code Style
 - No dedicated formatter config detected (no `.prettierrc`, `pyproject.toml`, or `ruff.toml`)
 - Indentation: 4 spaces
@@ -117,7 +117,7 @@ Agente de WhatsApp "Ana" para a nutricionista Thaynara Teixeira (CRN9 31020). Ba
 - Return types always annotated: `-> str`, `-> list[str]`, `-> dict`, `-> None`
 - SQLAlchemy models use `Mapped[T]` typed columns: `id: Mapped[str] = mapped_column(...)`
 - Generic types use built-in forms: `list[dict]`, `dict[str, ...]`, `set[str]` — not `List`, `Dict`
-- `from typing import Literal` used for string enum types in `app/agents/orchestrator.py`
+- `from typing import Literal` used for string enum types em `app/conversation/interpreter.py`
 ## Error Handling
 - LLM calls wrapped in `try/except Exception as e` → log error → return fallback string or default value
 - External API calls (`dietbox_worker`, `rede_worker`) wrapped in try/except → return structured failure dict
@@ -126,7 +126,7 @@ Agente de WhatsApp "Ana" para a nutricionista Thaynara Teixeira (CRN9 31020). Ba
 - Fallback to PIX when card payment link generation fails (see `app/agents/atendimento.py:_etapa_forma_pagamento`)
 ## Logging
 - Every module defines `logger = logging.getLogger(__name__)` at module level
-- Found in: `app/agents/atendimento.py`, `app/agents/orchestrator.py`, `app/agents/retencao.py`, `app/router.py`, `app/webhook.py`, `app/knowledge_base.py`, `app/tags.py`, `app/escalation.py`, `app/media_handler.py`, `app/remarketing.py`
+- Found in: `app/agents/atendimento.py`, `app/agents/retencao.py`, `app/router.py`, `app/webhook.py`, `app/knowledge_base.py`, `app/tags.py`, `app/escalation.py`, `app/media_handler.py`, `app/remarketing.py`, `app/conversation/interpreter.py`, `app/conversation/planner.py`, `app/conversation/engine.py`
 - `logger.error(...)` — exceptions, API failures, missing contacts
 - `logger.warning(...)` — missing optional config, unexpected states
 - `logger.info(...)` — routing decisions, successful operations, tag changes
@@ -140,7 +140,7 @@ Agente de WhatsApp "Ana" para a nutricionista Thaynara Teixeira (CRN9 31020). Ba
 - Example in `app/agents/atendimento.py`: lists all 10 flow steps with their names
 - Public methods and non-trivial private functions have one-line docstrings
 - Return value documented inline in docstring when not obvious: `Returns: (intencao, confianca)`
-- Complex returns documented in the docstring body (see `rotear` in `app/agents/orchestrator.py`)
+- Complex returns documented in the docstring body (see `decidir_acao` em `app/conversation/planner.py`)
 - Domain state values documented as inline comments: `# "pix" | "cartao"`, `# pending | sent | cancelled | failed`
 - Section dividers used liberally to structure long files
 - TODO-style notes use `# Nota:` or plain comments (no formal `TODO:` prefix found)
@@ -172,16 +172,36 @@ Agente de WhatsApp "Ana" para a nutricionista Thaynara Teixeira (CRN9 31020). Ba
 - Contains: Signature verification, payload parsing, deduplication, `BackgroundTasks` dispatch
 - Depends on: `app/meta_api.py` (signature check), `app/models.py` (Contact, Conversation, Message)
 - Used by: Meta Cloud API (external)
-- Purpose: Load contact state from DB, check for active agent, call orchestrator, dispatch to correct agent, send replies
+- Purpose: Load contact state from DB, dispatch to ConversationEngine, handle responses (send via Meta)
 - Location: `app/router.py`
-- Contains: `route_message()`, `_AGENT_STATE` in-memory dict, helper functions
-- Depends on: `app/agents/orchestrator.py`, `app/agents/atendimento.py`, `app/agents/retencao.py`, `app/meta_api.py`, `app/database.py`
+- Contains: `route_message()`, helper functions for contact lookup, response dispatch
+- Depends on: `app/conversation/engine.py`, `app/meta_api.py`, `app/database.py`, `app/tags.py`
 - Used by: `app/webhook.py` (via `BackgroundTasks`)
-- Purpose: Classify message intent via Claude Haiku; return routing instruction
-- Location: `app/agents/orchestrator.py`
-- Contains: `rotear()`, `_classificar_intencao()`, intent enum, prompt template
-- Depends on: `anthropic` SDK (synchronous)
+- Purpose: Main conversation loop — interpret intent, decide action, execute tools, generate response
+- Location: `app/conversation/engine.py`
+- Contains: `ConversationEngine` class, 6-step conversation flow (load → interpret → decide → execute → respond → persist)
+- Depends on: `app/conversation/interpreter.py`, `app/conversation/planner.py`, `app/conversation/responder.py`, `app/conversation/state.py`
 - Used by: `app/router.py`
+- Purpose: Classify message intent via Claude Haiku; extract user-provided fields (name, plan, slots, etc)
+- Location: `app/conversation/interpreter.py`
+- Contains: `interpretar_turno()`, LLM-based intent classification and extraction, prompt template
+- Depends on: `anthropic` SDK (asynchronous)
+- Used by: `app/conversation/engine.py`
+- Purpose: Decide next action based on state and interpreted turn; route to deterministic or LLM-driven decision
+- Location: `app/conversation/planner.py`
+- Contains: `decidir_acao()`, deterministic Regras 1-7, LLM planner fallback, action constants
+- Depends on: `anthropic` SDK (asynchronous), `app/tools/*` modules
+- Used by: `app/conversation/engine.py`
+- Purpose: Generate user-facing response based on action and tool results
+- Location: `app/conversation/responder.py`
+- Contains: `gerar_resposta()`, response templates, action-to-response mapping
+- Depends on: `app/knowledge_base.py`
+- Used by: `app/conversation/engine.py`
+- Purpose: Conversation state persistence and mutations
+- Location: `app/conversation/state.py`
+- Contains: `load_state()`, `save_state()`, `apply_turno_updates()`, `apply_tool_result()`, Redis integration
+- Depends on: Redis, SQLAlchemy (for initial Contact lookup)
+- Used by: `app/conversation/engine.py`, `app/router.py`
 - Purpose: Drive new patient through 10-step booking funnel
 - Location: `app/agents/atendimento.py`
 - Contains: `AgenteAtendimento` class, FSM with 10 stages, LLM fallback, helper extractors
@@ -250,8 +270,8 @@ Agente de WhatsApp "Ana" para a nutricionista Thaynara Teixeira (CRN9 31020). Ba
 - Triggers: APScheduler intervals (1 min remarketing, 5 min retry)
 ## Error Handling
 - Dietbox/Rede workers: `try/except` around all HTTP calls; return `{"sucesso": False, "erro": ...}` or `LinkPagamento(sucesso=False)` on failure
-- Orchestrator: falls back to `"novo_lead"` intent on any Claude API error
-- Agent LLM fallback: `_gerar_resposta_llm()` called when no deterministic step matches
+- Interpreter/Planner: falls back to `"fora_de_contexto"` intent on any Claude API error
+- Tools: wrapped in `try/except`, return `{"sucesso": False, "erro": ...}` on failure
 - Message delivery: per-message `try/except` in `_enviar()`; failures logged, other messages continue
 ## Cross-Cutting Concerns
 <!-- GSD:architecture-end -->
