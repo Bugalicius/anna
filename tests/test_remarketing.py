@@ -166,38 +166,6 @@ def test_cannot_schedule_when_count_is_3(db, contact):
     assert can_schedule_remarketing(db, contact.id) is False
 
 
-# ── Task 1: Orquestrador — recusou_remarketing ────────────────────────────────
-
-def test_orchestrator_intencao_recusou_remarketing_valida():
-    """recusou_remarketing deve estar no Literal IntencaoType."""
-    import typing
-    from app.agents.orchestrator import IntencaoType
-    args = typing.get_args(IntencaoType)
-    assert "recusou_remarketing" in args
-
-
-def test_rotear_recusou_remarketing_retorna_agente_correto():
-    from app.agents.orchestrator import rotear
-    with patch("app.agents.orchestrator._classificar_intencao",
-               return_value=("recusou_remarketing", 0.95)):
-        resultado = rotear("nao tenho interesse", stage_atual="remarketing")
-    assert resultado["agente"] == "remarketing_recusa"
-    assert resultado["intencao"] == "recusou_remarketing"
-
-
-def test_classificar_intencao_recusou_remarketing():
-    """_classificar_intencao retorna recusou_remarketing quando LLM retorna essa intencao."""
-    from app.agents.orchestrator import _classificar_intencao
-    mock_response = MagicMock()
-    mock_response.content = [MagicMock(text='{"intencao": "recusou_remarketing", "confianca": 0.9}')]
-    with patch("anthropic.Anthropic") as mock_client_cls:
-        mock_client = mock_client_cls.return_value
-        mock_client.messages.create.return_value = mock_response
-        intencao, confianca = _classificar_intencao("nao tenho interesse")
-    assert intencao == "recusou_remarketing"
-    assert confianca == 0.9
-
-
 # ── Task 2: Handler recusou_remarketing no router ─────────────────────────────
 
 MSG_ENCERRAMENTO_ESPERADA = (

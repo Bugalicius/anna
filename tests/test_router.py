@@ -1,5 +1,5 @@
 """
-Testes do roteamento — Orquestrador (Agente 0) + Redis state integration.
+Testes do roteamento — engine + router integration.
 Todos os testes usam mock do Claude e do Redis para não fazer chamadas reais.
 """
 from __future__ import annotations
@@ -7,138 +7,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 
 import pytest
-
-
-# ── rotear — primeiro contato ─────────────────────────────────────────────────
-
-def test_primeiro_contato_vai_para_atendimento():
-    from app.agents.orchestrator import rotear
-    rota = rotear(mensagem="oi", stage_atual=None, primeiro_contato=True)
-    assert rota["agente"] == "atendimento"
-    assert rota["intencao"] == "novo_lead"
-
-
-def test_stage_cold_lead_vai_para_atendimento():
-    from app.agents.orchestrator import rotear
-    rota = rotear(mensagem="quero informações", stage_atual="cold_lead", primeiro_contato=True)
-    assert rota["agente"] == "atendimento"
-
-
-def test_stage_new_vai_para_atendimento():
-    from app.agents.orchestrator import rotear
-    rota = rotear(mensagem="olá", stage_atual="new", primeiro_contato=True)
-    assert rota["agente"] == "atendimento"
-
-
-# ── rotear — intenções via LLM (mock) ─────────────────────────────────────────
-
-def _mock_classificacao(intencao: str, confianca: float = 0.9):
-    """Helper: mocka _classificar_intencao para retornar intenção/confiança fixas."""
-    return patch(
-        "app.agents.orchestrator._classificar_intencao",
-        return_value=(intencao, confianca),
-    )
-
-
-def test_intencao_agendar_vai_para_atendimento():
-    from app.agents.orchestrator import rotear
-    with _mock_classificacao("agendar"):
-        rota = rotear("quero marcar uma consulta", stage_atual="presenting", primeiro_contato=False)
-    assert rota["agente"] == "atendimento"
-    assert rota["intencao"] == "agendar"
-
-
-def test_intencao_pagar_vai_para_atendimento():
-    from app.agents.orchestrator import rotear
-    with _mock_classificacao("pagar"):
-        rota = rotear("como faço o pagamento?", stage_atual="presenting", primeiro_contato=False)
-    assert rota["agente"] == "atendimento"
-
-
-def test_intencao_tirar_duvida_vai_para_atendimento():
-    from app.agents.orchestrator import rotear
-    with _mock_classificacao("tirar_duvida"):
-        rota = rotear("qual o valor da consulta?", stage_atual="presenting", primeiro_contato=False)
-    assert rota["agente"] == "atendimento"
-
-
-def test_intencao_remarcar_vai_para_retencao():
-    from app.agents.orchestrator import rotear
-    with _mock_classificacao("remarcar"):
-        rota = rotear("preciso remarcar", stage_atual="agendado", primeiro_contato=False)
-    assert rota["agente"] == "retencao"
-    assert rota["intencao"] == "remarcar"
-
-
-def test_intencao_cancelar_vai_para_retencao():
-    from app.agents.orchestrator import rotear
-    with _mock_classificacao("cancelar"):
-        rota = rotear("quero cancelar minha consulta", stage_atual="agendado", primeiro_contato=False)
-    assert rota["agente"] == "retencao"
-    assert rota["intencao"] == "cancelar"
-
-
-def test_intencao_duvida_clinica_vai_para_escalacao():
-    from app.agents.orchestrator import rotear
-    with _mock_classificacao("duvida_clinica"):
-        rota = rotear("tenho diabetes posso comer açúcar?", stage_atual="presenting", primeiro_contato=False)
-    assert rota["agente"] == "escalacao"
-
-
-def test_intencao_fora_de_contexto_retorna_resposta_padrao():
-    from app.agents.orchestrator import rotear
-    with _mock_classificacao("fora_de_contexto"):
-        rota = rotear("qual o resultado do flamengo?", stage_atual="presenting", primeiro_contato=False)
-    assert rota["agente"] == "padrao"
-    assert rota["resposta_padrao"] is not None
-    assert len(rota["resposta_padrao"]) > 10
-
-
-def test_confianca_preenchida():
-    from app.agents.orchestrator import rotear
-    with _mock_classificacao("agendar", confianca=0.95):
-        rota = rotear("quero agendar", stage_atual="presenting", primeiro_contato=False)
-    assert rota["confianca"] == pytest.approx(0.95)
-
-
-def test_fallback_erro_llm_vai_para_atendimento():
-    """Se a chamada ao Claude falhar, deve fazer fallback para atendimento (novo_lead)."""
-    from app.agents.orchestrator import rotear
-    with patch(
-        "app.agents.orchestrator._classificar_intencao",
-        side_effect=Exception("API error"),
-    ):
-        rota = rotear("qualquer coisa", stage_atual="presenting", primeiro_contato=False)
-    assert rota["agente"] == "atendimento"
-    assert rota["intencao"] == "novo_lead"
-
-
-# ── Test 9: rotear() aceita parâmetro agente_ativo ───────────────────────────
-
-def test_rotear_aceita_parametro_agente_ativo():
-    """Test 9: rotear() deve aceitar agente_ativo como contexto sem erro."""
-    from app.agents.orchestrator import rotear
-    with _mock_classificacao("agendar"):
-        rota = rotear(
-            "quero marcar",
-            stage_atual="presenting",
-            primeiro_contato=False,
-            agente_ativo="atendimento",
-        )
-    assert rota["agente"] == "atendimento"
-
-
-def test_rotear_agente_ativo_none_funciona():
-    """Test 9: rotear() com agente_ativo=None funciona igual ao padrão."""
-    from app.agents.orchestrator import rotear
-    with _mock_classificacao("remarcar"):
-        rota = rotear(
-            "preciso remarcar",
-            stage_atual="agendado",
-            primeiro_contato=False,
-            agente_ativo=None,
-        )
-    assert rota["agente"] == "retencao"
 
 
 # ── Fixtures para testes de route_message ────────────────────────────────────
@@ -180,16 +48,6 @@ def meta_mock():
     meta = MagicMock()
     meta.send_text = AsyncMock()
     return meta
-
-
-# ── Test 10: _AGENT_STATE dict não existe mais em router.py ──────────────────
-
-def test_agent_state_dict_removido():
-    """Test 10: _AGENT_STATE não deve existir em app.router."""
-    import app.router as router_module
-    assert not hasattr(router_module, "_AGENT_STATE"), (
-        "_AGENT_STATE dict ainda presente em router.py — deve ser removido"
-    )
 
 
 # ── Helpers de estado ────────────────────────────────────────────────────────
