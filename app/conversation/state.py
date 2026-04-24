@@ -20,6 +20,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 _state_mgr = None   # RedisStateManager — inicializado via init_state_manager()
+_mem_store: dict[str, str] = {}  # fallback in-memory quando Redis não está disponível
 
 _KEY_PREFIX = "conv_state:"
 
@@ -93,41 +94,48 @@ def create_state(phone_hash: str, phone: str) -> dict:
 
 async def load_state(phone_hash: str, phone: str = "") -> dict:
     """
-    Carrega estado do Redis.
-    Retorna estado vazio se não encontrado ou se Redis estiver indisponível.
+    Carrega estado do Redis. Fallback para in-memory se Redis indisponível ou falhar.
+    Retorna estado vazio se não encontrado.
     """
-    if _state_mgr is None:
-        return create_state(phone_hash, phone)
-    try:
-        raw = await _state_mgr.get(f"{_KEY_PREFIX}{phone_hash}")
-        if raw:
-            return json.loads(raw)
-    except Exception as e:
-        logger.error("Redis load failed %s: %s", phone_hash[-4:], e)
+    key = f"{_KEY_PREFIX}{phone_hash}"
+    if _state_mgr is not None:
+        try:
+            raw = await _state_mgr.get(key)
+            if raw:
+                return json.loads(raw)
+            # Redis respondeu mas key não existe — checar _mem_store antes de criar novo estado
+        except Exception as e:
+            logger.warning("Redis load failed, usando fallback in-memory: %s", e)
+    # fallback in-memory (sem Redis, key não encontrada no Redis, ou falha)
+    raw = _mem_store.get(key)
+    if raw:
+        return json.loads(raw)
     return create_state(phone_hash, phone)
 
 
 async def save_state(phone_hash: str, state: dict) -> None:
-    """Persiste estado no Redis sem TTL (removido explicitamente em concluido)."""
-    if _state_mgr is None:
-        return
-    try:
-        await _state_mgr.set(
-            f"{_KEY_PREFIX}{phone_hash}",
-            json.dumps(state, ensure_ascii=False, default=str),
-        )
-    except Exception as e:
-        logger.error("Redis save failed %s: %s", phone_hash[-4:], e)
+    """Persiste estado no Redis. Fallback para in-memory se Redis indisponível ou falhar."""
+    key = f"{_KEY_PREFIX}{phone_hash}"
+    serialized = json.dumps(state, ensure_ascii=False, default=str)
+    if _state_mgr is not None:
+        try:
+            await _state_mgr.set(key, serialized)
+            return
+        except Exception as e:
+            logger.warning("Redis save failed, usando fallback in-memory: %s", e)
+    _mem_store[key] = serialized
 
 
 async def delete_state(phone_hash: str) -> None:
-    """Remove estado do Redis (chamado quando status == 'concluido')."""
+    """Remove estado do Redis (e in-memory) quando status == 'concluido'."""
+    key = f"{_KEY_PREFIX}{phone_hash}"
+    _mem_store.pop(key, None)
     if _state_mgr is None:
         return
     try:
-        await _state_mgr.delete(f"{_KEY_PREFIX}{phone_hash}")
+        await _state_mgr.delete(key)
     except Exception as e:
-        logger.error("Redis delete failed %s: %s", phone_hash[-4:], e)
+        logger.warning("Redis delete failed: %s", e)
 
 
 # ── Helpers de mutação ────────────────────────────────────────────────────────
