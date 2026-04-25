@@ -180,20 +180,25 @@ def apply_correction(state: dict, campo: str, valor_novo) -> None:
         logger.info("Correção horário aplicada: %s", valor_novo)
 
     elif campo == "plano":
-        cd["plano"] = str(valor_novo)
+        cd["plano"] = str(valor_novo) if valor_novo is not None else None
         state["flags"]["upsell_oferecido"] = False
+        state["flags"]["planos_enviados"] = False
         state["last_slots_offered"] = []
+        state["slots_pool"] = []
         state["appointment"]["slot_escolhido"] = None
+        cd["forma_pagamento"] = None
+        state["flags"]["pagamento_confirmado"] = False
         logger.info("Correção plano aplicada: %s", valor_novo)
 
     elif campo == "modalidade":
-        cd["modalidade"] = str(valor_novo)
+        cd["modalidade"] = str(valor_novo) if valor_novo is not None else None
         state["last_slots_offered"] = []
+        state["slots_pool"] = []
         state["appointment"]["slot_escolhido"] = None
         logger.info("Correção modalidade aplicada: %s", valor_novo)
 
     elif campo == "forma_pagamento":
-        cd["forma_pagamento"] = str(valor_novo)
+        cd["forma_pagamento"] = str(valor_novo) if valor_novo is not None else None
         state["link_pagamento"] = None
         logger.info("Correção forma pagamento aplicada: %s", valor_novo)
 

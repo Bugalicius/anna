@@ -46,6 +46,8 @@ Regras críticas:
 - "recusou_remarketing" APENAS quando a Ana enviou mensagem de recontato automático após dias de silêncio e o paciente não quer mais ser contactado. Durante fluxo ativo de agendamento, NUNCA use recusou_remarketing.
 - "duvida_clinica" APENAS para perguntas médicas explícitas sobre sintomas, diagnóstico, medicamentos ou condições de saúde (ex: "posso comer X tendo diabetes", "tenho refluxo, pode?"). Paciente falando sobre objetivos, razões para escolher um plano, ou o que espera da consulta → intent="agendar", tem_pergunta=false.
 - Quando o paciente está no meio do agendamento (goal=agendar_consulta) e diz algo que explica sua motivação ou objetivo, mantenha intent="agendar" e siga o fluxo.
+- Quando o paciente no meio do agendamento (goal=agendar_consulta) diz "trocar o plano", "mudar o plano", "quero outro plano", "quero trocar", NÃO use intent=remarcar nem intent=cancelar. Use intent="agendar" e correcao={{"campo":"plano","valor_novo":null}} para limpar a escolha e re-perguntar.
+- Quando o paciente diz "desistir", "não quero mais", "deixa pra lá" durante o agendamento (goal=agendar_consulta) sem ter consulta agendada, use intent="cancelar".
 """
 
 _CONTEXT_TEMPLATE = """\
@@ -213,6 +215,20 @@ async def interpretar_turno(message: str, state: dict) -> dict:
                 raw = raw[4:]
         data = json.loads(raw)
         turno = _parse_turno(data)
+
+        # Heurística pós-LLM: "trocar plano" no fluxo de agendamento → correção
+        _TROCAR_PLANO = re.compile(
+            r"(trocar|mudar|alterar|outro)\s*(o\s+|a\s+|de\s+)?(plano|opção|opcao|opçao)",
+            re.IGNORECASE,
+        )
+        if (
+            state.get("goal") == "agendar_consulta"
+            and cd.get("plano")
+            and _TROCAR_PLANO.search(message)
+            and turno["intent"] in ("remarcar", "cancelar", "fora_de_contexto")
+        ):
+            turno["intent"] = "agendar"
+            turno["correcao"] = {"campo": "plano", "valor_novo": None}
 
         # Heurística pós-LLM: mensagem é só um número 1-3 com slots disponíveis
         # O LLM às vezes não extrai escolha_slot de mensagens muito curtas.

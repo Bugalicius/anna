@@ -39,6 +39,7 @@ ASK_MOTIVO_CANCEL         = "ask_motivo_cancelamento"
 SEND_CONFIRMACAO          = "send_confirmacao"
 SEND_CONFIRMACAO_REMARCAR = "send_confirmacao_remarcacao"
 SEND_CONFIRMACAO_CANCEL   = "send_confirmacao_cancelamento"
+ABANDON_PROCESS           = "abandon_process"
 
 # Mantidos apenas para compatibilidade com imports externos
 APPLY_UPGRADE        = "apply_upgrade"
@@ -51,7 +52,7 @@ _VALID_ACTIONS = {
     ASK_FIELD, SEND_PLANOS, OFFER_UPSELL, ASK_SLOT_CHOICE, ASK_FORMA_PAGAMENTO,
     AWAIT_PAYMENT, ANSWER_QUESTION, ESCALATE, REMARKETING_RECUSA, FORA_DE_CONTEXTO,
     EXECUTE_TOOL, SEND_FORMULARIO, ASK_MOTIVO_CANCEL, SEND_CONFIRMACAO,
-    SEND_CONFIRMACAO_REMARCAR, SEND_CONFIRMACAO_CANCEL,
+    SEND_CONFIRMACAO_REMARCAR, SEND_CONFIRMACAO_CANCEL, ABANDON_PROCESS,
     "answer_free", "send_formulario_link",
 }
 
@@ -474,6 +475,86 @@ Retorne SOMENTE o JSON. Nenhum texto antes ou depois.\
 # ── Função pública ─────────────────────────────────────────────────────────────
 
 
+_SAUDACAO = re.compile(
+    r"^\s*(oi|ol[áa]|hey|eai|e a[ií]|bom dia|boa tarde|boa noite|opa|fala)\s*[!.,]?\s*$",
+    re.IGNORECASE,
+)
+
+
+def _override_cancelamento(turno: dict, state: dict) -> dict | None:
+    """
+    Regras determinísticas para cancelamento/desistência.
+
+    Distingue dois cenários:
+      A) Paciente SEM consulta agendada → "abandonar processo" (encerrar graciosamente)
+      B) Paciente COM consulta agendada → fluxo completo de cancelamento
+
+    Exceção: se o paciente envia saudação e o intent NÃO é cancelar,
+    ele está tentando recomeçar — não aplicar fluxo de cancelamento.
+    """
+    cd = state["collected_data"]
+    flags = state["flags"]
+    appt = state.get("appointment", {})
+    goal = state.get("goal", "desconhecido")
+    intent = turno.get("intent", "fora_de_contexto")
+
+    # Saudação ou intent diferente de cancelar quando goal=cancelar → resetar
+    # O paciente quer recomeçar, não continuar cancelando.
+    raw_msg = turno.get("_raw_message", "")
+    if goal == "cancelar" and intent != "cancelar":
+        if _SAUDACAO.match(raw_msg) or intent == "agendar":
+            # Resetar goal para que o fluxo de agendamento recomece
+            state["goal"] = "desconhecido"
+            state["flags"]["aguardando_motivo_cancel"] = False
+            return None  # Deixar o fluxo normal do planner lidar
+
+    tem_consulta = bool(appt.get("id_agenda") or appt.get("consulta_atual"))
+
+    # ── Cenário A: paciente sem consulta quer desistir do processo ──────
+    if not tem_consulta:
+        return _plano(
+            ABANDON_PROCESS,
+            new_status="concluido",
+            draft_message=(
+                "Tudo bem, sem problemas! 😊\n\n"
+                "Se mudar de ideia ou tiver alguma dúvida, "
+                "é só me chamar aqui. A Thaynara vai adorar te receber 💚"
+            ),
+        )
+
+    # ── Cenário B: paciente com consulta — fluxo completo ──────────────
+    # B1: Ainda não pediu motivo
+    if not flags.get("aguardando_motivo_cancel"):
+        return _plano(
+            ASK_MOTIVO_CANCEL,
+            update_flags={"aguardando_motivo_cancel": True},
+        )
+
+    # B2: Já pediu motivo, paciente respondeu — executar cancelamento
+    # Captura a mensagem como motivo se o motivo não está no collected_data
+    if not cd.get("motivo_cancelamento"):
+        # A mensagem atual do paciente é o motivo
+        last_user = next(
+            (m["content"] for m in reversed(state.get("history", []))
+             if m["role"] == "user"),
+            "não informado",
+        )
+        motivo = last_user
+    else:
+        motivo = cd["motivo_cancelamento"]
+
+    if state.get("last_action") != "cancelar":
+        return _plano(
+            EXECUTE_TOOL,
+            tool="cancelar",
+            params={"telefone": state.get("phone", ""), "motivo": motivo},
+            update_data={"motivo_cancelamento": motivo},
+        )
+
+    # B3: Cancelamento já executado — confirmar
+    return _plano(SEND_CONFIRMACAO_CANCEL, new_status="concluido")
+
+
 def _override_deterministic(turno: dict, state: dict) -> dict | None:
     """
     Regras determinísticas que o LLM não pode pular — executadas ANTES do LLM.
@@ -486,6 +567,12 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
     flags = state["flags"]
     goal = state.get("goal", "desconhecido")
     intent = turno.get("intent", "fora_de_contexto")
+
+    # ── Fluxo de cancelamento/desistência determinístico ──────────────────
+    if intent == "cancelar" or goal == "cancelar":
+        override_cancel = _override_cancelamento(turno, state)
+        if override_cancel:
+            return override_cancel
 
     # Aplica apenas no fluxo de agendamento
     if goal not in ("agendar_consulta", "desconhecido"):
@@ -574,6 +661,31 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
         or state.get("status") == "aguardando_pagamento"
         or state.get("last_action") in ("ask_forma_pagamento", "gerar_link_cartao", "await_payment")
     )
+
+    # ── Regra 6a: "pagar no consultório" / "acertar depois" ─────────────
+    _PAGAR_CONSULTORIO = re.compile(
+        r"(consult[oó]rio|pessoalmente|l[áa] na hora|na cl[ií]nica|"
+        r"acert[oa]r?\s+(o\s+rest|l[áa]|depois|no\s+dia))",
+        re.IGNORECASE,
+    )
+    if (
+        contexto_pagamento_ativo
+        and _PAGAR_CONSULTORIO.search(turno.get("_raw_message", ""))
+        and not turno.get("confirmou_pagamento")
+        and not flags.get("pagamento_confirmado")
+    ):
+        return _plano(
+            ANSWER_QUESTION,
+            ask_context="pagamento",
+            draft_message=(
+                "Entendo! 😊 Mas a política da clínica exige o pagamento "
+                "antecipado para garantir a reserva do horário.\n\n"
+                "Essa é uma forma de assegurar que seu horário fique "
+                "exclusivamente reservado pra você 💚\n\n"
+                "Pode enviar o comprovante assim que conseguir!"
+            ),
+        )
+
     if (
         t_pagamento in ("pix", "cartao")
         and not turno.get("confirmou_pagamento")

@@ -53,6 +53,7 @@ class ConversationEngine:
 
         # 2. Interpretar turno (LLM)
         turno = await interpretar_turno(message, state)
+        turno["_raw_message"] = message  # Disponível para heurísticas do planner
 
         # 3. Aplicar extrações e correções ao estado
         apply_turno_updates(state, turno)

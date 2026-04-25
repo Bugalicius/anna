@@ -352,14 +352,30 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
             modalidade=cd.get("modalidade") or "presencial",
         )]
 
+    # ── Abandonar processo (desistir sem consulta agendada) ──────────────
+    if action == "abandon_process":
+        draft = plano.get("draft_message")
+        if draft:
+            return [draft]
+        return [
+            "Tudo bem, sem problemas! 😊\n\n"
+            "Se mudar de ideia ou tiver alguma dúvida, "
+            "é só me chamar aqui. A Thaynara vai adorar te receber 💚"
+        ]
+
     if action == "ask_motivo_cancelamento":
-        politica = kb.get_politica("cancelamento")
         draft = plano.get("draft_message")
         texto = draft if draft else (
             f"Tudo bem, {nome}. Vou registrar o cancelamento da sua consulta.\n\n"
             "Só para saber: o que aconteceu? Ficou alguma dúvida ou posso ajudar de outra forma?"
         )
-        return [texto, f"_Política de cancelamento: {politica}_"]
+        # Só envia política para quem TEM consulta agendada
+        appt = state.get("appointment", {})
+        tem_consulta = bool(appt.get("id_agenda") or appt.get("consulta_atual"))
+        if tem_consulta:
+            politica = kb.get_politica("cancelamento")
+            return [texto, f"_Política de cancelamento: {politica}_"]
+        return [texto]
 
     if action == "execute_tool" and plano.get("tool") == "cancelar":
         if resultado_tool and resultado_tool.get("sucesso"):
@@ -692,25 +708,49 @@ def _build_modalidade_list() -> dict:
     }
 
 
+_RESPOSTA_LIVRE_GUARDRAIL = """\
+Você é a Ana, assistente de agendamentos da nutricionista Thaynara Teixeira.
+
+REGRAS OBRIGATÓRIAS:
+- NUNCA confirme agendamento, remarcação ou cancelamento. Essas ações só podem ser feitas pelo sistema.
+- NUNCA invente datas, horários, links de pagamento ou chaves PIX.
+- NUNCA envie política de cancelamento/remarcação por conta própria.
+- NUNCA diga "sua consulta foi confirmada/remarcada/cancelada".
+- Se não souber o que responder, pergunte como pode ajudar.
+- Tom informal, acolhedor, máx 3 linhas. Emojis com moderação.
+- Você só pode: tirar dúvidas gerais, pedir que o paciente repita, ou redirecionar para o fluxo de agendamento.
+"""
+
+
 async def _resposta_livre(state: dict) -> str:
     """LLM fallback para casos não cobertos pelos templates."""
     client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
-    history_clean = sanitize_historico(state.get("history", [])[-10:])
+    history_clean = sanitize_historico(state.get("history", [])[-6:])
     msgs = [{"role": m["role"], "content": m["content"]} for m in history_clean]
     try:
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=512,
+            max_tokens=256,
             system=[
                 {
                     "type": "text",
-                    "text": kb.system_prompt(),
+                    "text": _RESPOSTA_LIVRE_GUARDRAIL,
                     "cache_control": {"type": "ephemeral"}
                 }
             ],
             messages=msgs,
         )
-        return response.content[0].text.strip()
+        text = response.content[0].text.strip()
+        # Guardrail pós-geração: bloquear respostas que parecem confirmações
+        _BLOCKED_PATTERNS = (
+            "consulta foi confirmada", "consulta confirmada com sucesso",
+            "remarcada com sucesso", "cancelada com sucesso",
+            "✅ Consulta", "✅ *Consulta",
+        )
+        if any(p in text for p in _BLOCKED_PATTERNS):
+            logger.warning("Resposta livre bloqueada (alucinação): %s", text[:100])
+            return "Posso te ajudar com agendamentos e informações sobre as consultas. Como posso te ajudar? 😊"
+        return text
     except Exception as e:
         logger.error("Erro LLM resposta livre: %s", e)
         return "Desculpa, tive um problema técnico. Pode repetir? 😊"
