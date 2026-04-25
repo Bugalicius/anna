@@ -415,32 +415,22 @@ class AgenteRetencao:
         # Etapa 2: recebeu preferência → buscar slots compatíveis
         if self.etapa == "coletando_preferencia":
             self._preferencia_horario = msg
+
+            # Interpreta preferência de forma estruturada
+            pref = _interpretar_preferencia_retencao(msg)
+            if pref["acao"] == "esclarecer":
+                return [
+                    "Me diz do jeito que for mais fácil 😊\n\n"
+                    "Pode ser, por exemplo:\n"
+                    "• quarta à tarde\n"
+                    "• qualquer dia às 9h\n"
+                    "• o horário mais próximo"
+                ]
+
+            dia_preferido = pref["dia_preferido"]
+            hora_preferida = pref["hora_preferida"]
+
             self.etapa = "oferecendo_slots"
-
-            msg_lower = msg.lower()
-
-            # Parse do dia da semana preferido
-            dia_preferido: int | None = None
-            _DIAS = [
-                ("segunda", 0), ("terça", 1), ("terca", 1),
-                ("quarta", 2), ("quinta", 3), ("sexta", 4),
-                ("sábado", 5), ("sabado", 5),
-            ]
-            for palavra, idx in _DIAS:
-                if palavra in msg_lower:
-                    dia_preferido = idx
-                    break
-
-            # Parse da hora preferida (aceita "8h", "8H", "8:00", "08", "9h", etc.)
-            import re as _re
-            hora_preferida: int | None = None
-            m = _re.search(r'\b(\d{1,2})[hH:]', msg)
-            if not m:
-                m = _re.search(r'\b(\d{1,2})\b', msg)
-            if m:
-                h = int(m.group(1))
-                if 6 <= h <= 20:
-                    hora_preferida = h
 
             hoje_d = date.today()
 
@@ -508,7 +498,41 @@ class AgenteRetencao:
                 self.novo_slot = slot
                 return ["Um instante, por favor 💚"] + self._executar_remarcacao_dietbox()
 
-            # Rejeição: calcula próximo batch
+            msg_lower = msg.lower()
+
+            # ── Pergunta sobre os slots → responder com LLM ──────────────────
+            if "?" in msg or any(
+                w in msg_lower for w in ["qual", "quando", "como", "onde", "é presencial", "é online"]
+            ):
+                opcoes_ctx = "\n".join(
+                    f"{i+1}. {s['data_fmt']} às {s['hora']}"
+                    for i, s in enumerate(self._slots_oferecidos)
+                )
+                self.historico.append({
+                    "role": "assistant",
+                    "content": f"Opções oferecidas:\n{opcoes_ctx}",
+                })
+                return [_gerar_resposta_llm_retencao(self.historico, self.etapa)]
+
+            # ── Nova preferência → re-filtrar pool sem consumir rodada ───────
+            nova_pref = _interpretar_preferencia_retencao(msg)
+            if nova_pref["acao"] == "buscar" and (
+                nova_pref["dia_preferido"] is not None or nova_pref["hora_preferida"] is not None
+            ):
+                novos = _priorizar_slots(
+                    self._slots_pool,
+                    nova_pref["dia_preferido"],
+                    nova_pref["hora_preferida"],
+                )
+                if novos:
+                    self._slots_oferecidos = novos
+                    opcoes = "\n".join(
+                        f"{i+1}. {s['data_fmt']} às {s['hora']}"
+                        for i, s in enumerate(novos)
+                    )
+                    return [MSG_OPCOES_REMARCACAO.format(opcoes=opcoes)]
+
+            # ── Rejeição: calcula próximo batch ───────────────────────────────
             slots_oferecidos_dts = {s["datetime"] for s in self._slots_oferecidos}
             next_batch = [s for s in self._slots_pool if s["datetime"] not in slots_oferecidos_dts]
 
@@ -728,16 +752,133 @@ def _extrair_nome_simples(msg: str) -> str:
     return partes[0].capitalize() if partes else msg.split()[0].capitalize()
 
 
+# ── Interpretação de preferência de horário (retenção) ────────────────────────
+
+_DIAS_RETENCAO: dict[str, int] = {
+    "segunda": 0, "terça": 1, "terca": 1, "quarta": 2,
+    "quinta": 3, "sexta": 4, "sábado": 5, "sabado": 5,
+}
+_HORAS_MANHA_R = {"8h", "9h", "10h"}
+_HORAS_TARDE_R = {"15h", "16h", "17h"}
+_HORAS_NOITE_R = {"18h", "19h"}
+
+
+def _interpretar_preferencia_retencao(msg: str) -> dict:
+    """
+    Interpreta preferência de horário para remarcação de forma estruturada.
+
+    Retorna dict com chaves:
+      acao: "buscar" | "esclarecer"
+      dia_preferido: int | None  (0=seg … 5=sáb)
+      hora_preferida: int | None
+      qualquer: bool
+    """
+    import re as _re
+    msg_lower = msg.lower().strip()
+
+    qualquer = any(trecho in msg_lower for trecho in [
+        "qualquer", "tanto faz", "indiferente", "pode ser qualquer",
+        "mais próximo", "mais proximo", "mais cedo", "primeiro disponível",
+        "primeiro disponivel", "o mais rápido", "o mais rapido",
+    ])
+
+    dia_preferido: int | None = None
+    for palavra, idx in _DIAS_RETENCAO.items():
+        if _re.search(rf"\b{_re.escape(palavra)}\b", msg_lower):
+            dia_preferido = idx
+            break
+
+    hora_preferida: int | None = None
+    m = _re.search(r"\b(\d{1,2})[hH:]", msg)
+    if not m:
+        m = _re.search(r"\b(\d{1,2})\b", msg)
+    if m:
+        h = int(m.group(1))
+        if 6 <= h <= 20:
+            hora_preferida = h
+
+    if hora_preferida is None:
+        if any(w in msg_lower for w in ["manhã", "manha", "cedo", "pela manhã", "pela manha"]):
+            hora_preferida = 9
+        elif any(w in msg_lower for w in ["tarde", "à tarde", "a tarde", "de tarde"]):
+            hora_preferida = 16
+        elif any(w in msg_lower for w in ["noite", "à noite", "a noite", "de noite"]):
+            hora_preferida = 18
+
+    acao = (
+        "buscar"
+        if qualquer or dia_preferido is not None or hora_preferida is not None
+        else "esclarecer"
+    )
+    return {
+        "acao": acao,
+        "dia_preferido": dia_preferido,
+        "hora_preferida": hora_preferida,
+        "qualquer": qualquer,
+    }
+
+
 def _extrair_escolha_slot(msg: str, slots: list[dict]) -> dict | None:
+    """Identifica qual slot o paciente escolheu a partir de linguagem natural."""
+    if not slots:
+        return None
     msg_lower = msg.lower()
+
+    # 1. Número ou ordinal explícito: "1", "primeiro", "2", "segundo", "3", "terceiro"
     for i, word in enumerate(["1", "primeiro", "2", "segundo", "3", "terceiro"]):
         if word in msg_lower:
             idx = i // 2
             if idx < len(slots):
                 return slots[idx]
+
+    # 2. "último" → último slot
+    if any(w in msg_lower for w in ["último", "ultimo"]):
+        return slots[-1]
+
+    # 3. Hora exata ou data_fmt mencionada
     for s in slots:
-        if s["hora"] in msg or s["data_fmt"] in msg:
+        if s.get("hora") and s["hora"] in msg:
             return s
+        if s.get("data_fmt") and s["data_fmt"] in msg:
+            return s
+
+    # 4. Dia da semana mencionado → primeiro slot naquele dia
+    for nome_dia, weekday in _DIAS_RETENCAO.items():
+        if nome_dia in msg_lower:
+            for s in slots:
+                try:
+                    if datetime.fromisoformat(s["datetime"]).weekday() == weekday:
+                        return s
+                except Exception:
+                    pass
+            break
+
+    # 5. Turno mencionado → primeiro slot do turno
+    if any(w in msg_lower for w in ["manhã", "manha", "cedo"]):
+        for s in slots:
+            if s.get("hora") in _HORAS_MANHA_R:
+                return s
+    # "mais tarde" não pode ativar "tarde" — só turno explícito
+    if "tarde" in msg_lower and "mais tarde" not in msg_lower:
+        for s in slots:
+            if s.get("hora") in _HORAS_TARDE_R:
+                return s
+    if any(w in msg_lower for w in ["noite", "à noite", "a noite"]):
+        for s in slots:
+            if s.get("hora") in _HORAS_NOITE_R:
+                return s
+
+    # 6. "mais cedo" / "o mais próximo"
+    if any(w in msg_lower for w in [
+        "mais cedo", "mais próximo", "mais proximo",
+        "primeiro disponível", "primeiro disponivel",
+    ]):
+        return slots[0]
+
+    # 7. "mais tarde" sozinho → último slot
+    if msg_lower.strip() in {"mais tarde", "o mais tarde"} or "horário mais tarde" in msg_lower:
+        return slots[-1]
+
     return None
 
 

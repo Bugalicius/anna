@@ -46,6 +46,7 @@ Regras críticas:
 - "recusou_remarketing" APENAS quando a Ana enviou mensagem de recontato automático após dias de silêncio e o paciente não quer mais ser contactado. Durante fluxo ativo de agendamento, NUNCA use recusou_remarketing.
 - "duvida_clinica" APENAS para perguntas médicas explícitas sobre sintomas, diagnóstico, medicamentos ou condições de saúde (ex: "posso comer X tendo diabetes", "tenho refluxo, pode?"). Paciente falando sobre objetivos, razões para escolher um plano, ou o que espera da consulta → intent="agendar", tem_pergunta=false.
 - Quando o paciente está no meio do agendamento (goal=agendar_consulta) e diz algo que explica sua motivação ou objetivo, mantenha intent="agendar" e siga o fluxo.
+- Durante goal=agendar_consulta: perguntas sobre planos, preços, pagamento ou modalidade → use intent="agendar", tem_pergunta=true, topico_pergunta=<topico>. Reserve tirar_duvida APENAS para perguntas completamente fora do escopo do agendamento (ex: endereço da clínica, plano de saúde, estacionamento). Nunca use tirar_duvida para dúvidas que o fluxo de agendamento já responde naturalmente.
 - Quando o paciente no meio do agendamento (goal=agendar_consulta) diz "trocar o plano", "mudar o plano", "quero outro plano", "quero trocar", NÃO use intent=remarcar nem intent=cancelar. Use intent="agendar" e correcao={{"campo":"plano","valor_novo":null}} para limpar a escolha e re-perguntar.
 - Quando o paciente diz "desistir", "não quero mais", "deixa pra lá" durante o agendamento (goal=agendar_consulta) sem ter consulta agendada, use intent="cancelar".
 """

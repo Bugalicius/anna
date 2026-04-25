@@ -124,7 +124,7 @@ phone: {phone}
 phone_hash: {phone_hash}
 goal: {goal}
 status: {status}
-tipo_remarcacao: {tipo_remarcacao}  (null | retorno | nova_consulta)
+tipo_remarcacao: {tipo_remarcacao}  (null | retorno | nova_consulta | perda_retorno)
 last_action: {last_action}
 
 Dados coletados:
@@ -264,6 +264,7 @@ ETAPA 8 — Confirmação:
   c) → {{"action":"await_payment"}}
 
 ### FLUXO REMARCAÇÃO (tipo_remarcacao=retorno OU intent=remarcar):
+  NOTA: tipo_remarcacao=nova_consulta ou perda_retorno → tratar como FLUXO NOVO PACIENTE (goal=agendar_consulta). Não use este fluxo.
   a) tipo_remarcacao=null → {{"action":"execute_tool","tool":"detectar_tipo_remarcacao","params":{{"telefone":"{phone}"}}}}
   b) preferencia_horario=null → {{"action":"ask_field","ask_context":"preferencia_horario_remarcar"}}
   c) slots_oferecidos vazios
@@ -275,7 +276,8 @@ ETAPA 8 — Confirmação:
   e) last_action=remarcar_dietbox → {{"action":"send_confirmacao_remarcacao","new_status":"concluido"}}
 
 ### DÚVIDA / CONTEXTO DESCONHECIDO:
-  - intent=tirar_duvida → answer_question se topico conhecido, senão respond_fora_de_contexto
+  - intent=tirar_duvida E goal ativo → answer_question se topico_pergunta conhecido; answer_free se tópico desconhecido (NUNCA respond_fora_de_contexto quando goal ativo)
+  - intent=tirar_duvida E goal=desconhecido → answer_question se topico_pergunta conhecido; respond_fora_de_contexto se tópico desconhecido
   - intent=fora_de_contexto E goal=desconhecido → {{"action":"respond_fora_de_contexto"}}
   - intent=fora_de_contexto E goal ativo → continuar fluxo do goal (ignorar intent)
 
@@ -324,7 +326,7 @@ phone: {phone}
 phone_hash: {phone_hash}
 goal: {goal}
 status: {status}
-tipo_remarcacao: {tipo_remarcacao}  (null | retorno | nova_consulta)
+tipo_remarcacao: {tipo_remarcacao}  (null | retorno | nova_consulta | perda_retorno)
 last_action: {last_action}
 
 Dados coletados:
@@ -432,6 +434,7 @@ ETAPA 8 — Confirmação:
   c) → {{"action":"await_payment"}}
 
 ### FLUXO REMARCAÇÃO (tipo_remarcacao=retorno OU intent=remarcar):
+  NOTA: tipo_remarcacao=nova_consulta ou perda_retorno → tratar como FLUXO NOVO PACIENTE (goal=agendar_consulta). Não use este fluxo.
   a) tipo_remarcacao=null → {{"action":"execute_tool","tool":"detectar_tipo_remarcacao","params":{{"telefone":"{phone}"}}}}
   b) preferencia_horario=null → {{"action":"ask_field","ask_context":"preferencia_horario_remarcar"}}
   c) slots_oferecidos vazios
@@ -443,7 +446,8 @@ ETAPA 8 — Confirmação:
   e) last_action=remarcar_dietbox → {{"action":"send_confirmacao_remarcacao","new_status":"concluido"}}
 
 ### DÚVIDA / CONTEXTO DESCONHECIDO:
-  - intent=tirar_duvida → answer_question se topico conhecido, senão respond_fora_de_contexto
+  - intent=tirar_duvida E goal ativo → answer_question se topico_pergunta conhecido; answer_free se tópico desconhecido (NUNCA respond_fora_de_contexto quando goal ativo)
+  - intent=tirar_duvida E goal=desconhecido → answer_question se topico_pergunta conhecido; respond_fora_de_contexto se tópico desconhecido
   - intent=fora_de_contexto E goal=desconhecido → {{"action":"respond_fora_de_contexto"}}
   - intent=fora_de_contexto E goal ativo → continuar fluxo do goal (ignorar intent)
 
@@ -567,6 +571,8 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
     flags = state["flags"]
     goal = state.get("goal", "desconhecido")
     intent = turno.get("intent", "fora_de_contexto")
+    tipo_remarcacao = state.get("tipo_remarcacao")
+    appt = state.get("appointment", {})
 
     # ── Fluxo de cancelamento/desistência determinístico ──────────────────
     if intent == "cancelar" or goal == "cancelar":
@@ -574,11 +580,53 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
         if override_cancel:
             return override_cancel
 
+    # ── Segunda rodada de slots / perda_retorno (fluxo de remarcação) ─────
+    # Executado antes do early-return de goal pois goal="remarcar" durante remarcação.
+    if tipo_remarcacao == "retorno":
+        slots = state.get("last_slots_offered", [])
+        slot_escolhido = appt.get("slot_escolhido")
+        rodada = state.get("rodada_negociacao", 0)
+        last_action = state.get("last_action")
+
+        if (
+            slots
+            and not slot_escolhido
+            and last_action in ("consultar_slots_remarcar", "ask_slot_choice")
+            and intent not in ("tirar_duvida", "duvida_clinica", "cancelar", "recusou_remarketing")
+        ):
+            try:
+                escolha = turno.get("escolha_slot")
+                escolha_valida = bool(escolha and 1 <= int(str(escolha)) <= len(slots))
+            except (ValueError, TypeError):
+                escolha_valida = False
+
+            if not escolha_valida:
+                pool = state.get("slots_pool", [])
+                offered_dts = {s.get("datetime") for s in slots}
+                next_batch = [s for s in pool if s.get("datetime") not in offered_dts]
+
+                if not next_batch or rodada >= 1:
+                    # Pool esgotado ou já na segunda rodada → perda de retorno
+                    return _plano(EXECUTE_TOOL, tool="perda_retorno")
+
+                # Primeira rejeição com mais slots disponíveis → segunda rodada
+                proximos = next_batch[:3]
+                state["last_slots_offered"] = proximos  # Atualiza para o responder usar
+                state["rodada_negociacao"] = 1
+                return _plano(
+                    ASK_SLOT_CHOICE,
+                    draft_message="Entendo 😊 Vou buscar mais opções pra você:",
+                )
+
     # Aplica apenas no fluxo de agendamento
     if goal not in ("agendar_consulta", "desconhecido"):
         return None
-    if intent in ("remarcar", "cancelar", "tirar_duvida", "duvida_clinica",
+    # Quando remarcação foi reclassificada (nova_consulta/perda_retorno),
+    # intent=remarcar não deve reativar o fluxo de remarcação
+    if intent in ("cancelar", "tirar_duvida", "duvida_clinica",
                   "fora_de_contexto", "recusou_remarketing"):
+        return None
+    if intent == "remarcar" and tipo_remarcacao not in ("nova_consulta", "perda_retorno"):
         return None
 
     # ── Regra 1: send_planos antes de ask_field plano ──────────────────────
@@ -611,7 +659,6 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
     if intent in ("agendar", "fora_de_contexto", "tirar_duvida") and not cd.get("status_paciente"):
         return _plano(ASK_FIELD, ask_context="status_paciente")
 
-    appt = state.get("appointment", {})
     slots = state.get("last_slots_offered", [])
 
     # ── Regra 3: ask preferencia_horario antes de consultar slots ──────────
@@ -721,16 +768,8 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
     ):
         valor_esperado = kb.get_valor(cd.get("plano"), cd.get("modalidade")) * 0.5
         valor_recebido = turno.get("valor_comprovante")
-        if valor_recebido is None:
-            return _plano(
-                ANSWER_QUESTION,
-                ask_context="pagamento",
-                draft_message=(
-                    "Recebi o comprovante, mas não consegui identificar o valor com segurança. "
-                    "Pode me enviar uma imagem mais nítida ou confirmar o valor pago? 😊"
-                ),
-            )
-        if abs(float(valor_recebido) - float(valor_esperado)) > 0.01:
+        # Só valida valor se conseguiu extrair (imagens reais não têm valor parseável)
+        if valor_recebido is not None and abs(float(valor_recebido) - float(valor_esperado)) > 0.01:
             return _plano(
                 ANSWER_QUESTION,
                 ask_context="pagamento",

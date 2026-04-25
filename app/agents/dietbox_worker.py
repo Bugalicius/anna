@@ -654,10 +654,62 @@ def cancelar_agendamento(
     observacao: str = "Cancelado pelo Agente Ana",
 ) -> bool:
     """
-    Cancela um agendamento existente no Dietbox.
+    Cancela (soft-delete) um agendamento no Dietbox via GET + PUT com desmarcada=True.
+    Fallback para DELETE se o PUT falhar.
 
     Retorna True se bem-sucedido, False em qualquer falha.
     """
+    # ── Tentativa primária: soft-delete via PUT ───────────────────────────────
+    try:
+        get_resp = requests.get(
+            f"{DIETBOX_API}/agenda/{id_agenda}", headers=_headers(), timeout=15
+        )
+        get_resp.raise_for_status()
+        current = get_resp.json().get("Data") or get_resp.json()
+
+        def _get(*keys):
+            for k in keys:
+                v = current.get(k)
+                if v is not None:
+                    return v
+            return None
+
+        payload = {
+            "inicio": _get("inicio", "Start"),
+            "fim": _get("fim", "End"),
+            "timezone": _get("timezone", "Timezone") or "America/Sao_Paulo",
+            "idPaciente": _get("idPaciente", "IdPaciente"),
+            "idLocalAtendimento": _get("idLocalAtendimento", "IdLocalAtendimento"),
+            "idServico": _get("idServico", "IdServico"),
+            "tipo": _get("tipo", "Type") or 1,
+            "isOnline": _get("isOnline", "IsOnline") or False,
+            "isVideoConference": _get("isVideoConference", "IsVideoConference") or False,
+            "alert": True,
+            "allDay": False,
+            "desmarcada": True,
+            "descricao": observacao,
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+
+        put_resp = requests.put(
+            f"{DIETBOX_API}/agenda/{id_agenda}",
+            headers=_headers(),
+            json=payload,
+            timeout=20,
+        )
+        if put_resp.status_code in (200, 204):
+            logger.info("Agendamento cancelado (soft-delete): id=%s", id_agenda)
+            return True
+        logger.warning(
+            "PUT cancelar falhou (status=%s) para %s — tentando DELETE",
+            put_resp.status_code, id_agenda,
+        )
+    except Exception as e:
+        logger.warning(
+            "GET/PUT cancelar falhou para %s: %s — tentando DELETE", id_agenda, e
+        )
+
+    # ── Fallback: DELETE ──────────────────────────────────────────────────────
     try:
         resp = requests.delete(
             f"{DIETBOX_API}/agenda/{id_agenda}",
@@ -665,7 +717,7 @@ def cancelar_agendamento(
             timeout=20,
         )
         resp.raise_for_status()
-        logger.info("Agendamento cancelado: id=%s", id_agenda)
+        logger.info("Agendamento cancelado (DELETE fallback): id=%s", id_agenda)
         return True
     except Exception as e:
         logger.error("Falha ao cancelar agendamento %s: %s", id_agenda, e)

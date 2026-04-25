@@ -78,18 +78,15 @@
 ## 3. 🚨 Problemas pendentes (priorizados)
 
 ### Alta
-- ✅ Alinhar financeiro com a regra comercial real:
-  - hoje a conversa fala em sinal de 50%
-  - mas o lançamento ainda usa o valor integral
-- ✅ Marcar pagamento como pago no Dietbox quando o comprovante for aceito.
-- Melhorar handoff explícito `retencao -> atendimento` em:
-  - `nova_consulta`
-  - `perda_retorno`
-- Revisar se o cancelamento real no Dietbox exige algum payload adicional além de `desmarcada=True`.
+- ✅ Alinhar financeiro com a regra comercial real (sinal 50% em `scheduling.py:agendar`).
+- ✅ Melhorar handoff explícito `retencao -> atendimento` (state.py + planner.py).
+- ✅ Fix Regra 7 planner.py: remover bloqueio de valor_comprovante=None — comprovantes reais (imagens WhatsApp) passavam na condição e travavam o fluxo pedindo imagem mais nítida infinitamente. Agora só valida valor se conseguiu extrair.
+- ✅ Confirmar pagamento no Dietbox após comprovante — `confirmar_pagamento_dietbox` em `app/tools/payments.py` agora usa o bool retornado por `confirmar_pagamento()` em vez de sempre retornar `{"sucesso": True}`.
+- ✅ Cancelamento soft-delete no Dietbox — `cancelar_agendamento` em `app/agents/dietbox_worker.py` refatorado para GET + PUT com `{"desmarcada": True, "descricao": observacao}` como primário, fallback DELETE. Testes em `test_dietbox_worker.py` atualizados (3 testes: sucesso via PUT, payload correto, fallback DELETE).
 
 ### Média
-- Levar a mesma interpretação contextual para etapas críticas de retenção.
-- Revisar a lógica de `tirar_duvida` no orquestrador para reduzir falsas classificações.
+- ✅ Interpretação contextual nas etapas críticas de retenção — `_interpretar_preferencia_retencao`, `_extrair_escolha_slot` expandido (dia, turno, mais cedo/tarde/último), `coletando_preferencia` com path "esclarecer", `oferecendo_slots` distingue pergunta/nova preferência/rejeição.
+- ✅ Revisada lógica de `tirar_duvida` — interpreter agora redireciona perguntas operacionais durante agendamento para intent=agendar+tem_pergunta; planner agora usa answer_free (não respond_fora_de_contexto) quando tirar_duvida + goal ativo.
 - Melhorar extração de nome/plano/modalidade para mensagens mais livres.
 - Reduzir dependência de heurísticas fixas em `AgenteAtendimento`.
 

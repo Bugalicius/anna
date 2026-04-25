@@ -649,27 +649,46 @@ def test_alterar_agendamento_get_falha_retorna_false():
 
 
 def test_cancelar_agendamento_sucesso_retorna_true():
-    """cancelar_agendamento com mock status 200 → retorna True."""
-    mock_resp = MagicMock()
-    mock_resp.raise_for_status = MagicMock()
-
+    """cancelar_agendamento via GET+PUT soft-delete 200 → retorna True."""
     with patch("app.agents.dietbox_worker._headers", return_value={}), \
-         patch("requests.delete", return_value=mock_resp):
+         patch("requests.get", return_value=_mock_get_agenda()), \
+         patch("requests.put", return_value=_mock_put_ok()):
         from app.agents.dietbox_worker import cancelar_agendamento
         result = cancelar_agendamento("ID-999", "Cancelado pela paciente")
 
     assert result is True
 
 
-def test_cancelar_agendamento_url_correta():
-    """cancelar_agendamento usa DELETE em DIETBOX_API/agenda/{id_agenda}."""
-    mock_resp = MagicMock()
-    mock_resp.raise_for_status = MagicMock()
-
+def test_cancelar_agendamento_url_e_payload_corretos():
+    """cancelar_agendamento faz PUT em DIETBOX_API/agenda/{id} com desmarcada=True."""
     with patch("app.agents.dietbox_worker._headers", return_value={}), \
-         patch("requests.delete", return_value=mock_resp) as mock_delete:
+         patch("requests.get", return_value=_mock_get_agenda()), \
+         patch("requests.put", return_value=_mock_put_ok()) as mock_put:
         from app.agents.dietbox_worker import cancelar_agendamento, DIETBOX_API
         cancelar_agendamento("ID-999", "Cancelado pela paciente")
 
-    url_chamada = mock_delete.call_args[0][0]
+    url_chamada = mock_put.call_args[0][0]
+    payload_enviado = mock_put.call_args[1]["json"]
     assert url_chamada == f"{DIETBOX_API}/agenda/ID-999"
+    assert payload_enviado["desmarcada"] is True
+    assert payload_enviado["descricao"] == "Cancelado pela paciente"
+
+
+def test_cancelar_agendamento_fallback_delete_quando_put_falha():
+    """cancelar_agendamento cai no fallback DELETE se PUT retornar 500."""
+    mock_put_fail = MagicMock()
+    mock_put_fail.status_code = 500
+
+    mock_delete_ok = MagicMock()
+    mock_delete_ok.raise_for_status = MagicMock()
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.get", return_value=_mock_get_agenda()), \
+         patch("requests.put", return_value=mock_put_fail), \
+         patch("requests.delete", return_value=mock_delete_ok) as mock_delete:
+        from app.agents.dietbox_worker import cancelar_agendamento, DIETBOX_API
+        result = cancelar_agendamento("ID-999", "Cancelado pela paciente")
+
+    assert result is True
+    url_delete = mock_delete.call_args[0][0]
+    assert url_delete == f"{DIETBOX_API}/agenda/ID-999"
