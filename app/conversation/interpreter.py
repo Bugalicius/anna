@@ -48,6 +48,7 @@ Regras críticas:
 - Quando o paciente está no meio do agendamento (goal=agendar_consulta) e diz algo que explica sua motivação ou objetivo, mantenha intent="agendar" e siga o fluxo.
 - Durante goal=agendar_consulta: perguntas sobre planos, preços, pagamento ou modalidade → use intent="agendar", tem_pergunta=true, topico_pergunta=<topico>. Reserve tirar_duvida APENAS para perguntas completamente fora do escopo do agendamento (ex: endereço da clínica, plano de saúde, estacionamento). Nunca use tirar_duvida para dúvidas que o fluxo de agendamento já responde naturalmente.
 - Quando o paciente no meio do agendamento (goal=agendar_consulta) diz "trocar o plano", "mudar o plano", "quero outro plano", "quero trocar", NÃO use intent=remarcar nem intent=cancelar. Use intent="agendar" e correcao={{"campo":"plano","valor_novo":null}} para limpar a escolha e re-perguntar.
+- "alterar minha consulta", "mudar minha consulta", "trocar minha consulta" e variações significam remarcar/reagendar, não cancelar.
 - Quando o paciente diz "desistir", "não quero mais", "deixa pra lá" durante o agendamento (goal=agendar_consulta) sem ter consulta agendada, use intent="cancelar".
 """
 
@@ -84,6 +85,13 @@ def _normalize_slot_text(text: str) -> str:
     text = text.lower().strip()
     text = re.sub(r"\s+", " ", text)
     return text
+
+
+def _quer_alterar_consulta(text: str) -> bool:
+    t = text.lower()
+    if any(w in t for w in ("cancel", "desmarcar", "desisti", "não quero mais", "nao quero mais")):
+        return False
+    return bool(re.search(r"\b(alterar|mudar|trocar)\b.{0,30}\b(consulta|hor[aá]rio)\b", t))
 
 
 def _match_slot_choice_from_text(message: str, slots: list[dict]) -> int | None:
@@ -162,6 +170,9 @@ async def interpretar_turno(message: str, state: dict) -> dict:
     Retorna um dict 'turno' com todos os campos extraídos.
     """
     cd = state["collected_data"]
+    if os.environ.get("DISABLE_LLM_FOR_TESTS") == "true":
+        return _heuristic_turno(message, state)
+
     collected_summary = (
         f"nome={cd['nome'] or '?'}, plano={cd['plano'] or '?'}, "
         f"modalidade={cd['modalidade'] or '?'}, pagamento={cd['forma_pagamento'] or '?'}"
@@ -231,6 +242,11 @@ async def interpretar_turno(message: str, state: dict) -> dict:
             turno["intent"] = "agendar"
             turno["correcao"] = {"campo": "plano", "valor_novo": None}
 
+        # Heurística pós-LLM: "alterar minha consulta" é remarcação, não cancelamento.
+        if _quer_alterar_consulta(message):
+            turno["intent"] = "remarcar"
+            turno["correcao"] = None
+
         # Heurística pós-LLM: mensagem é só um número 1-3 com slots disponíveis
         # O LLM às vezes não extrai escolha_slot de mensagens muito curtas.
         import re as _re
@@ -288,6 +304,12 @@ async def interpretar_turno(message: str, state: dict) -> dict:
             turno["email"] = _extract_email(message)
         if turno.get("data_nascimento") is None:
             turno["data_nascimento"] = _extract_birthdate(message)
+        phones = _extract_phone_candidates(message)
+        if len(phones) > 1:
+            turno["telefones_contato"] = phones
+            turno["telefone_contato"] = None
+        elif len(phones) == 1:
+            turno["telefone_contato"] = phones[0]
 
         return turno
 
@@ -344,6 +366,8 @@ def _parse_turno(data: dict) -> dict:
         "valor_comprovante": float(data["valor_comprovante"]) if data.get("valor_comprovante") is not None else None,
         "data_nascimento": _str_or_none(data.get("data_nascimento")),
         "email": _str_or_none(data.get("email")),
+        "telefone_contato": None,
+        "telefones_contato": [],
         "instagram": _str_or_none(data.get("instagram")),
         "profissao": _str_or_none(data.get("profissao")),
         "cep_endereco": _str_or_none(data.get("cep_endereco")),
@@ -371,17 +395,10 @@ def _one_of(v, valid) -> str | None:
 
 def _fallback(text: str) -> dict:
     """Interpretação heurística mínima quando o LLM falha."""
-    t = text.lower()
-    intent = "fora_de_contexto"
-    if any(w in t for w in ["remarcar", "mudar horário", "reagendar"]):
-        intent = "remarcar"
-    elif any(w in t for w in ["cancelar", "desmarcar"]):
-        intent = "cancelar"
-    elif any(w in t for w in ["paguei", "pago", "comprovante", "enviei"]):
-        intent = "confirmar_pagamento"
-    elif any(w in t for w in ["agendar", "consulta", "marcar"]):
-        intent = "agendar"
+    return _heuristic_turno(text, {"collected_data": {}, "last_slots_offered": [], "history": []})
 
+
+def _empty_turno(intent: str = "fora_de_contexto") -> dict:
     return {
         "intent": intent,
         "nome": None,
@@ -389,19 +406,251 @@ def _fallback(text: str) -> dict:
         "objetivo": None,
         "plano": None,
         "modalidade": None,
-        "forma_pagamento": "pix" if "pix" in t else ("cartao" if "cartão" in t or "cartao" in t else None),
+        "forma_pagamento": None,
         "escolha_slot": None,
         "aceita_upgrade": None,
-        "confirmou_pagamento": intent == "confirmar_pagamento",
-        "valor_comprovante": _extract_receipt_amount(text),
-        "data_nascimento": _extract_birthdate(text),
-        "email": _extract_email(text),
+        "confirmou_pagamento": False,
+        "valor_comprovante": None,
+        "data_nascimento": None,
+        "email": None,
+        "telefone_contato": None,
+        "telefones_contato": [],
         "instagram": None,
         "profissao": None,
         "cep_endereco": None,
         "indicacao_origem": None,
         "correcao": None,
-        "tem_pergunta": "?" in text,
+        "tem_pergunta": False,
         "topico_pergunta": None,
         "preferencia_horario": None,
     }
+
+
+def _heuristic_turno(text: str, state: dict) -> dict:
+    """Parser local para bateria e fallback: rápido, conservador e sem rede."""
+    raw = text.strip()
+    t = raw.lower()
+    cd = state.get("collected_data", {})
+    slots = state.get("last_slots_offered", [])
+    goal = state.get("goal")
+    turno = _empty_turno()
+
+    if re.match(r"^\s*[1-3]\s*$", raw) and slots:
+        turno["intent"] = "agendar" if goal != "remarcar" else "remarcar"
+        turno["escolha_slot"] = int(raw.strip())
+        return turno
+    m = re.match(r"^slot_([1-3])$", t)
+    if m and slots:
+        turno["intent"] = "agendar" if goal != "remarcar" else "remarcar"
+        turno["escolha_slot"] = int(m.group(1))
+        return turno
+    if slots:
+        escolha = _match_slot_choice_from_text(raw, slots)
+        if escolha:
+            turno["intent"] = "agendar" if goal != "remarcar" else "remarcar"
+            turno["escolha_slot"] = escolha
+            return turno
+
+    clinical = (
+        "diabetes", "refluxo", "pressão", "pressao", "medicamento",
+        "remédio", "remedio", "doença", "doenca", "sintoma", "posso comer",
+    )
+    if any(w in t for w in clinical):
+        turno["intent"] = "duvida_clinica"
+        turno["tem_pergunta"] = True
+        turno["topico_pergunta"] = "clinica"
+        return turno
+
+    if any(w in t for w in ("futebol", "flamengo", "palmeiras", "bitcoin", "criptomoeda", "tempo hoje")):
+        turno["intent"] = "fora_de_contexto"
+        return turno
+
+    if any(w in t for w in ("deixa pra lá", "deixa pra la", "desisti", "não quero mais", "nao quero mais")):
+        turno["intent"] = "cancelar"
+        return turno
+    if any(w in t for w in ("remarc", "reagend", "mudar horário", "mudar horario", "trocar horário", "trocar horario")) or _quer_alterar_consulta(raw):
+        turno["intent"] = "remarcar"
+    elif any(w in t for w in ("cancel", "desmarcar")):
+        turno["intent"] = "cancelar"
+    elif any(w in t for w in ("paguei", "pago", "comprovante", "enviei")) or t == "[mídia]":
+        turno["intent"] = "confirmar_pagamento"
+        turno["confirmou_pagamento"] = True
+    elif goal == "agendar_consulta" or any(w in t for w in ("agendar", "marcar", "consulta", "quero", "oi")):
+        turno["intent"] = "agendar"
+
+    turno["valor_comprovante"] = _extract_receipt_amount(raw)
+    turno["email"] = _extract_email(raw)
+    turno["data_nascimento"] = _extract_birthdate(raw)
+
+    if t in ("pix", "cartao", "cartão"):
+        turno["intent"] = "agendar"
+        turno["forma_pagamento"] = "pix" if t == "pix" else "cartao"
+    elif "pix" in t and ("quero" in t or "prefiro" in t or "verdade" in t):
+        turno["intent"] = "agendar"
+        turno["forma_pagamento"] = "pix"
+        if cd.get("forma_pagamento") and cd.get("forma_pagamento") != "pix":
+            turno["correcao"] = {"campo": "forma_pagamento", "valor_novo": "pix"}
+    elif ("cartao" in t or "cartão" in t) and ("quero" in t or "prefiro" in t):
+        turno["intent"] = "agendar"
+        turno["forma_pagamento"] = "cartao"
+
+    pode_extrair_modalidade = turno["intent"] not in ("remarcar", "cancelar")
+    if pode_extrair_modalidade and t in ("presencial", "online"):
+        turno["intent"] = "agendar"
+        turno["modalidade"] = t
+    elif pode_extrair_modalidade and "online" in t:
+        turno["intent"] = "agendar"
+        turno["modalidade"] = "online"
+        if cd.get("modalidade") and cd.get("modalidade") != "online":
+            turno["correcao"] = {"campo": "modalidade", "valor_novo": "online"}
+    elif pode_extrair_modalidade and re.search(r"\bpresencial\b", t):
+        turno["intent"] = "agendar"
+        turno["modalidade"] = "presencial"
+        if cd.get("modalidade") and cd.get("modalidade") != "presencial":
+            turno["correcao"] = {"campo": "modalidade", "valor_novo": "presencial"}
+
+    plano = _extract_plano(t)
+    if plano:
+        turno["intent"] = "agendar"
+        turno["plano"] = plano
+        if cd.get("plano") and cd.get("plano") != plano:
+            turno["correcao"] = {"campo": "plano", "valor_novo": plano}
+    if any(w in t for w in ("trocar o plano", "trocar plano", "mudar o plano", "outro plano")) and not plano:
+        turno["intent"] = "agendar"
+        turno["correcao"] = {"campo": "plano", "valor_novo": None}
+
+    if any(w in t for w in ("prefiro o ouro", "manter o ouro", "quero ouro", "para ouro")):
+        turno["intent"] = "agendar"
+        turno["plano"] = "ouro"
+        turno["aceita_upgrade"] = True
+    if any(w in t for w in ("não quero upgrade", "nao quero upgrade", "manter", "pode deixar", "quero esse mesmo")):
+        turno["intent"] = "agendar"
+        turno["aceita_upgrade"] = False
+
+    objetivo = _extract_objetivo(t)
+    if objetivo:
+        turno["intent"] = "agendar"
+        turno["objetivo"] = objetivo
+
+    pref = _extract_preferencia(t)
+    if pref:
+        turno["preferencia_horario"] = pref
+        if slots or cd.get("preferencia_horario"):
+            turno["correcao"] = {"campo": "preferencia_horario", "valor_novo": pref}
+
+    status = _extract_status_paciente(t)
+    if status:
+        turno["intent"] = "agendar"
+        turno["status_paciente"] = status
+        nome = _extract_nome(raw)
+        if nome:
+            turno["nome"] = nome
+
+    if "?" in raw or any(w in t for w in ("como funciona", "funciona", "quais", "qual valor", "valor", "pagamento", "modalidades", "modalidade", "plano", "planos")):
+        if any(w in t for w in ("pagamento", "pagar", "cartão", "cartao", "pix", "valor", "preço", "preco")):
+            turno["tem_pergunta"] = True
+            turno["topico_pergunta"] = "pagamento"
+            if turno["intent"] == "fora_de_contexto":
+                turno["intent"] = "agendar" if goal == "agendar_consulta" else "tirar_duvida"
+        elif (
+            turno["intent"] not in ("remarcar", "cancelar")
+            and any(w in t for w in ("modalidade", "modalidades", "online", "presencial", "videochamada"))
+        ):
+            turno["tem_pergunta"] = True
+            turno["topico_pergunta"] = "modalidade"
+            if turno["intent"] == "fora_de_contexto":
+                turno["intent"] = "agendar" if goal == "agendar_consulta" else "tirar_duvida"
+        elif any(w in t for w in ("plano", "planos")):
+            turno["tem_pergunta"] = True
+            turno["topico_pergunta"] = "planos"
+
+    return turno
+
+
+def _extract_plano(t: str) -> str | None:
+    if t in _PLANOS:
+        return t
+    if "premium" in t:
+        return "premium"
+    if "ouro" in t:
+        return "ouro"
+    if "retorno" in t:
+        return "com_retorno"
+    if "individual" in t or "única" in t or "unica" in t:
+        return "unica"
+    if "formulário" in t or "formulario" in t:
+        return "formulario"
+    return None
+
+
+def _extract_objetivo(t: str) -> str | None:
+    if t in ("emagrecer", "ganhar_massa", "lipedema", "outro"):
+        return t.replace("_", " ")
+    if "emagrec" in t:
+        return "emagrecer"
+    if "ganhar massa" in t or "massa" in t:
+        return "ganhar massa"
+    if "lipedema" in t:
+        return "lipedema"
+    return None
+
+
+def _extract_preferencia(t: str) -> dict | None:
+    if "manhã" in t or "manha" in t:
+        return {"tipo": "turno", "turno": "manha", "hora": None, "dia_semana": None, "descricao": "manhã"}
+    if "tarde" in t:
+        return {"tipo": "turno", "turno": "tarde", "hora": None, "dia_semana": None, "descricao": "tarde"}
+    if "noite" in t:
+        return {"tipo": "turno", "turno": "noite", "hora": None, "dia_semana": None, "descricao": "noite"}
+    if any(w in t for w in ("qualquer", "tanto faz", "mais próximo", "mais proximo")):
+        return {"tipo": "qualquer", "turno": None, "hora": None, "dia_semana": None, "descricao": "qualquer horário"}
+    dias = {"segunda": 0, "terça": 1, "terca": 1, "quarta": 2, "quinta": 3, "sexta": 4}
+    for nome, idx in dias.items():
+        if nome in t:
+            return {"tipo": "dia_semana", "turno": None, "hora": None, "dia_semana": idx, "descricao": nome}
+    return None
+
+
+def _extract_status_paciente(t: str) -> str | None:
+    if any(w in t for w in ("primeira consulta", "primeiro atendimento", "primeira vez", "sou novo", "sou nova")):
+        return "novo"
+    if re.search(r"(?:^|,|\b)\s*(novo|nova)\s*$", t):
+        return "novo"
+    if any(w in t for w in ("retorno", "já sou", "ja sou", "já é", "ja e", "paciente")):
+        return "retorno"
+    return None
+
+
+def _extract_nome(raw: str) -> str | None:
+    trecho = raw.split(",", 1)[0].strip()
+    if not trecho or len(trecho.split()) > 5:
+        return None
+    if re.search(r"\d|@|pix|cart", trecho, re.I):
+        return None
+    palavras_bloqueadas = {"oi", "olá", "ola", "quero", "consulta", "agendar", "marcar"}
+    if trecho.lower() in palavras_bloqueadas:
+        return None
+    return trecho
+
+
+def _extract_phone_candidates(raw: str) -> list[str]:
+    """Extrai telefones brasileiros prováveis e normaliza para dígitos com DDI 55."""
+    candidates: list[str] = []
+    seen: set[str] = set()
+    for match in re.finditer(r"(?<!\d)(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?\d{4,5}[\s.-]?\d{4}(?!\d)", raw):
+        digits = re.sub(r"\D", "", match.group(0))
+        if len(digits) < 10:
+            continue
+        if digits.startswith("55"):
+            national = digits[2:]
+        else:
+            national = digits
+        if len(national) == 10:
+            national = national[:2] + "9" + national[2:]
+        if len(national) != 11:
+            continue
+        normalized = "55" + national
+        if normalized not in seen:
+            seen.add(normalized)
+            candidates.append(normalized)
+    return candidates

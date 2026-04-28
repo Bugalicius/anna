@@ -146,13 +146,13 @@ MSG_CANCELAMENTO_CONFIRMADO = (
 
 MSG_ERRO_AGENDAMENTO = (
     "Ops! Tive um problema técnico ao confirmar seu agendamento no sistema 😔\n\n"
-    "Vou acionar a equipe para resolver manualmente. "
+    "Vou acionar nossa equipe para verificar. "
     "Você receberá uma confirmação assim que estiver tudo certo 💚"
 )
 
 MSG_ERRO_REMARCACAO = (
     "Ops! Tive um problema técnico ao tentar confirmar a remarcação 😔\n\n"
-    "Vou pedir para a Thaynara verificar manualmente, tudo bem? 💚"
+    "Vou acionar nossa equipe para verificar e te retorno por aqui 💚"
 )
 
 MSG_SEM_HORARIOS = (
@@ -225,8 +225,8 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
         draft = plano.get("draft_message")
         history = state.get("history", [])
         ask_context = plano.get("ask_context", "")
-        # Campos com UI interativa — sempre usar template (ignorar draft)
-        if ask_context in ("objetivo", "plano", "modalidade"):
+        # Campos com UI interativa/operacional — sempre usar template (ignorar draft)
+        if ask_context in ("objetivo", "plano", "modalidade", "preferencia_horario"):
             return _ask_field(ask_context, nome, state)
         # Usa draft do planner para turnos além da primeira mensagem
         if draft and len(history) > 1:
@@ -305,7 +305,7 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
     if action == "execute_tool" and plano.get("tool") == "agendar":
         if resultado_tool and resultado_tool.get("sucesso"):
             return [random.choice(_WAITING)] + _build_confirmacao(state)
-        return [random.choice(_WAITING), MSG_ERRO_AGENDAMENTO]
+        return [{"_meta_action": "escalate", "motivo": "erro_agendamento"}]
 
     # ── Confirmação final ─────────────────────────────────────────────────────
     if action == "send_confirmacao":
@@ -334,7 +334,7 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
                 hora=slot.get("hora", ""),
                 modalidade=cd.get("modalidade") or "presencial",
             )]
-        return [MSG_ERRO_REMARCACAO]
+        return [{"_meta_action": "escalate", "motivo": "erro_remarcacao"}]
 
     if action == "send_confirmacao_remarcacao":
         slot = state["appointment"].get("slot_escolhido") or {}
@@ -356,8 +356,7 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
     if action == "execute_tool" and plano.get("tool") == "cancelar":
         if resultado_tool and resultado_tool.get("sucesso"):
             return [MSG_CANCELAMENTO_CONFIRMADO]
-        return ["Ops! Tive um problema técnico ao registrar o cancelamento 😔\n\n"
-                "Vou pedir para a Thaynara verificar manualmente, tudo bem? 💚"]
+        return [{"_meta_action": "escalate", "motivo": "erro_cancelamento"}]
 
     if action == "send_confirmacao_cancelamento":
         return [MSG_CANCELAMENTO_CONFIRMADO]
@@ -384,10 +383,15 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
                     pass
             return [f"Tudo bem, {nome}. Podemos remarcar sim, sem problema 😊\n\n"
                     "Quais são os melhores horários e dias para você? 📅"]
+        if resultado_tool and resultado_tool.get("precisa_identificacao"):
+            return [
+                "Tentei localizar sua consulta pelo número do WhatsApp, mas não encontrei um agendamento confirmado vinculado a ele.\n\n"
+                "Pode me informar seu *nome completo* ou o *e-mail cadastrado* para eu tentar localizar por outro dado?"
+            ]
         # nova_consulta ou não encontrado
         return [
             "Não localizei um agendamento confirmado para você 😊\n"
-            "Vou te passar para o fluxo de agendamento — me conta o que você está procurando!"
+            "Se você tiver agendado por outro número, me envie o nome completo ou o e-mail cadastrado para eu conferir."
         ]
 
     # ── Perda de janela de remarcação ─────────────────────────────────────────
@@ -473,6 +477,20 @@ def _ask_field(campo: str, nome: str, state: dict) -> list:
         return ["Perfeito 💚 Agora me informa sua *data de nascimento* no formato DD/MM/AAAA, por favor."]
     if campo == "email":
         return ["Perfeito 💚 Agora me informa seu *e-mail* para cadastro, por favor."]
+    if campo == "telefone_contato":
+        opcoes = state.get("flags", {}).get("telefone_opcoes") or []
+        if opcoes:
+            linhas = "\n".join(f"• {opcao}" for opcao in opcoes)
+            return [
+                "Recebi mais de um telefone na sua mensagem.\n\n"
+                f"{linhas}\n\n"
+                "Qual deles devo usar como WhatsApp de contato para o cadastro?"
+            ]
+        return ["Pode me informar o *WhatsApp de contato* para o cadastro, por favor?"]
+    if campo == "identificacao_remarcacao":
+        return [
+            "Para eu tentar localizar sua consulta, me envie por favor seu *nome completo* ou o *e-mail cadastrado*."
+        ]
     if campo == "instagram":
         return ["Se você tiver, pode me informar seu *Instagram*?"]
     if campo == "profissao":

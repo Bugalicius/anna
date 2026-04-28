@@ -64,6 +64,105 @@ def test_valid_empty_payload_returns_200():
     assert response.status_code == 200
 
 
+def test_valid_empty_payload_chatwoot_path_returns_200():
+    body = json.dumps({
+        "object": "whatsapp_business_account",
+        "entry": []
+    }).encode()
+    sig = make_signature(body, APP_SECRET)
+
+    with patch("app.webhook.APP_SECRET", APP_SECRET), \
+         patch("app.chatwoot_bridge.relay_meta_webhook_to_chatwoot", new_callable=AsyncMock):
+        response = client.post(
+            "/webhooks/whatsapp/+553171893255",
+            content=body,
+            headers={"Content-Type": "application/json", "X-Hub-Signature-256": sig},
+        )
+    assert response.status_code == 200
+
+
+def test_chatwoot_incoming_message_routes_to_debounce():
+    payload = {
+        "event": "message_created",
+        "message_type": "incoming",
+        "private": False,
+        "id": 123,
+        "content": "oi",
+        "contact": {"phone_number": "+55 31 99999-0000", "name": "Maria"},
+        "conversation": {"id": 77},
+    }
+
+    with patch.dict("os.environ", {"CHATWOOT_WEBHOOK_VERIFY_TOKEN": ""}), \
+         patch("app.webhook.process_message_debounced", new_callable=AsyncMock) as mock_process, \
+         patch("app.chatwoot_bridge.bind_chatwoot_conversation", new_callable=AsyncMock) as mock_bind:
+        response = client.post("/webhook/chatwoot", json=payload)
+
+    assert response.status_code == 200
+    mock_process.assert_awaited_once()
+    mock_bind.assert_awaited_once_with("77", "5531999990000")
+    message = mock_process.await_args.args[0]
+    assert message["id"] == "chatwoot:123"
+    assert message["from"] == "5531999990000"
+    assert message["text"]["body"] == "oi"
+
+
+def test_chatwoot_incoming_attachment_preserves_media_url():
+    payload = {
+        "event": "message_created",
+        "message_type": "incoming",
+        "private": False,
+        "id": 124,
+        "content": None,
+        "contact": {"phone_number": "+55 31 99999-0000", "name": "Maria"},
+        "attachments": [{
+            "file_type": "image",
+            "content_type": "image/jpeg",
+            "data_url": "https://chat.example.test/rails/active_storage/file.jpg",
+        }],
+    }
+
+    with patch.dict("os.environ", {"CHATWOOT_WEBHOOK_VERIFY_TOKEN": ""}), \
+         patch("app.webhook.process_message_debounced", new_callable=AsyncMock) as mock_process:
+        response = client.post("/webhook/chatwoot", json=payload)
+
+    assert response.status_code == 200
+    message = mock_process.await_args.args[0]
+    assert message["id"] == "chatwoot:124"
+    assert message["type"] == "image"
+    assert message["image"]["chatwoot_url"] == "https://chat.example.test/rails/active_storage/file.jpg"
+    assert message["image"]["mime_type"] == "image/jpeg"
+
+
+def test_merge_debounced_messages_combina_textos_em_ordem():
+    from app.webhook import _merge_debounced_messages
+
+    message, metadata = _merge_debounced_messages([
+        {
+            "message": {
+                "id": "chatwoot:1",
+                "from": "5531999990000",
+                "type": "text",
+                "text": {"body": "oi"},
+            },
+            "metadata": {"phone_number_id": "123"},
+        },
+        {
+            "message": {
+                "id": "chatwoot:2",
+                "from": "5531999990000",
+                "type": "text",
+                "text": {"body": "quero remarcar"},
+            },
+            "metadata": {"phone_number_id": "123"},
+        },
+    ])
+
+    assert message["id"].startswith("batch:")
+    assert message["from"] == "5531999990000"
+    assert message["text"]["body"] == "oi\nquero remarcar"
+    assert metadata == {"phone_number_id": "123"}
+
+
 def test_chatwoot_webhook_outgoing_message_pauses_ana():
     payload = {
         "event": "message_created",

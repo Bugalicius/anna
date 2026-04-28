@@ -187,23 +187,35 @@ async def _enviar_respostas(
                     )
                 elif "media_type" in msg:
                     await _enviar_midia(meta, phone, msg)
+                    await _log_bot_message_safe(
+                        phone,
+                        msg.get("caption") or f"[{msg.get('media_type', 'mídia')}]",
+                    )
                 elif msg.get("_interactive") == "button":
                     await meta.send_interactive_buttons(phone, msg["body"], msg["buttons"])
+                    await _log_bot_message_safe(phone, msg["body"])
                 elif msg.get("_interactive") == "list":
                     await meta.send_interactive_list(
                         phone, msg["body"], msg.get("button_label", "Escolher"), msg["rows"]
                     )
+                    await _log_bot_message_safe(phone, msg["body"])
                 else:
                     logger.warning("Tipo de mensagem desconhecido: %s", msg)
             elif isinstance(msg, str):
                 await meta.send_text(phone, msg)
-                try:
-                    from app.chatwoot_bridge import log_bot_message
-                    await log_bot_message(phone, msg)
-                except Exception as _cw_e:
-                    logger.debug("log_bot_message falhou: %s", _cw_e)
+                await _log_bot_message_safe(phone, msg)
         except Exception as e:
             logger.error("Falha ao enviar para %s: %s", phone[-4:], e)
+
+
+async def _log_bot_message_safe(phone: str, text: str) -> None:
+    if not text:
+        return
+    try:
+        from app.chatwoot_bridge import log_bot_message
+        await log_bot_message(phone, text)
+    except Exception as e:
+        logger.debug("log_bot_message falhou: %s", e)
 
 
 async def _handle_escalation(
@@ -337,6 +349,7 @@ async def _atualizar_contact(phone_hash: str) -> None:
     from app.conversation.state import load_state, delete_state
 
     _recusou = False
+    status = None
     try:
         state = await load_state(phone_hash)
         status = state.get("status", "coletando")
@@ -363,7 +376,7 @@ async def _atualizar_contact(phone_hash: str) -> None:
                 elif goal == "remarcar":
                     contact.stage = "agendado"
                 elif goal == "cancelar":
-                    contact.stage = "new"
+                    contact.stage = "cancelado"
                 elif goal == "recusou_remarketing":
                     set_tag(db, contact, Tag.LEAD_PERDIDO, force=True)
                     cancel_pending_remarketing(db, contact.id)
@@ -385,6 +398,6 @@ async def _atualizar_contact(phone_hash: str) -> None:
     except Exception as e:
         logger.warning("Falha ao atualizar contato %s: %s", phone_hash[-4:], e)
 
-    # Limpa estado Redis quando paciente recusou remarketing
-    if _recusou:
+    # Limpa estado Redis depois que o snapshot final ja foi persistido no Contact.
+    if _recusou or status == "concluido":
         await delete_state(phone_hash)

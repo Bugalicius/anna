@@ -22,7 +22,6 @@ from app.conversation.state import (
     apply_correction,
     apply_tool_result,
     apply_turno_updates,
-    delete_state,
     load_state,
     save_state,
 )
@@ -89,11 +88,9 @@ class ConversationEngine:
             elif isinstance(msg, dict) and msg.get("_interactive") and msg.get("body"):
                 add_message(state, "assistant", msg["body"])
 
-        # 10. Persistir ou deletar estado
-        if state.get("status") == "concluido":
-            await delete_state(phone_hash)
-        else:
-            await save_state(phone_hash, state)
+        # 10. Persistir estado, inclusive concluido. O router usa esse snapshot
+        # final para gravar nome/stage/id_agenda no Contact antes de limpar Redis.
+        await save_state(phone_hash, state)
 
         return resposta
 
@@ -163,6 +160,17 @@ class ConversationEngine:
                 params = {**params, "consulta_atual": appt.get("consulta_atual")}
             if not params.get("id_agenda_original"):
                 params = {**params, "id_agenda_original": appt.get("id_agenda")}
+            if not params.get("id_agenda_original") or not isinstance(params.get("novo_slot"), dict):
+                logger.warning(
+                    "Remarcacao bloqueada por dados incompletos: id_agenda=%s novo_slot=%s",
+                    bool(params.get("id_agenda_original")),
+                    bool(params.get("novo_slot")),
+                )
+                return {
+                    "sucesso": False,
+                    "erro": "dados_remarcacao_incompletos",
+                    "escalar": True,
+                }
             return await remarcar(**params)
 
         if tool_name == "cancelar":

@@ -411,7 +411,7 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
                 ]
             return [
                 "Não localizei um agendamento confirmado para você 😊\n"
-                "Se quiser, posso te ajudar com uma nova consulta."
+                "Se você tiver agendado por outro número, me envie o nome completo ou o e-mail cadastrado para eu conferir."
             ]
         if resultado_tool and resultado_tool.get("tipo_remarcacao") == "retorno":
             ca = resultado_tool.get("consulta_atual")
@@ -466,7 +466,7 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
         # nova_consulta ou não encontrado
         return [
             "Não localizei um agendamento confirmado para você 😊\n"
-            "Se quiser marcar uma nova consulta, posso te ajudar por aqui. Qual é seu objetivo com o acompanhamento?"
+            "Se você tiver agendado por outro número, me envie o nome completo ou o e-mail cadastrado para eu conferir."
         ]
 
     # ── Perda de janela de remarcação ─────────────────────────────────────────

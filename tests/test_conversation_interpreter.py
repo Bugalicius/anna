@@ -182,3 +182,21 @@ async def test_interpreter_extrai_data_nascimento_em_formato_curto():
         turno = await interpretar_turno("nasci em 2/3/93", state)
 
     assert turno["data_nascimento"] == "1993-03-02"
+
+
+@pytest.mark.asyncio
+async def test_interpreter_alterar_consulta_forca_remarcacao_mesmo_se_llm_cancelar():
+    from app.conversation.interpreter import interpretar_turno
+
+    state = _state_base()
+    state["goal"] = "desconhecido"
+
+    fake_response = MagicMock()
+    fake_response.content = [MagicMock(text='{"intent":"cancelar","confirmou_pagamento":false,"tem_pergunta":false}')]
+    fake_client = MagicMock()
+    fake_client.messages.create.return_value = fake_response
+
+    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+        turno = await interpretar_turno("quero alterar a minha consulta", state)
+
+    assert turno["intent"] == "remarcar"

@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import logging
 import os
+import hashlib as _hashlib
+import asyncio
+import json as _json
 import redis.asyncio as aioredis
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
 from app.meta_api import verify_signature
@@ -13,6 +16,7 @@ APP_SECRET = os.environ.get("META_APP_SECRET", "")
 VERIFY_TOKEN = os.environ.get("WEBHOOK_VERIFY_TOKEN", "")
 
 _DEDUP_TTL = 14400  # 4 horas em segundos
+_DEBOUNCE_TTL = 60
 
 
 async def _is_duplicate_message(meta_message_id: str) -> bool:
@@ -54,7 +58,6 @@ async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
     if not verify_signature(body, signature, APP_SECRET):
         raise HTTPException(status_code=403, detail="Invalid signature")
 
-    import json as _json
     payload = _json.loads(body)  # usar body já lido, não re-ler o stream
     logger.info("WEBHOOK PAYLOAD: %s", _json.dumps(payload)[:500])
 
@@ -70,13 +73,29 @@ async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
         for change in entry.get("changes", []):
             value = change.get("value", {})
             for message in value.get("messages", []):
-                background_tasks.add_task(process_message, message, value.get("metadata", {}))
+                background_tasks.add_task(process_message_debounced, message, value.get("metadata", {}))
 
     return {"status": "ok"}
 
 
+@router.get("/webhooks/whatsapp/{phone_number}")
+async def verify_webhook_chatwoot_path(phone_number: str, request: Request):
+    """Alias para verificacao do webhook Meta no formato usado pelo Chatwoot."""
+    return await verify_webhook(request)
+
+
+@router.post("/webhooks/whatsapp/{phone_number}")
+async def receive_webhook_chatwoot_path(
+    phone_number: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+):
+    """Alias para o webhook Meta quando a URL esta no formato do Chatwoot."""
+    return await receive_webhook(request, background_tasks)
+
+
 @router.post("/webhook/chatwoot")
-async def receive_chatwoot_webhook(request: Request):
+async def receive_chatwoot_webhook(request: Request, background_tasks: BackgroundTasks):
     """
     Recebe eventos do Chatwoot para controlar handoff humano.
 
@@ -99,6 +118,22 @@ async def receive_chatwoot_webhook(request: Request):
         set_human_handoff,
     )
 
+    if _is_incoming_chatwoot_message(payload):
+        phone = extract_phone_from_chatwoot_payload(payload)
+        if phone:
+            message = _chatwoot_payload_to_meta_message(payload, phone)
+            background_tasks.add_task(process_message_debounced, message, {})
+            conversation_id = extract_conversation_id_from_chatwoot_payload(payload)
+            if conversation_id:
+                background_tasks.add_task(bind_chatwoot_conversation, conversation_id, phone)
+        else:
+            logger.warning(
+                "Chatwoot enviou mensagem incoming, mas telefone nao foi encontrado "
+                "(event=%s conversation_id=%s)",
+                payload.get("event"),
+                extract_conversation_id_from_chatwoot_payload(payload),
+            )
+
     action = chatwoot_event_sets_handoff(payload)
     phone = extract_phone_from_chatwoot_payload(payload)
     conversation_id = extract_conversation_id_from_chatwoot_payload(payload)
@@ -120,6 +155,162 @@ async def receive_chatwoot_webhook(request: Request):
         )
 
     return {"status": "ok"}
+
+
+def _is_incoming_chatwoot_message(payload: dict) -> bool:
+    """Retorna True para mensagens recebidas do paciente pelo Chatwoot."""
+    return (
+        payload.get("event") == "message_created"
+        and payload.get("message_type") == "incoming"
+        and not payload.get("private", False)
+    )
+
+
+def _chatwoot_payload_to_meta_message(payload: dict, phone: str) -> dict:
+    """Adapta um payload incoming do Chatwoot para o formato usado por process_message."""
+    message_id = payload.get("id") or payload.get("message", {}).get("id")
+    content = payload.get("content") or payload.get("message", {}).get("content")
+    sender = payload.get("sender") or payload.get("contact") or {}
+    name = sender.get("name") or sender.get("push_name")
+    attachment = _first_chatwoot_attachment(payload)
+    fallback_basis = f"{phone}:{content or attachment.get('data_url', '')}"
+    fallback_id = _hashlib.sha256(fallback_basis.encode()).hexdigest()[:24]
+    message = {
+        "id": f"chatwoot:{message_id}" if message_id else f"chatwoot:{fallback_id}",
+        "from": phone,
+        "type": "text",
+        "text": {"body": content or "[mídia]"},
+        "profile": {"name": name},
+    }
+    if attachment:
+        content_type = attachment.get("content_type") or ""
+        file_type = str(attachment.get("file_type") or "").lower()
+        media_type = "image" if file_type == "image" or content_type.startswith("image/") else "document"
+        message["type"] = media_type
+        message[media_type] = {
+            "chatwoot_url": attachment.get("data_url") or attachment.get("download_url"),
+            "mime_type": content_type or "application/octet-stream",
+        }
+    return message
+
+
+def _first_chatwoot_attachment(payload: dict) -> dict:
+    """Extrai o primeiro anexo do payload de webhook do Chatwoot."""
+    candidates = [
+        payload.get("attachments"),
+        payload.get("message", {}).get("attachments"),
+    ]
+    for msg in payload.get("conversation", {}).get("messages", []) or []:
+        candidates.append(msg.get("attachments"))
+
+    for attachments in candidates:
+        if isinstance(attachments, list) and attachments:
+            first = attachments[0]
+            return first if isinstance(first, dict) else {}
+    return {}
+
+
+async def _download_chatwoot_attachment(url: str) -> bytes:
+    """Baixa anexo exposto pelo Chatwoot/ActiveStorage."""
+    import httpx
+
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        response = await client.get(url)
+        response.raise_for_status()
+        return response.content
+
+
+def _digits_only(numero: str) -> str:
+    return "".join(ch for ch in str(numero or "") if ch.isdigit())
+
+
+def _sem_nono_digito_brasil(numero: str) -> str:
+    digits = _digits_only(numero)
+    if digits.startswith("55") and len(digits) == 13 and digits[4] == "9":
+        return digits[:4] + digits[5:]
+    return digits
+
+
+def _is_internal_number_local(numero: str) -> bool:
+    recebido = _digits_only(numero)
+    interno = _digits_only(os.environ.get("NUMERO_INTERNO", "5531992059211"))
+    return recebido in {interno, _sem_nono_digito_brasil(interno)}
+
+
+def _should_debounce_message(message: dict) -> bool:
+    """Agrupa apenas textos de pacientes; mídia e mensagens internas seguem imediatas."""
+    if _is_internal_number_local(message.get("from", "")):
+        return False
+    return message.get("type") == "text" and bool(message.get("text", {}).get("body"))
+
+
+def _merge_debounced_messages(items: list[dict]) -> tuple[dict, dict]:
+    """Combina mensagens de texto próximas em uma única mensagem lógica."""
+    messages = [item["message"] for item in items]
+    metadata = items[-1].get("metadata") or {}
+    ids = [str(msg.get("id") or "") for msg in messages]
+    text = "\n".join(
+        str(msg.get("text", {}).get("body") or "").strip()
+        for msg in messages
+        if str(msg.get("text", {}).get("body") or "").strip()
+    )
+    first = dict(messages[0])
+    first["id"] = "batch:" + _hashlib.sha256("|".join(ids).encode()).hexdigest()[:24]
+    first["type"] = "text"
+    first["text"] = {"body": text}
+    return first, metadata
+
+
+async def process_message_debounced(message: dict, metadata: dict):
+    """
+    Aguarda uma pequena janela antes de rotear textos.
+
+    Isso evita respostas duplicadas quando o paciente manda "oi" e logo em seguida
+    explica a intenção ("quero remarcar", "quero marcar", etc.).
+    """
+    if not _should_debounce_message(message):
+        await process_message(message, metadata)
+        return
+
+    redis_url = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+    phone = message.get("from", "")
+    token = str(message.get("id") or _hashlib.sha256(repr(message).encode()).hexdigest())
+    queue_key = f"debounce:queue:{phone}"
+    token_key = f"debounce:token:{phone}"
+    delay = float(os.environ.get("MESSAGE_DEBOUNCE_SECONDS", "4.0"))
+
+    try:
+        r = aioredis.Redis.from_url(redis_url, decode_responses=True)
+        await r.rpush(queue_key, _json.dumps({"message": message, "metadata": metadata}, ensure_ascii=False))
+        await r.expire(queue_key, _DEBOUNCE_TTL)
+        await r.set(token_key, token, ex=_DEBOUNCE_TTL)
+        await r.aclose()
+    except Exception as e:
+        logger.warning("Redis debounce indisponivel: %s — processando sem debounce", e)
+        await process_message(message, metadata)
+        return
+
+    await asyncio.sleep(delay)
+
+    try:
+        r = aioredis.Redis.from_url(redis_url, decode_responses=True)
+        latest = await r.get(token_key)
+        if latest != token:
+            await r.aclose()
+            return
+        raw_items = await r.lrange(queue_key, 0, -1)
+        await r.delete(queue_key, token_key)
+        await r.aclose()
+    except Exception as e:
+        logger.warning("Redis debounce flush falhou: %s — processando mensagem atual", e)
+        await process_message(message, metadata)
+        return
+
+    items = [_json.loads(raw) for raw in raw_items]
+    if not items:
+        return
+    merged_message, merged_metadata = _merge_debounced_messages(items)
+    await process_message(merged_message, merged_metadata)
 
 
 async def process_message(message: dict, metadata: dict):
@@ -151,7 +342,9 @@ async def process_message(message: dict, metadata: dict):
             if media.get("transcricao"):
                 text = media["transcricao"]
     elif msg_type in ("image", "document"):
-        media_id = message.get(msg_type, {}).get("id", "")
+        media_payload = message.get(msg_type, {})
+        media_id = media_payload.get("id", "")
+        chatwoot_url = media_payload.get("chatwoot_url", "")
         text = "[mídia]"
         if media_id:
             media = await processar_midia(media_id)
@@ -161,6 +354,18 @@ async def process_message(message: dict, metadata: dict):
                 valor_txt = f"{valor:.2f}" if isinstance(valor, (float, int)) else "null"
                 favorecido = (analise.get("favorecido") or "").replace("|", " ")[:120]
                 text = f"[comprovante valor={valor_txt} favorecido={favorecido}]"
+        elif chatwoot_url:
+            try:
+                content = await _download_chatwoot_attachment(chatwoot_url)
+                mime_type = media_payload.get("mime_type", "")
+                analise = analisar_comprovante_pagamento(content, mime_type)
+                if analise.get("eh_comprovante"):
+                    valor = analise.get("valor")
+                    valor_txt = f"{valor:.2f}" if isinstance(valor, (float, int)) else "null"
+                    favorecido = (analise.get("favorecido") or "").replace("|", " ")[:120]
+                    text = f"[comprovante valor={valor_txt} favorecido={favorecido}]"
+            except Exception as e:
+                logger.error("Falha ao processar anexo Chatwoot %s: %s", meta_id, e)
     else:
         text = message.get("text", {}).get("body", "") or "[mídia]"
 
@@ -213,7 +418,7 @@ async def process_message(message: dict, metadata: dict):
         db.commit()
 
     # Detectar mensagem do Breno (número interno) antes de rotear como paciente
-    from app.escalation import _NUMERO_INTERNO, processar_resposta_breno
+    from app.escalation import is_numero_interno, processar_resposta_breno
     from app.meta_api import MetaAPIClient
     import os as _os
 
@@ -222,11 +427,29 @@ async def process_message(message: dict, metadata: dict):
         access_token=_os.environ.get("WHATSAPP_TOKEN", ""),
     )
 
-    if phone == _NUMERO_INTERNO:
+    if is_numero_interno(phone):
         # Mensagem do Breno — processar como resposta de escalação
         logger.info("Mensagem do número interno detectada — processando como resposta do Breno")
         await processar_resposta_breno(meta_client=_meta, texto_resposta=text)
         return
 
     # Rotear e responder (fora do session para evitar lock longo)
-    await route_message(phone=phone, phone_hash=phone_hash, text=text, meta_message_id=meta_id)
+    try:
+        await route_message(phone=phone, phone_hash=phone_hash, text=text, meta_message_id=meta_id)
+    except Exception:
+        logger.exception("Falha ao rotear mensagem %s", meta_id)
+        with SessionLocal() as db:
+            msg = db.query(Message).filter_by(meta_message_id=meta_id).first()
+            if msg:
+                msg.processing_status = "retrying"
+                msg.retry_count = (msg.retry_count or 0) + 1
+                msg.processed_at = datetime.now(UTC)
+                db.commit()
+        return
+
+    with SessionLocal() as db:
+        msg = db.query(Message).filter_by(meta_message_id=meta_id).first()
+        if msg:
+            msg.processing_status = "processed"
+            msg.processed_at = datetime.now(UTC)
+            db.commit()

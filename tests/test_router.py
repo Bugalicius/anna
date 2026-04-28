@@ -239,6 +239,43 @@ async def test_atualizar_contact_persiste_nome_e_stage():
     assert contact.stage == "agendado"
 
 
+@pytest.mark.asyncio
+async def test_atualizar_contact_cancelamento_mantem_paciente_reconhecivel():
+    from app.router import _atualizar_contact
+
+    contact = _make_contact(stage="agendado", collected_name="Ana Maria")
+    db_mock = _make_db_mock(contact)
+    state_cancelado = _make_state(goal="cancelar", status="concluido", nome="Ana Maria")
+
+    with patch("app.router.SessionLocal", return_value=db_mock), \
+         patch("app.conversation.state.load_state", new_callable=AsyncMock, return_value=state_cancelado), \
+         patch("app.conversation.state.delete_state", new_callable=AsyncMock) as mock_delete:
+        await _atualizar_contact("hash123")
+
+    assert contact.stage == "cancelado"
+    mock_delete.assert_awaited_once_with("hash123")
+
+
+@pytest.mark.asyncio
+async def test_enviar_respostas_registra_interativos_no_chatwoot():
+    from app.router import _enviar_respostas
+
+    meta = MagicMock()
+    meta.send_interactive_buttons = AsyncMock()
+
+    resposta = {
+        "_interactive": "button",
+        "body": "Escolha uma opção",
+        "buttons": [{"id": "a", "title": "A"}],
+    }
+
+    with patch("app.chatwoot_bridge.log_bot_message", new_callable=AsyncMock) as mock_log:
+        await _enviar_respostas(meta, "5511999", "hash123", [resposta], {})
+
+    meta.send_interactive_buttons.assert_awaited_once()
+    mock_log.assert_awaited_once_with("5511999", "Escolha uma opção")
+
+
 # ── Test 7: remarketing — contato no stage remarketing cancela fila ───────────
 
 @pytest.mark.asyncio

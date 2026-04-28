@@ -336,7 +336,11 @@ def _fallback(text: str) -> dict:
     """Interpretação heurística mínima quando o LLM falha."""
     t = text.lower()
     intent = "fora_de_contexto"
-    if any(w in t for w in ["remarcar", "mudar horário", "reagendar"]):
+    quer_alterar_consulta = (
+        not any(w in t for w in ["cancel", "desmarcar", "desisti", "não quero mais", "nao quero mais"])
+        and re.search(r"\b(alterar|mudar|trocar)\b.{0,30}\b(consulta|hor[aá]rio)\b", t)
+    )
+    if any(w in t for w in ["remarcar", "mudar horário", "reagendar"]) or quer_alterar_consulta:
         intent = "remarcar"
     elif any(w in t for w in ["cancelar", "desmarcar"]):
         intent = "cancelar"

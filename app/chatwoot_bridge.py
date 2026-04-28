@@ -63,6 +63,7 @@ async def bind_chatwoot_conversation(conversation_id: str, phone: str) -> None:
     try:
         r = aioredis.Redis.from_url(_redis_url(), decode_responses=True)
         await r.set(_conversation_key(conversation_id), phone, ex=_PAUSE_TTL_SECONDS)
+        await r.set(_conv_cache_key(phone), conversation_id, ex=_CONV_CACHE_TTL)
         await r.aclose()
     except Exception as e:
         logger.warning("Falha ao salvar vinculo conversa Chatwoot no Redis: %s", e)
