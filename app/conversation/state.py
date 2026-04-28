@@ -242,6 +242,14 @@ def apply_tool_result(state: dict, tool: str, result: dict) -> None:
             appt["consulta_atual"] = None
             appt["id_agenda"] = None
 
+    # Tool perda_retorno: janela de remarcação esgotada — transiciona para novo agendamento
+    if result.get("tipo") == "perda_retorno":
+        state["tipo_remarcacao"] = "perda_retorno"
+        state["goal"] = "agendar_consulta"
+        state["last_slots_offered"] = []
+        state["slots_pool"] = []
+        appt["consulta_atual"] = None
+
     if "link_url" in result:
         state["link_pagamento"] = {
             "url": result["link_url"],

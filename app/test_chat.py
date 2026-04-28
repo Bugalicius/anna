@@ -43,6 +43,17 @@ class _MockMeta:
     async def send_text(self, to: str, text: str) -> dict:
         return {}
 
+    async def send_interactive_buttons(self, to: str, body: str, buttons: list[dict]) -> dict:
+        return {}
+
+    async def send_interactive_list(
+        self, to: str, body: str, button_label: str, rows: list[dict]
+    ) -> dict:
+        return {}
+
+    async def send_contact(self, to: str, nome: str, telefone: str) -> dict:
+        return {}
+
     async def send_template(self, *args, **kwargs) -> dict:
         return {}
 
@@ -109,6 +120,22 @@ async def test_chat(body: ChatRequest):
     class CapturingMeta(_MockMeta):
         async def send_text(self, to: str, text: str) -> dict:
             captured.append(text)
+            return {}
+
+        async def send_interactive_buttons(self, to: str, body: str, buttons: list[dict]) -> dict:
+            labels = " | ".join(b.get("title", "") for b in buttons)
+            captured.append(f"{body}\n[Botões: {labels}]")
+            return {}
+
+        async def send_interactive_list(
+            self, to: str, body: str, button_label: str, rows: list[dict]
+        ) -> dict:
+            labels = " | ".join(r.get("title", "") for r in rows)
+            captured.append(f"{body}\n[Lista: {labels}]")
+            return {}
+
+        async def send_contact(self, to: str, nome: str, telefone: str) -> dict:
+            captured.append(f"[👤 Contato: {nome} {telefone}]")
             return {}
 
         async def send_document(self, to: str, media_id: str, filename: str, caption: str = "") -> dict:

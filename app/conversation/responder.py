@@ -60,6 +60,11 @@ MSG_PREFERENCIA_HORARIO = (
     "Quanto antes o sinal for enviado, maior a chance de garantir o horário de sua preferência."
 )
 
+MSG_PREFERENCIA_REMARCAR = (
+    "Claro, sem problema. Vou tentar te ajudar com isso 😊\n\n"
+    "Você prefere algum dia ou período da semana?"
+)
+
 MSG_AGENDAMENTO_OPCOES = (
     "Tenho essas opções disponíveis para {modalidade}:\n\n{opcoes}\n\nQual horário funciona melhor pra você?"
 )
@@ -132,10 +137,10 @@ MSG_CONFIRMACAO_ONLINE = (
 )
 
 MSG_CONFIRMACAO_REMARCACAO = (
-    "✅ *Consulta remarcada com sucesso!*\n\n"
+    "Prontinho, deixei sua consulta remarcada ✅\n\n"
     "📅 *Nova data:* {data} às {hora}\n"
     "📍 *Modalidade:* {modalidade}\n\n"
-    "Qualquer dúvida, é só me chamar aqui 💚"
+    "Qualquer imprevisto, me chama por aqui 💚"
 )
 
 MSG_CANCELAMENTO_CONFIRMADO = (
@@ -252,7 +257,15 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
         if resultado_tool and resultado_tool.get("slots"):
             slots = resultado_tool["slots"]
             aviso = resultado_tool.get("aviso_preferencia", "")
+            if plano.get("tool") == "consultar_slots_remarcar":
+                intro = plano.get("draft_message") or "Olhei aqui e encontrei estas opções para remarcar:"
+                return [intro, _build_slot_buttons(slots, aviso)]
             return [random.choice(_WAITING), _build_slot_buttons(slots, aviso)]
+        if plano.get("tool") == "consultar_slots_remarcar":
+            return [
+                "Poxa, não encontrei um horário disponível dentro dessa janela 😕\n\n"
+                "Vou verificar uma alternativa com a Thaynara e te retorno por aqui."
+            ]
         return [MSG_SEM_HORARIOS]
 
     # ── Escolha de slot / pede escolha ────────────────────────────────────────
@@ -260,7 +273,9 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
         slots = state.get("last_slots_offered", [])
         if not slots:
             return [MSG_SEM_HORARIOS]
-        return ["Pode me dizer qual horário prefere? 😊", _build_slot_buttons(slots)]
+        draft = plano.get("draft_message")
+        intro = draft if draft else "Pode me dizer qual horário prefere? 😊"
+        return [intro, _build_slot_buttons(slots)]
 
     # ── Forma de pagamento ────────────────────────────────────────────────────
     if action == "ask_forma_pagamento":
@@ -400,14 +415,16 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
                     data_fmt = dt.strftime("%d/%m/%Y")
                     hora_fmt = dt.strftime("%Hh")
                     return [
-                        f"Vi aqui que sua consulta está agendada para *{data_fmt}* às *{hora_fmt}* "
+                        f"Vi aqui sua consulta de *{data_fmt}* às *{hora_fmt}* "
                         f"({cd.get('modalidade') or 'presencial'}) 📅\n\n"
-                        "Posso remarcar para outro horário! Quais são os melhores dias e horários para você?"
+                        "Consigo tentar remarcar pra você. Qual dia ou período fica melhor?"
                     ]
                 except Exception:
                     pass
-            return [f"Tudo bem, {nome}. Podemos remarcar sim, sem problema 😊\n\n"
-                    "Quais são os melhores horários e dias para você? 📅"]
+            return [
+                "Claro, sem problema. Vou tentar te ajudar com isso 😊\n\n"
+                "Você prefere algum dia ou período da semana?"
+            ]
         # nova_consulta ou não encontrado
         return [
             "Não localizei um agendamento confirmado para você 😊\n"
@@ -417,9 +434,10 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
     # ── Perda de janela de remarcação ─────────────────────────────────────────
     if action == "execute_tool" and plano.get("tool") == "perda_retorno":
         return [
-            "Infelizmente não conseguimos encontrar um horário dentro do prazo de remarcação 😔\n\n"
-            "Como o prazo se encerrou, o retorno não poderá mais ser remarcado.\n\n"
-            "Mas posso te ajudar a agendar uma nova consulta! Quer que eu verifique os planos? 💚"
+            "Entendo. Como não encontramos um horário dentro do prazo do retorno, "
+            "não consigo remarcar essa consulta como retorno 😕\n\n"
+            "Mas posso te ajudar a ver uma nova consulta com a Thaynara e tentar achar "
+            "um horário bom pra você."
         ]
 
     # ── Resposta a dúvida do KB ───────────────────────────────────────────────
@@ -491,7 +509,9 @@ def _ask_field(campo: str, nome: str, state: dict) -> list:
         return [_build_planos_list()]
     if campo == "modalidade":
         return [_build_modalidade_list()]
-    if campo in ("preferencia_horario", "preferencia_horario_remarcar"):
+    if campo == "preferencia_horario_remarcar":
+        return [MSG_PREFERENCIA_REMARCAR]
+    if campo == "preferencia_horario":
         return [MSG_PREFERENCIA_HORARIO]
     if campo == "data_nascimento":
         return ["Perfeito 💚 Agora me informa sua *data de nascimento* no formato DD/MM/AAAA, por favor."]

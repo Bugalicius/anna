@@ -43,8 +43,8 @@ _MSG_TIMEOUT_1H = "Ainda estou verificando, te aviso assim que tiver retorno �
 
 # Mensagem original (mantida por compatibilidade com router.py)
 _MSG_PACIENTE_ESCALACAO = (
-    "Ótimo! Vou chamar a Thaynara para te atender pessoalmente. "
-    "Aguarda um instante, ela já está sendo avisada 💚"
+    "Para dúvidas clínicas, nossa equipe está aqui pra te orientar melhor! 💚\n\n"
+    "Vou encaminhar sua mensagem pra Thaynara — ela já foi avisada 😊"
 )
 
 # Timeout de espera por resposta humana (em minutos) — legado

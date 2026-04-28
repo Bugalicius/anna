@@ -108,30 +108,27 @@ _COMPLEMENTO_ONLINE = (
 
 MSG_INICIO_REMARCACAO = (
     "Tudo bem, {nome}. Podemos remarcar sim, sem problema 😊\n\n"
-    "Só queria te orientar que no momento a agenda da Thaynara está bem cheia. "
-    "Se você conseguir fazer um esforço para manter o horário agendado, "
-    "seria ótimo para não prejudicar seu acompanhamento.\n\n"
-    "Caso realmente não consiga, conseguimos realizar o agendamento dentro dos próximos 7 dias, "
-    "que é o prazo máximo para a remarcação.\n\n"
-    "Quais são os melhores horários e dias para você? 📅"
+    "A consulta de retorno precisa acontecer dentro do prazo máximo de 7 dias, "
+    "então vou tentar achar uma opção boa pra você.\n\n"
+    "Qual dia ou período fica melhor?"
 )
 
 MSG_CONSULTA_ATUAL_ENCONTRADA = (
-    "Vi aqui que sua consulta está agendada para *{data}* às *{hora}* ({modalidade}) 📅\n\n"
-    "Posso remarcar para outro horário! Quais são os melhores dias e horários para você?"
+    "Vi aqui sua consulta de *{data}* às *{hora}* ({modalidade}) 📅\n\n"
+    "Consigo tentar remarcar pra você. Qual dia ou período fica melhor?"
 )
 
 MSG_OPCOES_REMARCACAO = (
-    "Ótimo! Encontrei estas opções disponíveis:\n\n"
+    "Olhei aqui e encontrei estas opções para remarcar:\n\n"
     "{opcoes}\n\n"
-    "Qual funciona melhor pra você?"
+    "Alguma delas te ajuda?"
 )
 
 MSG_CONFIRMACAO_REMARCACAO = (
-    "✅ *Consulta remarcada com sucesso!*\n\n"
+    "Prontinho, deixei sua consulta remarcada ✅\n\n"
     "📅 *Nova data:* {data} às {hora}\n"
     "📍 *Modalidade:* {modalidade}\n\n"
-    "Qualquer dúvida, é só me chamar aqui 💚"
+    "Qualquer imprevisto, me chama por aqui 💚"
 )
 
 MSG_ERRO_REMARCACAO_DIETBOX = (
@@ -147,24 +144,22 @@ MSG_ERRO_REMARCACAO_RETRY = (
 )
 
 MSG_SEGUNDA_RODADA = (
-    "Entendo 😊 Vou buscar mais opções pra você:\n\n"
+    "Tudo bem. Vou te mandar outras opções dentro da janela de remarcação:\n\n"
     "{opcoes}\n\n"
     "Alguma dessas funciona?"
 )
 
 MSG_PERDA_RETORNO = (
-    "Infelizmente não conseguimos encontrar um horário que funcione para você "
-    "dentro do prazo de remarcação 😔\n\n"
-    "Como o prazo se encerra em breve, o retorno não poderá mais ser remarcado.\n\n"
-    "Mas posso te ajudar a agendar uma consulta nova! Quer que eu verifique os "
-    "planos disponíveis para você? 💚"
+    "Entendo. Como não encontramos um horário dentro do prazo do retorno, "
+    "não consigo remarcar essa consulta como retorno 😕\n\n"
+    "Mas posso te ajudar a ver uma nova consulta com a Thaynara e tentar achar "
+    "um horário bom pra você."
 )
 
 MSG_SEM_MAIS_SLOTS = (
-    "Não há mais horários disponíveis na janela de remarcação 😔\n\n"
-    "Como o prazo se encerra em breve, o retorno não poderá mais ser remarcado.\n\n"
-    "Mas posso te ajudar a agendar uma consulta nova! Quer que eu verifique os "
-    "planos disponíveis para você? 💚"
+    "Poxa, não encontrei mais horários dentro da janela de remarcação 😕\n\n"
+    "Como o prazo do retorno já ficou apertado, não consigo remarcar essa consulta "
+    "como retorno. Posso te ajudar a ver uma nova consulta com a Thaynara."
 )
 
 MSG_INICIO_CANCELAMENTO = (

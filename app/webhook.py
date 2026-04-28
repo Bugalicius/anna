@@ -58,12 +58,66 @@ async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
     payload = _json.loads(body)  # usar body já lido, não re-ler o stream
     logger.info("WEBHOOK PAYLOAD: %s", _json.dumps(payload)[:500])
 
+    from app.chatwoot_bridge import relay_meta_webhook_to_chatwoot
+    background_tasks.add_task(
+        relay_meta_webhook_to_chatwoot,
+        body,
+        {k.lower(): v for k, v in request.headers.items()},
+    )
+
     # Extrair mensagens do payload aninhado da Meta
     for entry in payload.get("entry", []):
         for change in entry.get("changes", []):
             value = change.get("value", {})
             for message in value.get("messages", []):
                 background_tasks.add_task(process_message, message, value.get("metadata", {}))
+
+    return {"status": "ok"}
+
+
+@router.post("/webhook/chatwoot")
+async def receive_chatwoot_webhook(request: Request):
+    """
+    Recebe eventos do Chatwoot para controlar handoff humano.
+
+    Configure no Chatwoot um webhook apontando para:
+    https://anna.vps-kinghost.net/webhook/chatwoot
+    """
+    payload = await request.json()
+
+    expected_token = os.environ.get("CHATWOOT_WEBHOOK_VERIFY_TOKEN", "")
+    received_token = request.headers.get("X-Chatwoot-Webhook-Token") or request.query_params.get("token")
+    if expected_token and received_token != expected_token:
+        raise HTTPException(status_code=403, detail="Invalid Chatwoot webhook token")
+
+    from app.chatwoot_bridge import (
+        bind_chatwoot_conversation,
+        chatwoot_event_sets_handoff,
+        extract_conversation_id_from_chatwoot_payload,
+        extract_phone_from_chatwoot_payload,
+        resolve_phone_from_chatwoot_conversation,
+        set_human_handoff,
+    )
+
+    action = chatwoot_event_sets_handoff(payload)
+    phone = extract_phone_from_chatwoot_payload(payload)
+    conversation_id = extract_conversation_id_from_chatwoot_payload(payload)
+    if not phone and action is False:
+        phone = await resolve_phone_from_chatwoot_conversation(conversation_id)
+
+    if action is not None and phone:
+        await set_human_handoff(phone, action, reason=f"chatwoot:{payload.get('event', 'event')}")
+        if action:
+            await bind_chatwoot_conversation(conversation_id, phone)
+        logger.info("Chatwoot handoff %s para telefone %s", "ON" if action else "OFF", phone[-4:])
+    elif action is not None:
+        logger.warning(
+            "Chatwoot pediu handoff, mas telefone nao foi encontrado no payload "
+            "(event=%s status=%s conversation_id=%s)",
+            payload.get("event"),
+            payload.get("status") or payload.get("conversation", {}).get("status"),
+            conversation_id,
+        )
 
     return {"status": "ok"}
 

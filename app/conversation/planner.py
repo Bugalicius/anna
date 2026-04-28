@@ -580,13 +580,37 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
         if override_cancel:
             return override_cancel
 
-    # ── Segunda rodada de slots / perda_retorno (fluxo de remarcação) ─────
-    # Executado antes do early-return de goal pois goal="remarcar" durante remarcação.
+    # ── Fluxo de remarcação determinístico ─────────────────────────────────
+    # Evita que remarcação pareça um novo agendamento ou repita menus rígidos.
     if tipo_remarcacao == "retorno":
         slots = state.get("last_slots_offered", [])
         slot_escolhido = appt.get("slot_escolhido")
         rodada = state.get("rodada_negociacao", 0)
         last_action = state.get("last_action")
+        pref_turno = turno.get("preferencia_horario")
+        pref_atual = cd.get("preferencia_horario")
+
+        if not pref_atual and not slots and not slot_escolhido:
+            return _plano(
+                ASK_FIELD,
+                ask_context="preferencia_horario_remarcar",
+                draft_message=(
+                    "Claro, sem problema. Vou tentar te ajudar com isso 😊\n\n"
+                    "Você prefere algum dia ou período da semana?"
+                ),
+            )
+
+        if pref_atual and not slots and not slot_escolhido and last_action != "consultar_slots_remarcar":
+            return _plano(
+                EXECUTE_TOOL,
+                tool="consultar_slots_remarcar",
+                params={
+                    "modalidade": cd.get("modalidade") or "presencial",
+                    "preferencia": pref_atual,
+                    "fim_janela": state.get("fim_janela_remarcar"),
+                    "excluir": [],
+                },
+            )
 
         if (
             slots
@@ -599,6 +623,37 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                 escolha_valida = bool(escolha and 1 <= int(str(escolha)) <= len(slots))
             except (ValueError, TypeError):
                 escolha_valida = False
+
+            if escolha_valida:
+                slot_obj = slots[int(str(escolha)) - 1]
+                return _plano(
+                    EXECUTE_TOOL,
+                    tool="remarcar_dietbox",
+                    params={
+                        "id_agenda_original": appt.get("id_agenda"),
+                        "novo_slot": slot_obj,
+                        "consulta_atual": appt.get("consulta_atual"),
+                    },
+                    update_appointment={"slot_escolhido": slot_obj},
+                )
+
+            if pref_turno:
+                state["last_slots_offered"] = []
+                state["slots_pool"] = []
+                state["rodada_negociacao"] = 0
+                return _plano(
+                    EXECUTE_TOOL,
+                    tool="consultar_slots_remarcar",
+                    params={
+                        "modalidade": cd.get("modalidade") or "presencial",
+                        "preferencia": pref_turno,
+                        "fim_janela": state.get("fim_janela_remarcar"),
+                        "excluir": [s.get("datetime") for s in slots if s.get("datetime")],
+                    },
+                    draft_message=(
+                        "Entendi. Vou procurar outra opção mais próxima do que você precisa."
+                    ),
+                )
 
             if not escolha_valida:
                 pool = state.get("slots_pool", [])
@@ -615,8 +670,19 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                 state["rodada_negociacao"] = 1
                 return _plano(
                     ASK_SLOT_CHOICE,
-                    draft_message="Entendo 😊 Vou buscar mais opções pra você:",
+                    draft_message=(
+                        "Tudo bem. Vou te mandar outras opções dentro da janela de remarcação:"
+                    ),
                 )
+
+        if intent == "remarcar" and not slots and not slot_escolhido:
+            return _plano(
+                ASK_FIELD,
+                ask_context="preferencia_horario_remarcar",
+                draft_message=(
+                    "Claro, consigo ver isso pra você. Qual período fica melhor: manhã, tarde ou noite?"
+                ),
+            )
 
     # Aplica apenas no fluxo de agendamento
     if goal not in ("agendar_consulta", "desconhecido"):

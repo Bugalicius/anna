@@ -54,13 +54,47 @@ def test_valid_empty_payload_returns_200():
     }).encode()
     sig = make_signature(body, APP_SECRET)
 
-    with patch("app.webhook.APP_SECRET", APP_SECRET):
+    with patch("app.webhook.APP_SECRET", APP_SECRET), \
+         patch("app.chatwoot_bridge.relay_meta_webhook_to_chatwoot", new_callable=AsyncMock):
         response = client.post(
             "/webhook",
             content=body,
             headers={"Content-Type": "application/json", "X-Hub-Signature-256": sig},
         )
     assert response.status_code == 200
+
+
+def test_chatwoot_webhook_outgoing_message_pauses_ana():
+    payload = {
+        "event": "message_created",
+        "message_type": "outgoing",
+        "private": False,
+        "contact": {"phone_number": "+55 31 7189-3255"},
+        "sender": {"type": "user", "phone_number": "+55 31 7189-3255"},
+    }
+
+    with patch.dict("os.environ", {"CHATWOOT_WEBHOOK_VERIFY_TOKEN": ""}), \
+         patch("app.chatwoot_bridge.set_human_handoff", new_callable=AsyncMock) as mock_set:
+        response = client.post("/webhook/chatwoot", json=payload)
+
+    assert response.status_code == 200
+    mock_set.assert_awaited_once_with("553171893255", True, reason="chatwoot:message_created")
+
+
+def test_chatwoot_resolved_uses_conversation_mapping_when_phone_missing():
+    payload = {
+        "event": "conversation_updated",
+        "conversation": {"id": 99, "status": "resolved"},
+    }
+
+    with patch.dict("os.environ", {"CHATWOOT_WEBHOOK_VERIFY_TOKEN": ""}), \
+         patch("app.chatwoot_bridge.resolve_phone_from_chatwoot_conversation", new_callable=AsyncMock, return_value="553171893255") as mock_resolve, \
+         patch("app.chatwoot_bridge.set_human_handoff", new_callable=AsyncMock) as mock_set:
+        response = client.post("/webhook/chatwoot", json=payload)
+
+    assert response.status_code == 200
+    mock_resolve.assert_awaited_once_with("99")
+    mock_set.assert_awaited_once_with("553171893255", False, reason="chatwoot:conversation_updated")
 
 
 # ── Testes de dedup Redis ─────────────────────────────────────────────────────
@@ -106,6 +140,22 @@ async def test_dedup_redis_allows_first():
         await process_message(MESSAGE_FIXTURE, METADATA_FIXTURE)
 
     mock_route.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_route_message_ignores_when_human_handoff_active():
+    from app.router import route_message
+
+    with patch("app.chatwoot_bridge.is_human_handoff_active", new_callable=AsyncMock, return_value=True), \
+         patch("app.router._carregar_contato") as mock_load:
+        await route_message(
+            phone="5531999990000",
+            phone_hash="hash",
+            text="ola",
+            meta_message_id="wamid.pause",
+        )
+
+    mock_load.assert_not_called()
 
 
 @pytest.mark.asyncio

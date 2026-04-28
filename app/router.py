@@ -60,7 +60,12 @@ async def route_message(phone: str, phone_hash: str, text: str, meta_message_id:
       5. Atualiza tags/stage do contato
     """
     from app.meta_api import MetaAPIClient
+    from app.chatwoot_bridge import is_human_handoff_active
     meta = MetaAPIClient()
+
+    if await is_human_handoff_active(phone_hash):
+        logger.info("Ana pausada por handoff humano para telefone %s", phone[-4:])
+        return
 
     # 1. Carrega contato do banco
     contact = _carregar_contato(phone_hash)
