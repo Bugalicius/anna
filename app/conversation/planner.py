@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import re
+import unicodedata
 from datetime import date, datetime
 
 import anthropic
@@ -526,6 +527,47 @@ _SAUDACAO = re.compile(
 )
 
 
+def _normalizar_texto_simples(texto: str | None) -> str:
+    if not texto:
+        return ""
+    sem_acento = unicodedata.normalize("NFKD", str(texto))
+    return "".join(ch for ch in sem_acento if not unicodedata.combining(ch)).lower()
+
+
+def _precisa_humano_no_cancelamento(texto: str | None) -> bool:
+    """
+    Algumas respostas ao pedido de motivo não são apenas "motivo":
+    são reclamações, pedidos de reembolso/estorno ou conflito. Nesses casos,
+    não execute a tool automaticamente; passe para humano.
+    """
+    t = _normalizar_texto_simples(texto)
+    if not t:
+        return False
+
+    pedidos_reembolso = (
+        "dinheiro de volta",
+        "meu dinheiro",
+        "reembolso",
+        "reembols",
+        "estorno",
+        "estornar",
+        "devolve",
+        "devolver",
+        "devolucao",
+        "ressarc",
+    )
+    termos_conflito = (
+        "burro",
+        "idiota",
+        "incompetente",
+        "absurdo",
+        "processar",
+        "procon",
+        "golpe",
+    )
+    return any(p in t for p in pedidos_reembolso) or any(p in t for p in termos_conflito)
+
+
 def _override_cancelamento(turno: dict, state: dict) -> dict | None:
     """
     Regras determinísticas para cancelamento/desistência.
@@ -587,6 +629,9 @@ def _override_cancelamento(turno: dict, state: dict) -> dict | None:
         motivo = last_user
     else:
         motivo = cd["motivo_cancelamento"]
+
+    if _precisa_humano_no_cancelamento(motivo):
+        return _plano(ESCALATE, update_data={"motivo_cancelamento": motivo})
 
     if state.get("last_action") != "cancelar":
         return _plano(

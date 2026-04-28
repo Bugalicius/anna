@@ -259,6 +259,23 @@ async def test_motivo_cancelamento_nao_repete_pergunta():
     assert plano["action"] != "ask_motivo_cancelamento"
 
 
+@pytest.mark.asyncio
+async def test_cancelamento_com_reembolso_ou_conflito_escala_sem_executar_tool():
+    """Pedido de reembolso/conflito no motivo deve ir para humano, não tentar cancelar."""
+    from app.conversation.planner import decidir_acao
+
+    state = _state_cancelamento_aguardando_motivo()
+    state["history"][-1]["content"] = "vc é muito burro. queor meu dinheiro de volta"
+    turno = _turno_cancelar()
+    turno["_raw_message"] = "vc é muito burro. queor meu dinheiro de volta"
+
+    plano = await decidir_acao(turno, state)
+
+    assert plano["action"] == "escalate"
+    assert plano.get("tool") is None
+    assert plano["update_data"]["motivo_cancelamento"] == "vc é muito burro. queor meu dinheiro de volta"
+
+
 # ── Teste 4: "Trocar o plano" → correção, não cancelamento ──────────────
 
 
