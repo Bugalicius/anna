@@ -156,3 +156,39 @@ async def test_chat(body: ChatRequest):
         )
 
     return ChatResponse(responses=captured)
+
+
+class BrenoReplyRequest(BaseModel):
+    texto: str
+    patient_phone: str = TEST_PHONE
+
+
+class BrenoReplyResponse(BaseModel):
+    relay_ok: bool
+    responses: list[str]
+
+
+@router.post("/test/breno-reply", response_model=BrenoReplyResponse)
+async def test_breno_reply(body: BrenoReplyRequest):
+    """
+    Simula resposta do Breno a uma escalação pendente.
+
+    Encontra o PendingEscalation mais recente com status='aguardando',
+    marca como respondido e repassa o texto ao paciente.
+    """
+    captured: list[str] = []
+
+    class CapturingMeta(_MockMeta):
+        async def send_text(self, to: str, text: str) -> dict:
+            captured.append(text)
+            return {}
+
+    from app.escalation import processar_resposta_breno
+
+    meta = CapturingMeta()
+    resultado = await processar_resposta_breno(
+        meta_client=meta,
+        texto_resposta=body.texto,
+    )
+
+    return BrenoReplyResponse(relay_ok=resultado, responses=captured)

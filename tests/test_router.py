@@ -122,11 +122,11 @@ async def test_respostas_texto_enviadas():
     assert textos == ["msg A", "msg B"]
 
 
-# ── Test 3: sentinel de escalação aciona escalar_para_humano ─────────────────
+# ── Test 3: sentinel de escalação aciona escalar_duvida ──────────────────────
 
 @pytest.mark.asyncio
 async def test_sentinel_escalacao():
-    """Sentinel {"_meta_action": "escalate"} deve acionar escalar_para_humano."""
+    """Sentinel {"_meta_action": "escalate"} deve acionar escalar_duvida (cria PendingEscalation)."""
     from app.router import route_message
 
     contact = _make_contact(stage="presenting")
@@ -142,7 +142,7 @@ async def test_sentinel_escalacao():
          patch("app.conversation.state.load_state",
                new_callable=AsyncMock, return_value=_make_state()), \
          patch("app.conversation.state.save_state", new_callable=AsyncMock), \
-         patch("app.escalation.escalar_para_humano", new_callable=AsyncMock) as mock_escalar:
+         patch("app.escalation.escalar_duvida", new_callable=AsyncMock, return_value="relay_breno") as mock_escalar:
         await route_message("5511999", "hash123", "tenho diabetes", "msg-id-1")
 
     mock_escalar.assert_called_once()

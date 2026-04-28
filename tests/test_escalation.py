@@ -372,3 +372,103 @@ def test_numero_interno_nao_roteado_como_paciente():
     # Verificar que send_contact existe no MetaAPIClient
     from app.meta_api import MetaAPIClient
     assert hasattr(MetaAPIClient, "send_contact"), "MetaAPIClient deve ter método send_contact"
+
+
+# ── T11: relay Breno end-to-end ───────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_t11_relay_breno_end_to_end():
+    """
+    T11 — fluxo completo do relay bidirecional:
+
+    1. Lead faz dúvida clínica → escalar_duvida cria PendingEscalation + avisa paciente
+    2. PendingEscalation gravado no banco com status='aguardando'
+    3. Breno responde (processar_resposta_breno) → escalação marcada 'respondido'
+    4. Resposta do Breno repassada ao paciente
+    5. Número interno NUNCA aparece na mensagem ao paciente
+    """
+    from app.escalation import escalar_duvida, processar_resposta_breno, _NUMERO_INTERNO
+
+    meta = _make_meta_client()
+    telefone_paciente = "5531988880011"
+
+    # ── Passo 1: escalação da dúvida (lead, não cadastrado) ───────────────────
+    esc_criada = {}
+
+    async def _mock_criar_relay(**kwargs):
+        # Guarda os dados e simula a criação do PendingEscalation
+        esc_criada.update(kwargs)
+        return "esc-t11-uuid"
+
+    with patch("app.escalation.criar_escalacao_relay", side_effect=_mock_criar_relay):
+        resultado = await escalar_duvida(
+            meta_client=meta,
+            telefone_paciente=telefone_paciente,
+            phone_hash="hash_t11",
+            nome_paciente="Carlos Lead",
+            historico_resumido="Carlos: posso comer pão com diabetes?",
+            motivo="duvida_clinica",
+            is_paciente_cadastrado=False,
+        )
+
+    assert resultado == "relay_breno"
+    # Paciente recebeu mensagem de aguardo (não o número interno)
+    assert meta.send_text.called
+    msgs_ao_paciente = [
+        str(c) for c in meta.send_text.call_args_list
+        if telefone_paciente in str(c)
+    ]
+    assert len(msgs_ao_paciente) >= 1, "Paciente deve receber mensagem de aguardo"
+    for msg in msgs_ao_paciente:
+        assert _NUMERO_INTERNO not in msg, "Número interno vazou na mensagem ao paciente!"
+        assert "99205" not in msg, "Fragmento do número interno vazou!"
+
+    # criar_escalacao_relay foi chamada com os dados corretos
+    assert esc_criada.get("telefone_paciente") == telefone_paciente
+    assert esc_criada.get("phone_hash") == "hash_t11"
+
+    # ── Passo 2: Breno responde ────────────────────────────────────────────────
+    meta2 = _make_meta_client()
+    esc_mock = _make_pending_esc(
+        status="aguardando",
+        phone_e164=telefone_paciente,
+        pergunta_original="duvida_clinica",
+    )
+
+    patcher, db_mock = _patch_db(esc_mock)
+    with patcher:
+        with patch("app.knowledge_base.salvar_faq_aprendido"):
+            relay_ok = await processar_resposta_breno(
+                meta_client=meta2,
+                texto_resposta="Pode comer pão integral com moderação 🌾",
+            )
+
+    # ── Passo 3: validações do relay ──────────────────────────────────────────
+    assert relay_ok is True, "processar_resposta_breno deve retornar True quando há escalação"
+    assert esc_mock.status == "respondido"
+    assert esc_mock.resposta_breno == "Pode comer pão integral com moderação 🌾"
+
+    # Resposta repassada exatamente ao telefone do paciente
+    meta2.send_text.assert_awaited_once_with(
+        telefone_paciente,
+        "Pode comer pão integral com moderação 🌾",
+    )
+
+
+@pytest.mark.asyncio
+async def test_t11_handle_escalation_router_cria_pending_escalation():
+    """
+    _handle_escalation em router.py deve chamar escalar_duvida (não escalar_para_humano),
+    garantindo que PendingEscalation seja criado para o relay funcionar.
+    """
+    import inspect
+    from app import router as router_module
+
+    source = inspect.getsource(router_module._handle_escalation)
+    assert "escalar_duvida" in source, (
+        "_handle_escalation deve usar escalar_duvida para criar PendingEscalation. "
+        "escalar_para_humano não cria registro no banco e quebra o relay do Breno."
+    )
+    assert "escalar_para_humano" not in source, (
+        "_handle_escalation não deve mais usar escalar_para_humano (não cria PendingEscalation)"
+    )

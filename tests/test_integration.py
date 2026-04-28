@@ -364,7 +364,7 @@ async def test_route_message_fora_contexto():
 @pytest.mark.asyncio
 @patch.dict("os.environ", _FAKE_ENV)
 async def test_route_message_escalacao():
-    """route_message com dúvida clínica aciona escalar_para_humano."""
+    """route_message com dúvida clínica aciona escalar_duvida (cria PendingEscalation)."""
     from app.router import route_message
 
     db_mock = _make_db_mock_integration(stage="presenting", collected_name="Joana")
@@ -380,8 +380,8 @@ async def test_route_message_escalacao():
          patch("app.conversation.state.load_state",
                new_callable=AsyncMock, return_value=_make_state_e2e(nome="Joana")), \
          patch("app.conversation.state.save_state", new_callable=AsyncMock), \
-         patch("app.escalation.escalar_para_humano",
-               new_callable=AsyncMock) as mock_escalar:
+         patch("app.escalation.escalar_duvida",
+               new_callable=AsyncMock, return_value="relay_breno") as mock_escalar:
         await route_message(
             "5531000000002", "hash_e2e_003",
             "tenho diabetes, posso comer pão?", "msg-003",

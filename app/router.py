@@ -200,9 +200,9 @@ async def _handle_escalation(
 ) -> None:
     """
     Encaminha dúvida clínica para a nutricionista.
-    Usa o histórico do estado do engine para montar o contexto.
+    Cria PendingEscalation no banco para habilitar relay bidirecional (D-06/D-07).
     """
-    from app.escalation import escalar_para_humano
+    from app.escalation import escalar_duvida
     from app.conversation.state import load_state
 
     state = await load_state(phone_hash)
@@ -211,12 +211,18 @@ async def _handle_escalation(
         f"{'Paciente' if m['role'] == 'user' else 'Ana'}: {m['content'][:120]}"
         for m in historico[-6:]
     )
-    await escalar_para_humano(
+    # Apenas pacientes com status_paciente="retorno" (pré-populado pelo _reconhecer_paciente_retorno)
+    # são considerados cadastrados no Dietbox → D-05 (VCard Thaynara).
+    # Leads em qualquer estágio do funil vão para D-06/D-07 (relay Breno com PendingEscalation).
+    is_paciente_cadastrado = state.get("collected_data", {}).get("status_paciente") == "retorno"
+    await escalar_duvida(
         meta_client=meta,
         telefone_paciente=phone,
+        phone_hash=phone_hash,
         nome_paciente=state["collected_data"].get("nome") or contact.get("nome"),
         historico_resumido=resumo,
-        motivo="Dúvida clínica — requer nutricionista",
+        motivo="duvida_clinica",
+        is_paciente_cadastrado=is_paciente_cadastrado,
     )
 
 
