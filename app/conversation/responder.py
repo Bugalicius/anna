@@ -127,7 +127,7 @@ MSG_CONFIRMACAO_PRESENCIAL = (
 MSG_CONFIRMACAO_ONLINE = (
     "{nome}, sua consulta foi confirmada com sucesso! ✅\n\n"
     "📅 *Data e hora:* {data} às {hora}\n"
-    "📍 *Local:* Chamada de vídeo pelo WhatsApp (a nutri irá te ligar no número cadastrado)\n"
+    "📍 *Local:* Videochamada pelo WhatsApp (a nutri irá te ligar no número cadastrado)\n"
     "✅ Certifique-se de ter uma boa conexão de internet.\n\n"
     "Políticas importantes:\n"
     "⏱️ Tolerância máxima de atraso: 10 minutos.\n"
@@ -137,7 +137,7 @@ MSG_CONFIRMACAO_ONLINE = (
 )
 
 MSG_CONFIRMACAO_REMARCACAO = (
-    "Prontinho, deixei sua consulta remarcada ✅\n\n"
+    "Prontinho, sua consulta foi remarcada com sucesso ✅\n\n"
     "📅 *Nova data:* {data} às {hora}\n"
     "📍 *Modalidade:* {modalidade}\n\n"
     "Qualquer imprevisto, me chama por aqui 💚"
@@ -151,13 +151,13 @@ MSG_CANCELAMENTO_CONFIRMADO = (
 
 MSG_ERRO_AGENDAMENTO = (
     "Ops! Tive um problema técnico ao confirmar seu agendamento no sistema 😔\n\n"
-    "Vou acionar a equipe para resolver manualmente. "
+    "Vou acionar nossa equipe para verificar. "
     "Você receberá uma confirmação assim que estiver tudo certo 💚"
 )
 
 MSG_ERRO_REMARCACAO = (
     "Ops! Tive um problema técnico ao tentar confirmar a remarcação 😔\n\n"
-    "Vou pedir para a Thaynara verificar manualmente, tudo bem? 💚"
+    "Vou acionar nossa equipe para verificar e te retorno por aqui 💚"
 )
 
 MSG_SEM_HORARIOS = (
@@ -230,8 +230,8 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
         draft = plano.get("draft_message")
         history = state.get("history", [])
         ask_context = plano.get("ask_context", "")
-        # Campos com UI interativa — sempre usar template (ignorar draft)
-        if ask_context in ("objetivo", "plano", "modalidade"):
+        # Campos com UI interativa/operacional — sempre usar template (ignorar draft)
+        if ask_context in ("objetivo", "plano", "modalidade", "preferencia_horario"):
             return _ask_field(ask_context, nome, state)
         # Usa draft do planner para turnos além da primeira mensagem
         if draft and len(history) > 1:
@@ -260,7 +260,8 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
             if plano.get("tool") == "consultar_slots_remarcar":
                 intro = plano.get("draft_message") or "Olhei aqui e encontrei estas opções para remarcar:"
                 return [intro, _build_slot_buttons(slots, aviso)]
-            return [random.choice(_WAITING), _build_slot_buttons(slots, aviso)]
+            intro = plano.get("draft_message") or random.choice(_WAITING)
+            return [intro, _build_slot_buttons(slots, aviso)]
         if plano.get("tool") == "consultar_slots_remarcar":
             return [
                 "Poxa, não encontrei um horário disponível dentro dessa janela 😕\n\n"
@@ -328,7 +329,7 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
                 return ["Recebi seus dados, mas preciso confirmar seu *nome e sobrenome* para cadastro. Pode me mandar novamente, por favor?"]
         if resultado_tool and resultado_tool.get("sucesso"):
             return [random.choice(_WAITING)] + _build_confirmacao(state)
-        return [random.choice(_WAITING), MSG_ERRO_AGENDAMENTO]
+        return [{"_meta_action": "escalate", "motivo": "erro_agendamento"}]
 
     # ── Confirmação final ─────────────────────────────────────────────────────
     if action == "send_confirmacao":
@@ -357,7 +358,7 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
                 hora=slot.get("hora", ""),
                 modalidade=cd.get("modalidade") or "presencial",
             )]
-        return [MSG_ERRO_REMARCACAO]
+        return [{"_meta_action": "escalate", "motivo": "erro_remarcacao"}]
 
     if action == "send_confirmacao_remarcacao":
         slot = state["appointment"].get("slot_escolhido") or {}
@@ -395,49 +396,86 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
     if action == "execute_tool" and plano.get("tool") == "cancelar":
         if resultado_tool and resultado_tool.get("sucesso"):
             return [MSG_CANCELAMENTO_CONFIRMADO]
-        return ["Ops! Tive um problema técnico ao registrar o cancelamento 😔\n\n"
-                "Vou pedir para a Thaynara verificar manualmente, tudo bem? 💚"]
+        return [{"_meta_action": "escalate", "motivo": "erro_cancelamento"}]
 
     if action == "send_confirmacao_cancelamento":
         return [MSG_CANCELAMENTO_CONFIRMADO]
 
     # ── Detectar tipo de remarcação ───────────────────────────────────────────
     if action == "execute_tool" and plano.get("tool") == "detectar_tipo_remarcacao":
+        if state.get("goal") == "cancelar":
+            if resultado_tool and resultado_tool.get("consulta_atual"):
+                return [
+                    "Vi aqui sua consulta agendada. Posso cancelar pra você, sim.\n\n"
+                    "Só para registrar direitinho: o que aconteceu?"
+                ]
+            return [
+                "Não localizei um agendamento confirmado para você 😊\n"
+                "Se quiser, posso te ajudar com uma nova consulta."
+            ]
         if resultado_tool and resultado_tool.get("tipo_remarcacao") == "retorno":
             ca = resultado_tool.get("consulta_atual")
+            fim_janela_str = resultado_tool.get("fim_janela") or state.get("fim_janela_remarcar")
             if ca:
                 try:
-                    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+                    from datetime import datetime as _dt, date as _date, timezone as _tz, timedelta as _td
                     _BRT = _tz(_td(hours=-3))
                     dt = _dt.fromisoformat(ca["inicio"])
                     if dt.tzinfo:
                         dt = dt.astimezone(_BRT)
                     data_fmt = dt.strftime("%d/%m/%Y")
                     hora_fmt = dt.strftime("%Hh")
-                    return [
-                        f"Vi aqui sua consulta de *{data_fmt}* às *{hora_fmt}* "
-                        f"({cd.get('modalidade') or 'presencial'}) 📅\n\n"
-                        "Consigo tentar remarcar pra você. Qual dia ou período fica melhor?"
-                    ]
+                    modalidade_fmt = ca.get("modalidade") or "presencial"
+                    nome = state.get("nome") or ""
+                    primeiro_nome = nome.split()[0] if nome else ""
+                    fim_janela_fmt = None
+                    if fim_janela_str:
+                        try:
+                            _DIAS_PT = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
+                            fj = _date.fromisoformat(fim_janela_str)
+                            fim_janela_fmt = _DIAS_PT[fj.weekday()] + ", " + fj.strftime("%d/%m")
+                        except Exception:
+                            pass
+                    intro = ("Tudo bem, " + primeiro_nome + "! Podemos remarcar sim, sem problema 😊\n\n") if primeiro_nome else "Podemos remarcar sim, sem problema 😊\n\n"
+                    consulta_info = "Vi aqui sua consulta de *" + data_fmt + "* às *" + hora_fmt + "* (" + modalidade_fmt + ").\n\n"
+                    aviso = (
+                        "Só queria te orientar que no momento a agenda da Thaynara está bem cheia.\n"
+                        "Se você conseguir manter o horário agendado, seria ótimo para não prejudicar\n"
+                        "seu acompanhamento 💚\n\n"
+                    )
+                    if fim_janela_fmt:
+                        prazo = (
+                            "Caso realmente não consiga, podemos remarcar, até *" + fim_janela_fmt + "*\n"
+                            "— esse é o prazo máximo para remarcação.\n\n"
+                        )
+                    else:
+                        prazo = ""
+                    pergunta = "Quais são os melhores horários e dias para você? 📅"
+                    return [intro + consulta_info + aviso + prazo + pergunta]
                 except Exception:
                     pass
             return [
                 "Claro, sem problema. Vou tentar te ajudar com isso 😊\n\n"
                 "Você prefere algum dia ou período da semana?"
             ]
+        if resultado_tool and resultado_tool.get("precisa_identificacao"):
+            return [
+                "Tentei localizar sua consulta pelo número do WhatsApp, mas não encontrei um agendamento confirmado vinculado a ele.\n\n"
+                "Pode me informar seu *nome completo* ou o *e-mail cadastrado* para eu tentar localizar por outro dado?"
+            ]
         # nova_consulta ou não encontrado
         return [
             "Não localizei um agendamento confirmado para você 😊\n"
-            "Vou te passar para o fluxo de agendamento — me conta o que você está procurando!"
+            "Se quiser marcar uma nova consulta, posso te ajudar por aqui. Qual é seu objetivo com o acompanhamento?"
         ]
 
     # ── Perda de janela de remarcação ─────────────────────────────────────────
     if action == "execute_tool" and plano.get("tool") == "perda_retorno":
         return [
-            "Entendo. Como não encontramos um horário dentro do prazo do retorno, "
+            "Entendo. Como não encontramos um horário dentro do prazo de remarcação do retorno, "
             "não consigo remarcar essa consulta como retorno 😕\n\n"
             "Mas posso te ajudar a ver uma nova consulta com a Thaynara e tentar achar "
-            "um horário bom pra você."
+            "um horário bom pra você. Posso te mandar os planos."
         ]
 
     # ── Resposta a dúvida do KB ───────────────────────────────────────────────
@@ -514,9 +552,23 @@ def _ask_field(campo: str, nome: str, state: dict) -> list:
     if campo == "preferencia_horario":
         return [MSG_PREFERENCIA_HORARIO]
     if campo == "data_nascimento":
-        return ["Perfeito 💚 Agora me informa sua *data de nascimento* no formato DD/MM/AAAA, por favor."]
+        return ["Recebi seus dados, mas você pode mandar novamente sua *data de nascimento* no formato DD/MM/AAAA, por favor?"]
     if campo == "email":
-        return ["Perfeito 💚 Agora me informa seu *e-mail* para cadastro, por favor."]
+        return ["Recebi seus dados, mas você pode mandar novamente seu *e-mail* para cadastro, por favor?"]
+    if campo == "telefone_contato":
+        opcoes = state.get("flags", {}).get("telefone_opcoes") or []
+        if opcoes:
+            linhas = "\n".join(f"• {opcao}" for opcao in opcoes)
+            return [
+                "Recebi mais de um telefone na sua mensagem.\n\n"
+                f"{linhas}\n\n"
+                "Qual deles devo usar como WhatsApp de contato para o cadastro?"
+            ]
+        return ["Pode me informar o *WhatsApp de contato* para o cadastro, por favor?"]
+    if campo == "identificacao_remarcacao":
+        return [
+            "Para eu tentar localizar sua consulta, me envie por favor seu *nome completo* ou o *e-mail cadastrado*."
+        ]
     if campo == "instagram":
         return ["Se você tiver, pode me informar seu *Instagram*?"]
     if campo == "profissao":
@@ -614,7 +666,7 @@ def _answer_from_kb(topico: str, cd: dict) -> str:
             f"Remarcação/cancelamento: {kb.get_politica('cancelamento')}"
         )
     if topico == "planos":
-        return kb.resumo_planos_texto()
+        return "Aqui estão os planos:\n\n" + kb.resumo_planos_texto()
     return "Posso te ajudar com agendamentos e informações sobre as consultas 💚"
 
 
@@ -720,7 +772,7 @@ def _build_modalidade_list() -> dict:
     """Retorna dict de mensagem interativa com as modalidades."""
     return {
         "_interactive": "button",
-        "body": "Vamos definir como você prefere fazer sua consulta com a Thaynara:",
+        "body": "Vamos definir a modalidade: como você prefere fazer sua consulta com a Thaynara?",
         "buttons": [
             {"id": "presencial", "title": "Presencial"},
             {"id": "online", "title": "Online"},
@@ -744,6 +796,9 @@ REGRAS OBRIGATÓRIAS:
 
 async def _resposta_livre(state: dict) -> str:
     """LLM fallback para casos não cobertos pelos templates."""
+    if os.environ.get("DISABLE_LLM_FOR_TESTS") == "true":
+        return "Posso te ajudar com agendamentos e informações sobre as consultas. Como posso te ajudar? 😊"
+
     client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
     history_clean = sanitize_historico(state.get("history", [])[-6:])
     msgs = [{"role": m["role"], "content": m["content"]} for m in history_clean]

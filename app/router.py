@@ -178,7 +178,13 @@ async def _enviar_respostas(
         try:
             if isinstance(msg, dict):
                 if msg.get("_meta_action") == "escalate":
-                    await _handle_escalation(meta, phone, phone_hash, contact)
+                    await _handle_escalation(
+                        meta,
+                        phone,
+                        phone_hash,
+                        contact,
+                        motivo=msg.get("motivo") or "duvida_clinica",
+                    )
                 elif "media_type" in msg:
                     await _enviar_midia(meta, phone, msg)
                 elif msg.get("_interactive") == "button":
@@ -191,12 +197,17 @@ async def _enviar_respostas(
                     logger.warning("Tipo de mensagem desconhecido: %s", msg)
             elif isinstance(msg, str):
                 await meta.send_text(phone, msg)
+                try:
+                    from app.chatwoot_bridge import log_bot_message
+                    await log_bot_message(phone, msg)
+                except Exception as _cw_e:
+                    logger.debug("log_bot_message falhou: %s", _cw_e)
         except Exception as e:
             logger.error("Falha ao enviar para %s: %s", phone[-4:], e)
 
 
 async def _handle_escalation(
-    meta, phone: str, phone_hash: str, contact: dict
+    meta, phone: str, phone_hash: str, contact: dict, motivo: str = "duvida_clinica"
 ) -> None:
     """
     Encaminha dúvida clínica para a nutricionista.
@@ -214,14 +225,17 @@ async def _handle_escalation(
     # Apenas pacientes com status_paciente="retorno" (pré-populado pelo _reconhecer_paciente_retorno)
     # são considerados cadastrados no Dietbox → D-05 (VCard Thaynara).
     # Leads em qualquer estágio do funil vão para D-06/D-07 (relay Breno com PendingEscalation).
-    is_paciente_cadastrado = state.get("collected_data", {}).get("status_paciente") == "retorno"
+    is_paciente_cadastrado = (
+        motivo == "duvida_clinica"
+        and state.get("collected_data", {}).get("status_paciente") == "retorno"
+    )
     await escalar_duvida(
         meta_client=meta,
         telefone_paciente=phone,
         phone_hash=phone_hash,
         nome_paciente=state["collected_data"].get("nome") or contact.get("nome"),
         historico_resumido=resumo,
-        motivo="duvida_clinica",
+        motivo=motivo,
         is_paciente_cadastrado=is_paciente_cadastrado,
     )
 

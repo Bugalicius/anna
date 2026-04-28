@@ -138,6 +138,115 @@ def extract_phone_from_chatwoot_payload(payload: dict[str, Any]) -> str:
     return ""
 
 
+_CONV_CACHE_TTL = 3600  # 1 hora
+
+
+def _chatwoot_api_url() -> str:
+    return os.environ.get("CHATWOOT_API_URL", "").rstrip("/")
+
+
+def _chatwoot_token() -> str:
+    return os.environ.get("CHATWOOT_API_TOKEN", "")
+
+
+def _chatwoot_account_id() -> str:
+    return os.environ.get("CHATWOOT_ACCOUNT_ID", "1")
+
+
+def _conv_cache_key(p: str) -> str:
+    return "chatwoot:conv_id:" + phone_hash(p)
+
+
+async def _get_chatwoot_conversation_id(p: str) -> str | None:
+    """Retorna conversation_id do Chatwoot para o telefone, usando cache Redis."""
+    api_url = _chatwoot_api_url()
+    token = _chatwoot_token()
+    account_id = _chatwoot_account_id()
+    if not api_url or not token:
+        return None
+
+    cache_key = _conv_cache_key(p)
+    try:
+        r = aioredis.Redis.from_url(_redis_url(), decode_responses=True)
+        cached = await r.get(cache_key)
+        await r.aclose()
+        if cached:
+            return cached
+    except Exception:
+        pass
+
+    try:
+        headers = {"api_access_token": token}
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            resp = await client.get(
+                api_url + "/api/v1/accounts/" + account_id + "/contacts/search",
+                params={"q": p, "include_contacts": "true"},
+                headers=headers,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            contacts = (
+                data.get("payload", {}).get("contacts")
+                or data.get("payload")
+                or []
+            )
+            if not contacts or not isinstance(contacts, list):
+                return None
+            contact_id = str(contacts[0]["id"])
+
+            resp2 = await client.get(
+                api_url + "/api/v1/accounts/" + account_id + "/contacts/" + contact_id + "/conversations",
+                headers=headers,
+            )
+            resp2.raise_for_status()
+            conversations = resp2.json().get("payload", [])
+            if not conversations:
+                return None
+            conv = sorted(conversations, key=lambda c: c.get("id", 0), reverse=True)[0]
+            conv_id = str(conv["id"])
+
+        try:
+            r = aioredis.Redis.from_url(_redis_url(), decode_responses=True)
+            await r.set(cache_key, conv_id, ex=_CONV_CACHE_TTL)
+            await r.aclose()
+        except Exception:
+            pass
+
+        return conv_id
+    except Exception as e:
+        logger.warning("Falha ao buscar conversa Chatwoot para %s: %s", p[-4:], e)
+        return None
+
+
+async def log_bot_message(phone: str, text: str) -> None:
+    """Registra mensagem da Ana como nota privada no Chatwoot."""
+    if not _enabled():
+        return
+
+    api_url = _chatwoot_api_url()
+    token = _chatwoot_token()
+    account_id = _chatwoot_account_id()
+    if not api_url or not token:
+        return
+
+    conv_id = await _get_chatwoot_conversation_id(phone)
+    if not conv_id:
+        logger.debug("Conversa Chatwoot nao encontrada para %s — nota nao registrada", phone[-4:])
+        return
+
+    try:
+        headers = {"api_access_token": token}
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            resp = await client.post(
+                api_url + "/api/v1/accounts/" + account_id + "/conversations/" + conv_id + "/messages",
+                json={"content": text, "message_type": "outgoing", "private": True},
+                headers=headers,
+            )
+            resp.raise_for_status()
+    except Exception as e:
+        logger.warning("Falha ao postar nota Chatwoot conv=%s: %s", conv_id, e)
+
+
 def chatwoot_event_sets_handoff(payload: dict[str, Any]) -> bool | None:
     """
     Interpreta eventos do Chatwoot.
