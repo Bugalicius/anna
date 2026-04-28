@@ -199,6 +199,25 @@ def test_busca_paciente_nao_encontrado():
     assert result is None
 
 
+def test_busca_paciente_por_identificador_nome():
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.json.return_value = {
+        "Data": [{"Id": 42, "Name": "Ana Assistente", "Email": "ana@email.com",
+                  "MobilePhone": "31999990000"}]
+    }
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.get", return_value=mock_resp):
+        from app.agents.dietbox_worker import buscar_paciente_por_identificador
+        result = buscar_paciente_por_identificador("Ana Assistente")
+
+    assert result is not None
+    assert result["id"] == 42
+    assert result["nome"] == "Ana Assistente"
+
+
 # ── cadastrar_paciente ────────────────────────────────────────────────────────
 
 def test_cadastrar_paciente_retorna_id():

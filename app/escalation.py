@@ -53,6 +53,23 @@ TIMEOUT_MINUTOS = 15
 
 # ── Funções auxiliares ────────────────────────────────────────────────────────
 
+def _digits_only(numero: str) -> str:
+    return "".join(ch for ch in str(numero or "") if ch.isdigit())
+
+
+def _sem_nono_digito_brasil(numero: str) -> str:
+    digits = _digits_only(numero)
+    if digits.startswith("55") and len(digits) == 13 and digits[4] == "9":
+        return digits[:4] + digits[5:]
+    return digits
+
+
+def is_numero_interno(numero: str) -> bool:
+    """Reconhece o número interno com ou sem nono dígito normalizado pela Meta."""
+    recebido = _digits_only(numero)
+    interno = _digits_only(_NUMERO_INTERNO)
+    return recebido in {interno, _sem_nono_digito_brasil(interno)}
+
 def _em_horario_comercial(agora: datetime | None = None) -> bool:
     """Retorna True se agora está dentro do horário de atendimento (seg–sex, 08h–19h BRT)."""
     agora = agora or datetime.now(BRT)
@@ -179,9 +196,16 @@ async def criar_escalacao_relay(
 
     # Enviar contexto ao Breno (número interno)
     try:
-        await meta_client.send_text(_NUMERO_INTERNO, contexto)
+        response = await meta_client.send_text(_NUMERO_INTERNO, contexto)
+        message_id = (response.get("messages") or [{}])[0].get("id")
+        logger.info(
+            "Escalação enviada ao Breno id=%s meta_message_id=%s destino=%s",
+            esc_id,
+            message_id,
+            _NUMERO_INTERNO[-4:],
+        )
     except Exception as e:
-        logger.error("Falha ao enviar escalação ao Breno: %s", e)
+        logger.exception("Falha ao enviar escalação ao Breno id=%s: %s", esc_id, e)
 
     logger.info(
         "Escalação relay criada id=%s para paciente=%s",
@@ -202,6 +226,11 @@ async def processar_resposta_breno(
     """
     from app.database import SessionLocal
     from app.models import PendingEscalation
+
+    texto_limpo = (texto_resposta or "").strip().lower()
+    if texto_limpo in {"abrir janela", "abrir", "/abrir", "ping"}:
+        logger.info("Mensagem operacional do Breno recebida para abrir janela; sem relay ao paciente")
+        return False
 
     with SessionLocal() as db:
         esc = (

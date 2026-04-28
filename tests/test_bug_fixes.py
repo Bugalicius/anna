@@ -74,6 +74,34 @@ def _state_agendamento_sem_consulta() -> dict:
     }
 
 
+@pytest.mark.asyncio
+async def test_preferencia_horario_ignora_draft_generico_do_planner():
+    """Pergunta de preferência de horário deve usar tabela fixa, não texto livre do planner."""
+    from app.conversation.responder import gerar_resposta
+
+    state = _state_agendamento_sem_consulta()
+    state["history"] = [
+        {"role": "user", "content": "quero marcar uma consulta presencial"},
+        {"role": "assistant", "content": "Claro"},
+    ]
+    state["collected_data"]["preferencia_horario"] = None
+    plano = {
+        "action": "ask_field",
+        "ask_context": "preferencia_horario",
+        "draft_message": (
+            "Ótimo, Ana! Para agendar sua consulta, qual sua preferência de horário? "
+            "(manhã, tarde ou flexível?)"
+        ),
+    }
+
+    respostas = await gerar_resposta(state, plano, resultado_tool=None)
+
+    assert "Segunda a Sexta-feira" in respostas[0]
+    assert "Manhã: 08h, 09h e 10h" in respostas[0]
+    assert "Noite: 18h e 19h (exceto sexta à noite)" in respostas[0]
+    assert "manhã, tarde ou flexível" not in respostas[0]
+
+
 def _state_com_consulta_existente() -> dict:
     """Paciente COM consulta agendada no Dietbox."""
     state = _state_agendamento_sem_consulta()

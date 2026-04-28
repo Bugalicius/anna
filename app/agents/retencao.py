@@ -125,7 +125,7 @@ MSG_OPCOES_REMARCACAO = (
 )
 
 MSG_CONFIRMACAO_REMARCACAO = (
-    "Prontinho, deixei sua consulta remarcada ✅\n\n"
+    "Prontinho, sua consulta foi remarcada com sucesso ✅\n\n"
     "📅 *Nova data:* {data} às {hora}\n"
     "📍 *Modalidade:* {modalidade}\n\n"
     "Qualquer imprevisto, me chama por aqui 💚"

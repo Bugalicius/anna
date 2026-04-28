@@ -399,6 +399,50 @@ def buscar_paciente_por_telefone(telefone: str) -> dict | None:
     return None
 
 
+def buscar_paciente_por_identificador(identificador: str) -> dict | None:
+    """
+    Busca paciente por nome ou e-mail informado pelo paciente.
+    Retorna dict com {id, nome, email, telefone} ou None.
+    """
+    termo = str(identificador or "").strip()
+    if len(termo) < 3:
+        return None
+
+    try:
+        resp = requests.get(
+            f"{DIETBOX_API}/patients",
+            headers=_headers(),
+            params={"Search": termo, "Take": 10},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        items = data.get("Data") or data.get("data") or []
+        if isinstance(items, dict):
+            items = items.get("Items") or items.get("items") or []
+        termo_lower = termo.lower()
+        for p in items:
+            nome = p.get("Name") or p.get("name") or p.get("nome") or ""
+            email = p.get("Email") or p.get("email") or ""
+            if termo_lower in str(nome).lower() or termo_lower == str(email).lower():
+                return {
+                    "id": p.get("Id") or p.get("id"),
+                    "nome": nome,
+                    "email": email,
+                    "telefone": (
+                        p.get("MobilePhone")
+                        or p.get("mobilePhone")
+                        or p.get("Phone")
+                        or p.get("phone")
+                        or ""
+                    ),
+                }
+    except Exception as e:
+        logger.warning("Busca de paciente por identificador falhou: %s", e)
+
+    return None
+
+
 def cadastrar_paciente(dados: dict) -> int:
     """
     Cadastra novo paciente no Dietbox.
@@ -780,6 +824,7 @@ def processar_agendamento(
     plano: str,
     valor_sinal: float,
     forma_pagamento: str,
+    pago: bool = False,
 ) -> dict:
     """
     Fluxo completo: cadastra (se novo), agenda e lança financeiro.
@@ -808,7 +853,7 @@ def processar_agendamento(
             id_agenda=id_agenda,
             valor=valor_sinal,
             forma_pagamento=forma_pagamento,
-            pago=False,  # aguardando comprovante
+            pago=pago,
         )
 
         return {

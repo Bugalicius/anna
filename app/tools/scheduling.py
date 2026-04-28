@@ -37,6 +37,17 @@ def _normalizar_email(texto: str | None) -> str | None:
     return m.group(0).lower() if m else None
 
 
+def _normalizar_telefone_brasil(texto: str | None) -> str:
+    digits = re.sub(r"\D", "", str(texto or ""))
+    if digits.startswith("55"):
+        national = digits[2:]
+    else:
+        national = digits
+    if len(national) == 10:
+        national = national[:2] + "9" + national[2:]
+    return "55" + national if len(national) == 11 else digits
+
+
 def _normalizar_data_nascimento(texto: str | None) -> str | None:
     if not texto:
         return None
@@ -86,7 +97,8 @@ def _validar_cadastro(nome: str, telefone: str, data_nascimento: str | None, ema
     pendentes: list[str] = []
     if len([p for p in str(nome or "").strip().split() if len(p) >= 2]) < 2:
         pendentes.append("nome")
-    if not telefone or len(re.sub(r"\D", "", telefone)) < 10:
+    telefone_norm = _normalizar_telefone_brasil(telefone)
+    if not telefone_norm or len(telefone_norm) < 12:
         pendentes.append("telefone")
 
     data_norm = _normalizar_data_nascimento(data_nascimento)
@@ -100,6 +112,7 @@ def _validar_cadastro(nome: str, telefone: str, data_nascimento: str | None, ema
     return {
         "ok": not pendentes,
         "pendentes": pendentes,
+        "telefone": telefone_norm,
         "data_nascimento": data_norm,
         "email": email_norm,
     }
@@ -202,6 +215,8 @@ async def agendar(
     profissao: str | None = None,
     cep_endereco: str | None = None,
     indicacao_origem: str | None = None,
+    valor_pago_sinal: float | None = None,
+    pagamento_confirmado: bool = False,
 ) -> dict:
     """Cadastra paciente e agenda consulta no Dietbox."""
     from app.integrations.dietbox import processar_agendamento
@@ -221,13 +236,13 @@ async def agendar(
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=BRT)
 
-        valor_sinal = round(kb.get_valor(plano, modalidade) * 0.5, 2)
+        valor_sinal = round(float(valor_pago_sinal), 2) if valor_pago_sinal else round(kb.get_valor(plano, modalidade) * 0.5, 2)
         resultado = await asyncio.get_event_loop().run_in_executor(
             None,
             lambda: processar_agendamento(
                 dados_paciente={
                     "nome": nome,
-                    "telefone": telefone,
+                    "telefone": validacao["telefone"],
                     "email": validacao["email"] or "",
                     "data_nascimento": validacao["data_nascimento"],
                     "instagram": instagram,
@@ -240,6 +255,7 @@ async def agendar(
                 plano=plano,
                 valor_sinal=valor_sinal,
                 forma_pagamento=forma_pagamento,
+                pago=pagamento_confirmado,
             ),
         )
 

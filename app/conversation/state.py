@@ -59,6 +59,7 @@ def create_state(phone_hash: str, phone: str) -> dict:
             "forma_pagamento": None,   # "pix" | "cartao"
             "data_nascimento": None,
             "email": None,
+            "telefone_contato": None,
             "instagram": None,
             "profissao": None,
             "cep_endereco": None,
@@ -77,8 +78,11 @@ def create_state(phone_hash: str, phone: str) -> dict:
             "planos_enviados": False,
             "pagamento_confirmado": False,
             "aguardando_motivo_cancel": False,
+            "aguardando_escolha_telefone": False,
+            "telefone_opcoes": [],
         },
         "last_action": None,
+        "last_tool_success": None,
         "last_slots_offered": [],
         "slots_pool": [],
         "rodada_negociacao": 0,
@@ -158,11 +162,20 @@ def apply_turno_updates(state: dict, turno: dict) -> None:
     for campo in (
         "nome", "status_paciente", "objetivo", "plano", "modalidade",
         "forma_pagamento", "preferencia_horario", "data_nascimento", "email",
-        "instagram", "profissao", "cep_endereco", "indicacao_origem",
+        "telefone_contato", "instagram", "profissao", "cep_endereco", "indicacao_origem",
     ):
         valor = turno.get(campo)
         if valor is not None:
             cd[campo] = valor
+            if campo == "telefone_contato":
+                state["flags"]["aguardando_escolha_telefone"] = False
+                state["flags"]["telefone_opcoes"] = []
+
+    opcoes = turno.get("telefones_contato")
+    if isinstance(opcoes, list) and len(opcoes) > 1:
+        state["flags"]["aguardando_escolha_telefone"] = True
+        state["flags"]["telefone_opcoes"] = opcoes
+        cd["telefone_contato"] = None
 
 
 def apply_correction(state: dict, campo: str, valor_novo) -> None:
@@ -205,6 +218,7 @@ def apply_correction(state: dict, campo: str, valor_novo) -> None:
 
 def apply_tool_result(state: dict, tool: str, result: dict) -> None:
     """Incorpora resultado de uma tool call no estado."""
+    state["last_tool_success"] = bool(result and result.get("sucesso"))
     if not result:
         return
 
@@ -239,6 +253,10 @@ def apply_tool_result(state: dict, tool: str, result: dict) -> None:
         if result["tipo_remarcacao"] == "nova_consulta":
             state["goal"] = "agendar_consulta"
             state["collected_data"]["status_paciente"] = "novo"
+            appt["consulta_atual"] = None
+            appt["id_agenda"] = None
+        elif result["tipo_remarcacao"] in ("nao_localizado", "sem_agendamento_confirmado"):
+            state["goal"] = "remarcar"
             appt["consulta_atual"] = None
             appt["id_agenda"] = None
 

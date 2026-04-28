@@ -307,6 +307,136 @@ async def test_planner_comprovante_com_valor_divergente_nao_agenda():
 
 
 @pytest.mark.asyncio
+async def test_planner_comprovante_maior_que_sinal_aceita_valor_pago():
+    from app.conversation.planner import decidir_acao
+
+    state = {
+        "goal": "agendar_consulta",
+        "status": "aguardando_pagamento",
+        "phone": "5531999990000",
+        "phone_hash": "hash001",
+        "tipo_remarcacao": None,
+        "last_action": "await_payment",
+        "collected_data": {
+            "nome": "Ana Assistente",
+            "status_paciente": "novo",
+            "objetivo": "lipedema",
+            "plano": "unica",
+            "modalidade": "presencial",
+            "preferencia_horario": {"tipo": "turno", "turno": "tarde", "descricao": "tarde"},
+            "forma_pagamento": "pix",
+            "data_nascimento": None,
+            "email": None,
+            "instagram": None,
+            "profissao": None,
+            "cep_endereco": None,
+            "indicacao_origem": None,
+            "motivo_cancelamento": None,
+        },
+        "appointment": {
+            "slot_escolhido": {
+                "datetime": "2026-05-04T15:00:00",
+                "data_fmt": "segunda, 04/05",
+                "hora": "15h",
+            },
+            "id_paciente": None,
+            "id_agenda": None,
+            "id_transacao": None,
+            "consulta_atual": None,
+        },
+        "flags": {
+            "upsell_oferecido": True,
+            "planos_enviados": True,
+            "pagamento_confirmado": False,
+            "aguardando_motivo_cancel": False,
+        },
+        "last_slots_offered": [],
+    }
+    turno = {
+        "intent": "confirmar_pagamento",
+        "nome": None,
+        "status_paciente": None,
+        "objetivo": None,
+        "plano": None,
+        "modalidade": None,
+        "forma_pagamento": None,
+        "escolha_slot": None,
+        "aceita_upgrade": None,
+        "confirmou_pagamento": True,
+        "valor_comprovante": 150.0,
+        "correcao": None,
+        "tem_pergunta": False,
+        "topico_pergunta": None,
+        "preferencia_horario": None,
+    }
+
+    plano = await decidir_acao(turno, state)
+
+    assert plano["action"] == "ask_field"
+    assert plano["ask_context"] == "cadastro"
+    assert plano["update_flags"]["pagamento_confirmado"] is True
+    assert plano["update_appointment"]["valor_pago_sinal"] == 150.0
+
+
+@pytest.mark.asyncio
+async def test_planner_bloqueia_agendamento_quando_ha_dois_telefones():
+    from app.conversation.planner import decidir_acao
+
+    state = {
+        "goal": "agendar_consulta",
+        "status": "aguardando_pagamento",
+        "phone": "553186687010",
+        "phone_hash": "hash001",
+        "tipo_remarcacao": None,
+        "last_action": "await_payment",
+        "collected_data": {
+            "nome": "Ana Assistente",
+            "status_paciente": "novo",
+            "objetivo": "lipedema",
+            "plano": "unica",
+            "modalidade": "presencial",
+            "preferencia_horario": {"tipo": "turno", "turno": "tarde", "descricao": "tarde"},
+            "forma_pagamento": "pix",
+            "data_nascimento": "1993-03-02",
+            "email": "mail.bugadj@gmail.com",
+            "telefone_contato": None,
+            "instagram": None,
+            "profissao": None,
+            "cep_endereco": None,
+            "indicacao_origem": None,
+            "motivo_cancelamento": None,
+        },
+        "appointment": {
+            "slot_escolhido": {"datetime": "2026-05-04T15:00:00", "data_fmt": "segunda, 04/05", "hora": "15h"},
+            "id_paciente": None,
+            "id_agenda": None,
+            "id_transacao": None,
+            "consulta_atual": None,
+        },
+        "flags": {
+            "upsell_oferecido": True,
+            "planos_enviados": True,
+            "pagamento_confirmado": True,
+            "aguardando_motivo_cancel": False,
+            "aguardando_escolha_telefone": True,
+            "telefone_opcoes": ["5531992059211", "5531986687010"],
+        },
+        "last_slots_offered": [],
+    }
+    turno = {
+        "intent": "agendar",
+        "confirmou_pagamento": False,
+        "tem_pergunta": False,
+        "topico_pergunta": None,
+    }
+
+    plano = await decidir_acao(turno, state)
+
+    assert plano["action"] == "ask_field"
+    assert plano["ask_context"] == "telefone_contato"
+
+
+@pytest.mark.asyncio
 async def test_planner_agenda_apos_pagamento_confirmado_e_cadastro_obrigatorio_completo():
     from app.conversation.planner import decidir_acao
 

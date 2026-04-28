@@ -28,6 +28,7 @@ def _setup_env() -> Path:
         db_path.unlink()
     os.environ["DATABASE_URL"] = f"sqlite:///{db_path.as_posix()}"
     os.environ["REDIS_URL"] = "redis://127.0.0.1:6399/0"
+    os.environ["DISABLE_LLM_FOR_TESTS"] = "true"
     return db_path
 
 
@@ -676,89 +677,14 @@ def _evaluate(scenario: Scenario, transcript: list[dict[str, Any]]) -> tuple[str
     return status, issues
 
 
-def main() -> None:
-    db_path = _setup_env()
-
-    from app.main import app
-    from app.conversation import state as conv_state
-    from app.database import SessionLocal
-    from app.models import Contact
-
-    fake_db = FakeDietbox()
-    results: list[dict[str, Any]] = []
-
-    patches = [
-        patch("app.integrations.dietbox.consultar_slots_disponiveis", side_effect=fake_db.consultar_slots_disponiveis),
-        patch("app.integrations.dietbox.processar_agendamento", side_effect=fake_db.processar_agendamento),
-        patch("app.integrations.dietbox.buscar_paciente_por_telefone", side_effect=fake_db.buscar_paciente_por_telefone),
-        patch("app.integrations.dietbox.consultar_agendamento_ativo", side_effect=fake_db.consultar_agendamento_ativo),
-        patch("app.integrations.dietbox.verificar_lancamento_financeiro", side_effect=fake_db.verificar_lancamento_financeiro),
-        patch("app.integrations.dietbox.alterar_agendamento", side_effect=fake_db.alterar_agendamento),
-        patch("app.integrations.dietbox.cancelar_agendamento", side_effect=fake_db.cancelar_agendamento),
-        patch("app.integrations.dietbox.confirmar_pagamento", side_effect=fake_db.confirmar_pagamento),
-        patch("app.integrations.payment_gateway.gerar_link_pagamento", side_effect=_fake_gerar_link),
-    ]
-
-    # patches especiais async
-    async def _consultar_slots_remarcar_async(modalidade, preferencia, fim_janela, excluir=None, pool=None):
-        return _fake_slots_remarcar(modalidade, preferencia, fim_janela, excluir, pool)
-
-    async def _detectar_tipo_async(telefone):
-        return _fake_detectar_tipo_remarcacao(fake_db, telefone)
-
-    patches.extend([
-        patch("app.tools.scheduling.consultar_slots_remarcar", side_effect=_consultar_slots_remarcar_async),
-        patch("app.tools.patients.detectar_tipo_remarcacao", side_effect=_detectar_tipo_async),
-    ])
-
-    with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6], patches[7], patches[8], patches[9], patches[10]:
-        with TestClient(app) as client:
-            for idx, scenario in enumerate(SCENARIOS, start=1):
-                phone = f"55000000{idx:04d}"
-                phone_hash = _hash_phone(phone)
-                conv_state._mem_store.clear()
-                fake_db.reset_for(phone, scenario.profile)
-
-                client.post("/test/reset", json={"phone": phone})
-                transcript: list[dict[str, Any]] = []
-
-                for turn in scenario.turns:
-                    resp = client.post("/test/chat", json={"phone": phone, "message": turn})
-                    payload = resp.json()
-                    transcript.append({"message": turn, "responses": payload["responses"]})
-
-                state = asyncio.run(conv_state.load_state(phone_hash, phone))
-                with SessionLocal() as db:
-                    contact = db.query(Contact).filter_by(phone_hash=phone_hash).first()
-                    contact_info = {
-                        "stage": getattr(contact, "stage", None),
-                        "collected_name": getattr(contact, "collected_name", None),
-                        "first_name": getattr(contact, "first_name", None),
-                    }
-
-                status, issues = _evaluate(scenario, transcript)
-                results.append(
-                    {
-                        "id": idx,
-                        "slug": scenario.slug,
-                        "title": scenario.title,
-                        "profile": scenario.profile,
-                        "status": status,
-                        "issues": issues,
-                        "notes": scenario.notes,
-                        "transcript": transcript,
-                        "final_state": state,
-                        "contact": contact_info,
-                    }
-                )
-
+def _write_report(results: list[dict[str, Any]], db_path: Path) -> tuple[Path, Path]:
     json_path = REPORT_DIR / "manual_chat_battery_results.json"
     json_path.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
 
     lines: list[str] = [
         "# Bateria Manual - Agente Ana",
         "",
-        f"- Total de cenários: {len(results)}",
+        f"- Total de cenários executados: {len(results)}",
         f"- PASS: {sum(1 for r in results if r['status'] == 'PASS')}",
         f"- FAIL: {sum(1 for r in results if r['status'] == 'FAIL')}",
         f"- Banco temporário: `{db_path.name}`",
@@ -798,6 +724,90 @@ def main() -> None:
 
     md_path = REPORT_DIR / "manual_chat_battery_report.md"
     md_path.write_text("\n".join(lines), encoding="utf-8")
+    return json_path, md_path
+
+
+def main() -> None:
+    db_path = _setup_env()
+
+    from app.main import app
+    from app.conversation import state as conv_state
+    from app.database import SessionLocal
+    from app.models import Contact
+
+    fake_db = FakeDietbox()
+    results: list[dict[str, Any]] = []
+
+    patches = [
+        patch("app.integrations.dietbox.consultar_slots_disponiveis", side_effect=fake_db.consultar_slots_disponiveis),
+        patch("app.integrations.dietbox.processar_agendamento", side_effect=fake_db.processar_agendamento),
+        patch("app.integrations.dietbox.buscar_paciente_por_telefone", side_effect=fake_db.buscar_paciente_por_telefone),
+        patch("app.integrations.dietbox.consultar_agendamento_ativo", side_effect=fake_db.consultar_agendamento_ativo),
+        patch("app.integrations.dietbox.verificar_lancamento_financeiro", side_effect=fake_db.verificar_lancamento_financeiro),
+        patch("app.integrations.dietbox.alterar_agendamento", side_effect=fake_db.alterar_agendamento),
+        patch("app.integrations.dietbox.cancelar_agendamento", side_effect=fake_db.cancelar_agendamento),
+        patch("app.integrations.dietbox.confirmar_pagamento", side_effect=fake_db.confirmar_pagamento),
+        patch("app.integrations.payment_gateway.gerar_link_pagamento", side_effect=_fake_gerar_link),
+    ]
+
+    # patches especiais async
+    async def _consultar_slots_remarcar_async(modalidade, preferencia, fim_janela, excluir=None, pool=None):
+        return _fake_slots_remarcar(modalidade, preferencia, fim_janela, excluir, pool)
+
+    async def _detectar_tipo_async(telefone):
+        return _fake_detectar_tipo_remarcacao(fake_db, telefone)
+
+    patches.extend([
+        patch("app.tools.scheduling.consultar_slots_remarcar", side_effect=_consultar_slots_remarcar_async),
+        patch("app.tools.patients.detectar_tipo_remarcacao", side_effect=_detectar_tipo_async),
+        patch("app.chatwoot_bridge.is_human_handoff_active", return_value=False),
+    ])
+
+    with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11]:
+        with TestClient(app) as client:
+            conv_state._state_mgr = None
+            for idx, scenario in enumerate(SCENARIOS, start=1):
+                print(f"[{idx:02d}/{len(SCENARIOS)}] {scenario.slug}", flush=True)
+                phone = f"55000000{idx:04d}"
+                phone_hash = _hash_phone(phone)
+                conv_state._mem_store.clear()
+                fake_db.reset_for(phone, scenario.profile)
+
+                client.post("/test/reset", json={"phone": phone})
+                transcript: list[dict[str, Any]] = []
+
+                for turn in scenario.turns:
+                    resp = client.post("/test/chat", json={"phone": phone, "message": turn})
+                    payload = resp.json()
+                    transcript.append({"message": turn, "responses": payload["responses"]})
+
+                state = asyncio.run(conv_state.load_state(phone_hash, phone))
+                with SessionLocal() as db:
+                    contact = db.query(Contact).filter_by(phone_hash=phone_hash).first()
+                    contact_info = {
+                        "stage": getattr(contact, "stage", None),
+                        "collected_name": getattr(contact, "collected_name", None),
+                        "first_name": getattr(contact, "first_name", None),
+                    }
+
+                status, issues = _evaluate(scenario, transcript)
+                results.append(
+                    {
+                        "id": idx,
+                        "slug": scenario.slug,
+                        "title": scenario.title,
+                        "profile": scenario.profile,
+                        "status": status,
+                        "issues": issues,
+                        "notes": scenario.notes,
+                        "transcript": transcript,
+                        "final_state": state,
+                        "contact": contact_info,
+                    }
+                )
+                _write_report(results, db_path)
+
+    json_path, md_path = _write_report(results, db_path)
 
     print(f"JSON report: {json_path}")
     print(f"Markdown report: {md_path}")

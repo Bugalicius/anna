@@ -314,6 +314,14 @@ async def test_numero_interno_na_constante():
     assert "992059211" in _NUMERO_INTERNO
 
 
+def test_numero_interno_reconhece_normalizacao_meta_sem_nono_digito():
+    """Meta pode devolver wa_id brasileiro sem o nono digito; ainda deve ser Breno."""
+    from app.escalation import is_numero_interno
+
+    assert is_numero_interno("5531992059211")
+    assert is_numero_interno("553192059211")
+
+
 # ── Test 8: FAQ aprendido salvo ───────────────────────────────────────────────
 
 @pytest.mark.asyncio

@@ -121,6 +121,8 @@ async def agendar(
     profissao: str | None = None,
     cep_endereco: str | None = None,
     indicacao_origem: str | None = None,
+    valor_pago_sinal: float | None = None,
+    pagamento_confirmado: bool = False,
 ) -> dict:
     """Cadastra paciente e agenda consulta no Dietbox."""
     from app.integrations.dietbox import processar_agendamento, confirmar_pagamento
@@ -132,7 +134,7 @@ async def agendar(
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=BRT)
 
-        valor_sinal = round(kb.get_valor(plano, modalidade) * 0.5, 2)
+        valor_sinal = round(float(valor_pago_sinal), 2) if valor_pago_sinal else round(kb.get_valor(plano, modalidade) * 0.5, 2)
         resultado = await asyncio.get_event_loop().run_in_executor(
             None,
             lambda: processar_agendamento(
@@ -151,6 +153,7 @@ async def agendar(
                 plano=plano,
                 valor_sinal=valor_sinal,
                 forma_pagamento=forma_pagamento,
+                pago=pagamento_confirmado,
             ),
         )
 
