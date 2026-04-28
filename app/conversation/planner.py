@@ -70,10 +70,12 @@ def _nome_completo(nome: str | None) -> bool:
     return len(partes) >= 2
 
 
-def _campos_cadastro_faltantes(cd: dict) -> list[str]:
+def _campos_cadastro_faltantes(cd: dict, flags: dict | None = None) -> list[str]:
     faltantes: list[str] = []
     if not _nome_completo(cd.get("nome")):
         faltantes.append("nome")
+    if flags and flags.get("aguardando_escolha_telefone"):
+        faltantes.append("telefone_contato")
     if not _normalizar_data_nascimento(cd.get("data_nascimento")):
         faltantes.append("data_nascimento")
     if not _email_valido(cd.get("email")):
@@ -89,6 +91,45 @@ def _email_valido(value: str | None) -> bool:
     if not value:
         return False
     return bool(re.search(r"\b[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}\b", str(value), re.I))
+
+
+_MESES_PT_NUM = {
+    "janeiro": 1, "fevereiro": 2, "marco": 3, "marco": 3, "abril": 4,
+    "maio": 5, "junho": 6, "julho": 7, "agosto": 8, "setembro": 9,
+    "outubro": 10, "novembro": 11, "dezembro": 12,
+}
+
+
+def _pref_alem_da_janela(descricao: str | None, fim_janela_str: str | None) -> bool:
+    """
+    Retorna True quando a descricao da preferencia indica claramente uma data
+    alem do fim_janela (ex: paciente pede junho mas janela fecha em maio).
+    """
+    if not descricao or not fim_janela_str:
+        return False
+    try:
+        fim = date.fromisoformat(fim_janela_str)
+    except Exception:
+        return False
+
+    desc = descricao.lower()
+    hoje = date.today()
+
+    # "mes que vem" / "proximo mes" / "mes seguinte"
+    frases_proximo = ("mes que vem", "mes q vem", "proximo mes", "mes seguinte",
+                      "mês que vem", "mês q vem", "próximo mês", "mês seguinte")
+    if any(f in desc for f in frases_proximo):
+        proximo = hoje.month % 12 + 1
+        return proximo > fim.month or (proximo < hoje.month and fim.month <= hoje.month)
+
+    # Nome de mês explícito: verifica se é posterior ao mês do fim_janela
+    for nome, num in _MESES_PT_NUM.items():
+        if nome in desc:
+            # Considera apenas meses futuros (>= hoje.month)
+            if num >= hoje.month and num > fim.month:
+                return True
+
+    return False
 
 
 def _normalizar_data_nascimento(value: str | None) -> str | None:
@@ -573,6 +614,66 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
     intent = turno.get("intent", "fora_de_contexto")
     tipo_remarcacao = state.get("tipo_remarcacao")
     appt = state.get("appointment", {})
+    raw_msg = turno.get("_raw_message", "")
+
+    if _SAUDACAO.match(raw_msg) and goal in ("desconhecido", "duvida"):
+        if not cd.get("nome"):
+            return _plano(ASK_FIELD, ask_context="nome")
+        return _plano(FORA_DE_CONTEXTO)
+
+    if intent == "duvida_clinica" or turno.get("topico_pergunta") == "clinica":
+        return _plano(ESCALATE)
+
+    if (
+        turno.get("tem_pergunta")
+        and not turno.get("confirmou_pagamento")
+        and turno.get("topico_pergunta") in ("pagamento", "planos", "modalidade", "politica")
+    ):
+        return _plano(ANSWER_QUESTION, ask_context=turno.get("topico_pergunta"))
+
+    if intent == "fora_de_contexto" and goal in ("desconhecido", "duvida"):
+        return _plano(FORA_DE_CONTEXTO)
+
+    if (turno.get("plano") == "formulario" or cd.get("plano") == "formulario"):
+        if turno.get("confirmou_pagamento"):
+            return _plano("send_formulario_link", new_status="concluido")
+        return _plano(
+            SEND_FORMULARIO,
+            new_status="aguardando_pagamento",
+            update_data={"plano": "formulario"},
+        )
+
+    if intent == "cancelar" and (cd.get("plano") or state.get("last_slots_offered")) and not appt.get("consulta_atual"):
+        return _override_cancelamento(turno, state)
+
+    if (
+        intent in ("remarcar", "cancelar")
+        and not tipo_remarcacao
+        and not appt.get("consulta_atual")
+        and not appt.get("id_agenda")
+    ):
+        kwargs = {}
+        if intent == "cancelar":
+            kwargs["update_flags"] = {"aguardando_motivo_cancel": True}
+        return _plano(
+            EXECUTE_TOOL,
+            tool="detectar_tipo_remarcacao",
+            params={"telefone": state.get("phone", "")},
+            **kwargs,
+        )
+
+    if goal == "remarcar" and tipo_remarcacao in ("nao_localizado", "sem_agendamento_confirmado"):
+        identificador = turno.get("email") or turno.get("nome") or cd.get("email") or cd.get("nome")
+        if identificador:
+            return _plano(
+                EXECUTE_TOOL,
+                tool="detectar_tipo_remarcacao",
+                params={
+                    "telefone": state.get("phone", ""),
+                    "identificador": identificador,
+                },
+            )
+        return _plano(ASK_FIELD, ask_context="identificacao_remarcacao")
 
     # ── Fluxo de cancelamento/desistência determinístico ──────────────────
     if intent == "cancelar" or goal == "cancelar":
@@ -638,6 +739,10 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                 )
 
             if pref_turno:
+                fim_janela_remarcar = state.get("fim_janela_remarcar")
+                desc_pref = (pref_turno or {}).get("descricao", "")
+                if _pref_alem_da_janela(desc_pref, fim_janela_remarcar):
+                    return _plano(EXECUTE_TOOL, tool="perda_retorno")
                 state["last_slots_offered"] = []
                 state["slots_pool"] = []
                 state["rodada_negociacao"] = 0
@@ -647,12 +752,10 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                     params={
                         "modalidade": cd.get("modalidade") or "presencial",
                         "preferencia": pref_turno,
-                        "fim_janela": state.get("fim_janela_remarcar"),
+                        "fim_janela": fim_janela_remarcar,
                         "excluir": [s.get("datetime") for s in slots if s.get("datetime")],
                     },
-                    draft_message=(
-                        "Entendi. Vou procurar outra opção mais próxima do que você precisa."
-                    ),
+                    draft_message="Entendi! Vou verificar as opções disponíveis dentro do prazo de remarcação.",
                 )
 
             if not escolha_valida:
@@ -671,7 +774,7 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                 return _plano(
                     ASK_SLOT_CHOICE,
                     draft_message=(
-                        "Tudo bem. Vou te mandar outras opções dentro da janela de remarcação:"
+                        "Tudo bem. Vou buscar mais opções dentro da janela de remarcação:"
                     ),
                 )
 
@@ -751,6 +854,10 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
             EXECUTE_TOOL, tool="consultar_slots",
             params={"modalidade": cd["modalidade"],
                     "preferencia": cd["preferencia_horario"]},
+            draft_message=(
+                "Não encontrei opções exatamente como você pediu, "
+                "mas separei os 3 horários mais próximos. Qual horário funciona melhor pra você?"
+            ) if (turno.get("correcao") or {}).get("campo") == "preferencia_horario" else None,
         )
 
     # ── Regra 5: confirmar slot quando escolha_slot válida ─────────────────
@@ -758,10 +865,17 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
     # Este override captura a escolha e avança para pagamento deterministicamente.
     escolha = turno.get("escolha_slot")
     if (
-        escolha and 1 <= int(escolha) <= len(slots)
+        escolha and slots
         and not appt.get("slot_escolhido")
     ):
-        slot_obj = slots[int(escolha) - 1]
+        escolha_int = int(escolha)
+        slot_options = slots
+        if escolha_int > len(slot_options) and len(state.get("slots_pool") or []) >= escolha_int:
+            slot_options = state.get("slots_pool") or []
+        if escolha_int < 1 or escolha_int > len(slot_options):
+            return _plano(ASK_SLOT_CHOICE)
+        slot_idx = escolha_int - 1
+        slot_obj = slot_options[slot_idx]
         return _plano(ASK_FORMA_PAGAMENTO, update_appointment={"slot_escolhido": slot_obj})
 
     # ── Regra 6: forma_pagamento capturada deterministicamente ─────────────
@@ -834,13 +948,17 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
     ):
         valor_esperado = kb.get_valor(cd.get("plano"), cd.get("modalidade")) * 0.5
         valor_recebido = turno.get("valor_comprovante")
-        # Só valida valor se conseguiu extrair (imagens reais não têm valor parseável)
-        if valor_recebido is not None and abs(float(valor_recebido) - float(valor_esperado)) > 0.01:
+        valor_pago_sinal = None
+        if valor_recebido is not None:
+            valor_pago_sinal = float(valor_recebido)
+        # Só bloqueia quando o valor extraído é menor que o sinal esperado.
+        # Pagamento acima do sinal é aceito e registrado pelo valor efetivamente pago.
+        if valor_pago_sinal is not None and valor_pago_sinal + 0.01 < float(valor_esperado):
             return _plano(
                 ANSWER_QUESTION,
                 ask_context="pagamento",
                 draft_message=(
-                    f"Recebi o comprovante, mas o valor identificado foi R${valor_recebido:.2f} "
+                    f"Recebi o comprovante, mas o valor identificado foi R${valor_pago_sinal:.2f} "
                     f"e o sinal dessa opção é R${valor_esperado:.2f}. "
                     "Confere pra mim e, se precisar, me envie o comprovante novamente 😊"
                 ),
@@ -853,12 +971,20 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                 params={"id_transacao": id_transacao},
                 update_flags={"pagamento_confirmado": True},
             )
-        faltantes = _campos_cadastro_faltantes(cd)
+        faltantes = _campos_cadastro_faltantes(cd, flags)
         if faltantes:
-            ask_context = "cadastro" if len(faltantes) > 1 else faltantes[0]
+            if "telefone_contato" in faltantes:
+                ask_context = "telefone_contato"
+            elif "data_nascimento" in faltantes and cd.get("data_nascimento"):
+                ask_context = "data_nascimento"
+            elif "email" in faltantes and cd.get("data_nascimento"):
+                ask_context = "email"
+            else:
+                ask_context = "cadastro" if len(faltantes) > 1 else faltantes[0]
             return _plano(
                 ASK_FIELD,
                 ask_context=ask_context,
+                update_appointment={"valor_pago_sinal": valor_pago_sinal or valor_esperado},
                 update_flags={"pagamento_confirmado": True},
             )
         return _plano(
@@ -866,7 +992,7 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
             tool="agendar",
             params={
                 "nome": cd.get("nome", ""),
-                "telefone": state.get("phone", ""),
+                "telefone": cd.get("telefone_contato") or state.get("phone", ""),
                 "plano": cd.get("plano"),
                 "modalidade": cd.get("modalidade"),
                 "slot": appt.get("slot_escolhido"),
@@ -877,7 +1003,10 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                 "profissao": cd.get("profissao"),
                 "cep_endereco": cd.get("cep_endereco"),
                 "indicacao_origem": cd.get("indicacao_origem"),
+                "valor_pago_sinal": valor_pago_sinal or valor_esperado,
+                "pagamento_confirmado": True,
             },
+            update_appointment={"valor_pago_sinal": valor_pago_sinal or valor_esperado},
             update_flags={"pagamento_confirmado": True},
         )
 
@@ -888,16 +1017,23 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
         and appt.get("slot_escolhido")
         and not appt.get("id_agenda")
     ):
-        faltantes = _campos_cadastro_faltantes(cd)
+        faltantes = _campos_cadastro_faltantes(cd, flags)
         if faltantes:
-            ask_context = "cadastro" if len(faltantes) > 1 else faltantes[0]
+            if "telefone_contato" in faltantes:
+                ask_context = "telefone_contato"
+            elif "data_nascimento" in faltantes and cd.get("data_nascimento"):
+                ask_context = "data_nascimento"
+            elif "email" in faltantes and cd.get("data_nascimento"):
+                ask_context = "email"
+            else:
+                ask_context = "cadastro" if len(faltantes) > 1 else faltantes[0]
             return _plano(ASK_FIELD, ask_context=ask_context)
         return _plano(
             EXECUTE_TOOL,
             tool="agendar",
             params={
                 "nome": cd.get("nome", ""),
-                "telefone": state.get("phone", ""),
+                "telefone": cd.get("telefone_contato") or state.get("phone", ""),
                 "plano": cd.get("plano"),
                 "modalidade": cd.get("modalidade"),
                 "slot": appt.get("slot_escolhido"),
@@ -908,6 +1044,8 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                 "profissao": cd.get("profissao"),
                 "cep_endereco": cd.get("cep_endereco"),
                 "indicacao_origem": cd.get("indicacao_origem"),
+                "valor_pago_sinal": appt.get("valor_pago_sinal"),
+                "pagamento_confirmado": True,
             },
         )
 
@@ -927,6 +1065,10 @@ async def decidir_acao(turno: dict, state: dict) -> dict:
         logger.info("Planner (override): action=%s", override["action"])
         return override
 
+    if os.environ.get("DISABLE_LLM_FOR_TESTS") == "true":
+        logger.info("Planner sem LLM (modo teste): usando fallback")
+        return _fallback(turno, state)
+
     prompt = _build_prompt(turno, state)
     client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 
@@ -943,12 +1085,54 @@ async def decidir_acao(turno: dict, state: dict) -> dict:
                 raw = raw[4:]
         data = json.loads(raw)
         plano = _parse_plano(data, state)
+        plano = _validar_plano_operacional(plano, turno, state)
         logger.info("Planner: action=%s tool=%s", plano["action"], plano.get("tool"))
         return plano
 
     except Exception as e:
         logger.error("Planner LLM error: %s", e)
         return _fallback(turno, state)
+
+
+def _validar_plano_operacional(plano: dict, turno: dict, state: dict) -> dict:
+    """Impede que o LLM execute tools operacionais sem dados obrigatórios."""
+    if plano.get("tool") != "remarcar_dietbox":
+        if plano.get("action") == SEND_CONFIRMACAO_REMARCAR:
+            if state.get("last_action") == "remarcar_dietbox" and state.get("last_tool_success") is True:
+                return plano
+            logger.warning(
+                "Planner bloqueou confirmacao de remarcacao sem sucesso previo da tool"
+            )
+            return _plano(
+                EXECUTE_TOOL,
+                tool="detectar_tipo_remarcacao",
+                params={"telefone": state.get("phone", "")},
+            )
+        return plano
+
+    params = plano.get("params") or {}
+    appt = state.get("appointment", {})
+    id_agenda = params.get("id_agenda_original") or appt.get("id_agenda") or (
+        appt.get("consulta_atual") or {}
+    ).get("id")
+    novo_slot = params.get("novo_slot") or appt.get("slot_escolhido")
+
+    if id_agenda and isinstance(novo_slot, dict) and novo_slot.get("datetime"):
+        return plano
+
+    logger.warning(
+        "Planner bloqueou remarcar_dietbox sem dados obrigatorios "
+        "(id_agenda=%s novo_slot=%s)",
+        bool(id_agenda),
+        bool(isinstance(novo_slot, dict) and novo_slot.get("datetime")),
+    )
+    if not id_agenda:
+        return _plano(
+            EXECUTE_TOOL,
+            tool="detectar_tipo_remarcacao",
+            params={"telefone": state.get("phone", "")},
+        )
+    return _plano(ASK_FIELD, ask_context="preferencia_horario_remarcar")
 
 
 # ── Builders ──────────────────────────────────────────────────────────────────
@@ -1072,15 +1256,55 @@ def _fallback(turno: dict, state: dict) -> dict:
     Garante que o paciente sempre recebe uma resposta.
     """
     cd = state["collected_data"]
+    appt = state.get("appointment", {})
+    flags = state.get("flags", {})
     intent = turno.get("intent", "fora_de_contexto")
 
     if intent in ("duvida_clinica",) and turno.get("tem_pergunta"):
         return _plano(ESCALATE)
     if intent == "recusou_remarketing":
         return _plano(REMARKETING_RECUSA, new_status="concluido")
+    if turno.get("tem_pergunta") and turno.get("topico_pergunta"):
+        return _plano(ANSWER_QUESTION, ask_context=turno.get("topico_pergunta"))
     if not cd.get("nome"):
         return _plano(ASK_FIELD, ask_context="nome")
     if not cd.get("status_paciente"):
         return _plano(ASK_FIELD, ask_context="status_paciente")
+    if not cd.get("objetivo") and not cd.get("plano"):
+        return _plano(ASK_FIELD, ask_context="objetivo")
+    if cd.get("objetivo") and not flags.get("planos_enviados") and not cd.get("plano"):
+        return _plano(SEND_PLANOS, update_flags={"planos_enviados": True})
+    if not cd.get("plano"):
+        return _plano(ASK_FIELD, ask_context="plano")
+    if not cd.get("modalidade"):
+        return _plano(ASK_FIELD, ask_context="modalidade")
+    if not cd.get("preferencia_horario") and not appt.get("slot_escolhido"):
+        return _plano(ASK_FIELD, ask_context="preferencia_horario")
+    if cd.get("preferencia_horario") and not state.get("last_slots_offered") and not appt.get("slot_escolhido"):
+        return _plano(
+            EXECUTE_TOOL,
+            tool="consultar_slots",
+            params={"modalidade": cd.get("modalidade"), "preferencia": cd.get("preferencia_horario")},
+            draft_message=(
+                "Não encontrei opções exatamente como você pediu, "
+                "mas separei os 3 horários mais próximos. Qual horário funciona melhor pra você?"
+            ) if (turno.get("correcao") or {}).get("campo") == "preferencia_horario" else None,
+        )
+    if state.get("last_slots_offered") and not appt.get("slot_escolhido"):
+        return _plano(ASK_SLOT_CHOICE)
+    if appt.get("slot_escolhido") and not cd.get("forma_pagamento"):
+        return _plano(ASK_FORMA_PAGAMENTO)
+    if cd.get("forma_pagamento") == "cartao" and not flags.get("pagamento_confirmado"):
+        return _plano(
+            EXECUTE_TOOL,
+            tool="gerar_link_cartao",
+            params={
+                "plano": cd.get("plano", "unica"),
+                "modalidade": cd.get("modalidade", "presencial"),
+                "phone_hash": state.get("phone_hash", ""),
+            },
+        )
+    if cd.get("forma_pagamento") == "pix" and not flags.get("pagamento_confirmado"):
+        return _plano(AWAIT_PAYMENT, new_status="aguardando_pagamento")
 
     return _plano(FORA_DE_CONTEXTO)
