@@ -62,7 +62,11 @@ MSG_PREFERENCIA_HORARIO = (
 
 MSG_PREFERENCIA_REMARCAR = (
     "Claro, sem problema. Vou tentar te ajudar com isso 😊\n\n"
-    "Você prefere algum dia ou período da semana?"
+    "Me diga qual dia ou horário atende melhor sua rotina:\n\n"
+    "Segunda a Sexta-feira:\n"
+    "Manhã: 08h, 09h e 10h\n"
+    "Tarde: 15h, 16h e 17h\n"
+    "Noite: 18h e 19h (exceto sexta à noite)"
 )
 
 MSG_AGENDAMENTO_OPCOES = (
@@ -450,13 +454,23 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
                         )
                     else:
                         prazo = ""
-                    pergunta = "Quais são os melhores horários e dias para você? 📅"
+                    pergunta = (
+                        "Me diga qual dia ou horário atende melhor sua rotina:\n\n"
+                        "Segunda a Sexta-feira:\n"
+                        "Manhã: 08h, 09h e 10h\n"
+                        "Tarde: 15h, 16h e 17h\n"
+                        "Noite: 18h e 19h (exceto sexta à noite)"
+                    )
                     return [intro + consulta_info + aviso + prazo + pergunta]
                 except Exception:
                     pass
             return [
                 "Claro, sem problema. Vou tentar te ajudar com isso 😊\n\n"
-                "Você prefere algum dia ou período da semana?"
+                "Me diga qual dia ou horário atende melhor sua rotina:\n\n"
+                "Segunda a Sexta-feira:\n"
+                "Manhã: 08h, 09h e 10h\n"
+                "Tarde: 15h, 16h e 17h\n"
+                "Noite: 18h e 19h (exceto sexta à noite)"
             ]
         if resultado_tool and resultado_tool.get("precisa_identificacao"):
             return [
@@ -566,6 +580,9 @@ def _ask_field(campo: str, nome: str, state: dict) -> list:
             ]
         return ["Pode me informar o *WhatsApp de contato* para o cadastro, por favor?"]
     if campo == "identificacao_remarcacao":
+        draft = state.get("_draft_message")
+        if draft:
+            return [draft]
         return [
             "Para eu tentar localizar sua consulta, me envie por favor seu *nome completo* ou o *e-mail cadastrado*."
         ]

@@ -238,7 +238,7 @@ async def test_bloqueia_confirmacao_remarcacao_sem_sucesso_da_tool(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_remarcacao_nao_localizada_com_nome_tenta_buscar_por_identificador():
+async def test_remarcacao_nao_localizada_com_nome_invalido_pede_identificacao_de_novo():
     from app.conversation.planner import decidir_acao
     from app.conversation.state import create_state
 
@@ -256,6 +256,32 @@ async def test_remarcacao_nao_localizada_com_nome_tenta_buscar_por_identificador
 
     plano = await decidir_acao(turno, state)
 
-    assert plano["action"] == "execute_tool"
-    assert plano["tool"] == "detectar_tipo_remarcacao"
-    assert plano["params"]["identificador"] == "Ana Assistente"
+    assert plano["action"] == "ask_field"
+    assert plano["ask_context"] == "identificacao_remarcacao"
+    assert "nome completo" in plano["draft_message"]
+
+
+@pytest.mark.asyncio
+async def test_remarcacao_retorno_pede_preferencia_com_grade_de_horarios():
+    from app.conversation.responder import gerar_resposta
+
+    state = _state_retorno()
+    respostas = await gerar_resposta(
+        state,
+        {"action": "execute_tool", "tool": "detectar_tipo_remarcacao"},
+        {
+            "sucesso": True,
+            "tipo_remarcacao": "retorno",
+            "consulta_atual": {
+                "id": "agenda-1",
+                "inicio": "2026-05-04T15:00:00",
+                "modalidade": "presencial",
+            },
+            "fim_janela": "2026-05-15",
+        },
+    )
+
+    texto = respostas[0]
+    assert "Manhã: 08h, 09h e 10h" in texto
+    assert "Tarde: 15h, 16h e 17h" in texto
+    assert "Noite: 18h e 19h (exceto sexta à noite)" in texto

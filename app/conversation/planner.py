@@ -568,6 +568,29 @@ def _precisa_humano_no_cancelamento(texto: str | None) -> bool:
     return any(p in t for p in pedidos_reembolso) or any(p in t for p in termos_conflito)
 
 
+def _identificador_remarcacao_invalido(valor: str | None) -> bool:
+    if not valor:
+        return True
+    t = _normalizar_texto_simples(valor).strip()
+    if not t:
+        return True
+    bloqueados = {
+        "ana",
+        "ana assistente",
+        "ana atendente",
+        "assistente",
+        "teste",
+        "testes",
+    }
+    if t in bloqueados:
+        return True
+    if "assistente" in t or "atendente" in t:
+        return True
+    if "@" not in t and len([p for p in t.split() if len(p) >= 2]) < 2:
+        return True
+    return False
+
+
 def _override_cancelamento(turno: dict, state: dict) -> dict | None:
     """
     Regras determinísticas para cancelamento/desistência.
@@ -708,8 +731,8 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
         )
 
     if goal == "remarcar" and tipo_remarcacao in ("nao_localizado", "sem_agendamento_confirmado"):
-        identificador = turno.get("email") or turno.get("nome") or cd.get("email") or cd.get("nome")
-        if identificador:
+        identificador = turno.get("email") or turno.get("nome")
+        if identificador and not _identificador_remarcacao_invalido(identificador):
             return _plano(
                 EXECUTE_TOOL,
                 tool="detectar_tipo_remarcacao",
@@ -718,7 +741,14 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                     "identificador": identificador,
                 },
             )
-        return _plano(ASK_FIELD, ask_context="identificacao_remarcacao")
+        return _plano(
+            ASK_FIELD,
+            ask_context="identificacao_remarcacao",
+            draft_message=(
+                "Não consegui localizar sua consulta com esse dado.\n\n"
+                "Pode confirmar seu *nome completo* ou enviar o *e-mail cadastrado*?"
+            ) if identificador else None,
+        )
 
     # ── Fluxo de cancelamento/desistência determinístico ──────────────────
     if intent == "cancelar" or goal == "cancelar":

@@ -60,6 +60,15 @@ MSG_PREFERENCIA_HORARIO = (
     "Quanto antes o sinal for enviado, maior a chance de garantir o horário de sua preferência."
 )
 
+MSG_PREFERENCIA_REMARCAR = (
+    "Claro, sem problema. Vou tentar te ajudar com isso 😊\n\n"
+    "Me diga qual dia ou horário atende melhor sua rotina:\n\n"
+    "Segunda a Sexta-feira:\n"
+    "Manhã: 08h, 09h e 10h\n"
+    "Tarde: 15h, 16h e 17h\n"
+    "Noite: 18h e 19h (exceto sexta à noite)"
+)
+
 MSG_AGENDAMENTO_OPCOES = (
     "Tenho essas opções disponíveis para {modalidade}:\n\n{opcoes}\n\nQual horário funciona melhor pra você?"
 )
@@ -377,12 +386,12 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
                     return [
                         f"Vi aqui que sua consulta está agendada para *{data_fmt}* às *{hora_fmt}* "
                         f"({cd.get('modalidade') or 'presencial'}) 📅\n\n"
-                        "Posso remarcar para outro horário! Quais são os melhores dias e horários para você?"
+                        "Posso remarcar para outro horário! " + MSG_PREFERENCIA_REMARCAR
                     ]
                 except Exception:
                     pass
             return [f"Tudo bem, {nome}. Podemos remarcar sim, sem problema 😊\n\n"
-                    "Quais são os melhores horários e dias para você? 📅"]
+                    + MSG_PREFERENCIA_REMARCAR]
         if resultado_tool and resultado_tool.get("precisa_identificacao"):
             return [
                 "Tentei localizar sua consulta pelo número do WhatsApp, mas não encontrei um agendamento confirmado vinculado a ele.\n\n"
@@ -471,7 +480,9 @@ def _ask_field(campo: str, nome: str, state: dict) -> list:
         return [_build_planos_list()]
     if campo == "modalidade":
         return [_build_modalidade_list()]
-    if campo in ("preferencia_horario", "preferencia_horario_remarcar"):
+    if campo == "preferencia_horario_remarcar":
+        return [MSG_PREFERENCIA_REMARCAR]
+    if campo == "preferencia_horario":
         return [MSG_PREFERENCIA_HORARIO]
     if campo == "data_nascimento":
         return ["Perfeito 💚 Agora me informa sua *data de nascimento* no formato DD/MM/AAAA, por favor."]
