@@ -165,6 +165,7 @@ async def consultar_slots_remarcar(
     fim_janela: str | None,
     excluir: list[str] | None = None,
     pool: list[dict] | None = None,
+    consulta_atual_inicio: str | None = None,
 ) -> dict:
     """Consulta slots para remarcação dentro da janela de prazo."""
     from app.integrations.dietbox import consultar_slots_disponiveis
@@ -200,12 +201,14 @@ async def consultar_slots_remarcar(
     # Remove slots já oferecidos
     excluir_set = set(excluir or [])
     disponiveis = [s for s in todos if s.get("datetime") not in excluir_set]
+    disponiveis = _priorizar_semana_seguinte_remarcacao(disponiveis, consulta_atual_inicio)
 
     selecionados, aviso = _selecionar_slots(disponiveis, preferencia)
     return {
         "slots": selecionados,
         "slots_pool": todos,
         "aviso_preferencia": aviso,
+        "slots_mesma_semana": _tem_slot_mesma_semana_consulta(selecionados, consulta_atual_inicio),
     }
 
 
@@ -391,6 +394,61 @@ def _selecionar_slots(
         "Para não te deixar sem opção, separei os 3 horários mais próximos disponíveis:"
     )
     return _diversificar(slots)[:3], aviso
+
+
+def _slot_date(slot: dict) -> date | None:
+    try:
+        return datetime.fromisoformat(str(slot.get("datetime", ""))).date()
+    except Exception:
+        return None
+
+
+def _consulta_date(consulta_atual_inicio: str | None) -> date | None:
+    if not consulta_atual_inicio:
+        return None
+    try:
+        return datetime.fromisoformat(str(consulta_atual_inicio)).date()
+    except Exception:
+        return None
+
+
+def _semana_inicio(d: date) -> date:
+    return d - timedelta(days=d.weekday())
+
+
+def _priorizar_semana_seguinte_remarcacao(slots: list[dict], consulta_atual_inicio: str | None) -> list[dict]:
+    consulta_d = _consulta_date(consulta_atual_inicio)
+    if not consulta_d:
+        return slots
+
+    inicio_semana_consulta = _semana_inicio(consulta_d)
+    inicio_semana_seguinte = inicio_semana_consulta + timedelta(days=7)
+    fim_semana_seguinte = inicio_semana_seguinte + timedelta(days=6)
+
+    def bucket(slot: dict) -> tuple[int, str]:
+        slot_d = _slot_date(slot)
+        if not slot_d:
+            return (3, str(slot.get("datetime", "")))
+        if inicio_semana_seguinte <= slot_d <= fim_semana_seguinte:
+            return (0, str(slot.get("datetime", "")))
+        if inicio_semana_consulta <= slot_d < inicio_semana_seguinte:
+            return (1, str(slot.get("datetime", "")))
+        return (2, str(slot.get("datetime", "")))
+
+    return sorted(slots, key=bucket)
+
+
+def _tem_slot_mesma_semana_consulta(slots: list[dict], consulta_atual_inicio: str | None) -> bool:
+    consulta_d = _consulta_date(consulta_atual_inicio)
+    if not consulta_d:
+        return False
+    inicio_semana_consulta = _semana_inicio(consulta_d)
+    inicio_semana_seguinte = inicio_semana_consulta + timedelta(days=7)
+    for slot in slots:
+        slot_d = _slot_date(slot)
+        if slot_d and inicio_semana_consulta <= slot_d < inicio_semana_seguinte:
+            return True
+    return False
 
 
 def _diversificar(slots: list[dict]) -> list[dict]:

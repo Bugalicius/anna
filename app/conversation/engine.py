@@ -141,6 +141,10 @@ class ConversationEngine:
 
         if tool_name == "consultar_slots_remarcar":
             from app.tools.scheduling import consultar_slots_remarcar
+            appt = state.get("appointment", {})
+            consulta_atual = appt.get("consulta_atual") or {}
+            if not params.get("consulta_atual_inicio") and consulta_atual.get("inicio"):
+                params = {**params, "consulta_atual_inicio": consulta_atual.get("inicio")}
             return await consultar_slots_remarcar(**params)
 
         if tool_name == "agendar":
