@@ -231,6 +231,49 @@ def test_busca_paciente_fallback_agenda_reconhece_sem_nono_digito():
     assert result["nome"] == "Ana Silva"
 
 
+def test_busca_paciente_fallback_agenda_busca_detalhes_quando_phone_patient_vazio():
+    resp_patients = MagicMock()
+    resp_patients.status_code = 200
+    resp_patients.json.return_value = {"Data": []}
+
+    resp_agenda = MagicMock()
+    resp_agenda.status_code = 200
+    resp_agenda.raise_for_status = MagicMock()
+    resp_agenda.json.return_value = {
+        "Data": [{
+            "phonePatient": None,
+            "emailPatient": None,
+            "namePatient": None,
+            "patient": {"id": 42, "name": "Ana Silva", "mobilephone": None},
+        }]
+    }
+
+    resp_detalhes = MagicMock()
+    resp_detalhes.status_code = 200
+    resp_detalhes.raise_for_status = MagicMock()
+    resp_detalhes.json.return_value = {
+        "Data": {
+            "Id": 42,
+            "Name": "Ana Silva",
+            "Email": "ana@email.com",
+            "MobilePhone": "+55 31 98668-7010",
+        }
+    }
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch(
+             "requests.get",
+             side_effect=[resp_patients, resp_patients, resp_patients, resp_patients, resp_agenda, resp_detalhes],
+         ):
+        from app.agents.dietbox_worker import buscar_paciente_por_telefone
+        result = buscar_paciente_por_telefone("553186687010")
+
+    assert result is not None
+    assert result["id"] == 42
+    assert result["nome"] == "Ana Silva"
+    assert result["email"] == "ana@email.com"
+
+
 def test_busca_paciente_nao_encontrado():
     mock_resp = MagicMock()
     mock_resp.status_code = 200

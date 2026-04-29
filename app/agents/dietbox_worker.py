@@ -427,11 +427,19 @@ def buscar_paciente_por_telefone(telefone: str) -> dict | None:
         )
         resp.raise_for_status()
         items = resp.json().get("Data") or []
+        pacientes_verificados: set[int] = set()
         for a in items:
             phone_ag = a.get("phonePatient") or a.get("PhonePatient") or ""
             if _telefone_bate(telefone, phone_ag):
                 patient = a.get("patient") or {}
-                pid = patient.get("id")
+                pid = (
+                    patient.get("id")
+                    or patient.get("Id")
+                    or a.get("idPatient")
+                    or a.get("IdPatient")
+                    or a.get("idPaciente")
+                    or a.get("IdPaciente")
+                )
                 pname = patient.get("name") or a.get("namePatient") or ""
                 if pid and int(pid) > 0:
                     return {
@@ -440,6 +448,49 @@ def buscar_paciente_por_telefone(telefone: str) -> dict | None:
                         "email": a.get("emailPatient") or "",
                         "telefone": telefone,
                     }
+                continue
+
+            patient = a.get("patient") or {}
+            pid = (
+                patient.get("id")
+                or patient.get("Id")
+                or a.get("idPatient")
+                or a.get("IdPatient")
+                or a.get("idPaciente")
+                or a.get("IdPaciente")
+            )
+            if not pid or int(pid) <= 0 or int(pid) in pacientes_verificados:
+                continue
+            pacientes_verificados.add(int(pid))
+
+            try:
+                dados = buscar_dados_paciente(int(pid))
+            except Exception as e:
+                logger.warning("Falha ao buscar dados do paciente %s pela agenda: %s", pid, e)
+                continue
+
+            telefones = (
+                dados.get("MobilePhone"),
+                dados.get("mobilePhone"),
+                dados.get("mobilephone"),
+                dados.get("Phone"),
+                dados.get("phone"),
+                patient.get("mobilephone"),
+                patient.get("phone"),
+            )
+            if any(_telefone_bate(telefone, tel) for tel in telefones):
+                return {
+                    "id": pid,
+                    "nome": (
+                        dados.get("Name")
+                        or dados.get("name")
+                        or patient.get("name")
+                        or a.get("namePatient")
+                        or ""
+                    ),
+                    "email": dados.get("Email") or dados.get("email") or a.get("emailPatient") or "",
+                    "telefone": telefone,
+                }
     except Exception as e:
         logger.error("Busca por agenda falhou ao localizar paciente: %s", e)
 
