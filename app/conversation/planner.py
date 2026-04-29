@@ -749,6 +749,23 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
             update_data={"plano": "formulario"},
         )
 
+    if (
+        cd.get("status_paciente") == "retorno"
+        and not tipo_remarcacao
+        and not appt.get("consulta_atual")
+        and not appt.get("id_agenda")
+        and (
+            intent in ("agendar", "remarcar", "fora_de_contexto")
+            or bool(cd.get("preferencia_horario"))
+            or bool(turno.get("preferencia_horario"))
+        )
+    ):
+        return _plano(
+            EXECUTE_TOOL,
+            tool="detectar_tipo_remarcacao",
+            params={"telefone": state.get("phone", "")},
+        )
+
     if intent == "cancelar" and (cd.get("plano") or state.get("last_slots_offered")) and not appt.get("consulta_atual"):
         return _override_cancelamento(turno, state)
 

@@ -221,6 +221,35 @@ async def test_remarcacao_sem_consulta_original_detecta_antes_de_remarcar():
 
 
 @pytest.mark.asyncio
+async def test_retorno_com_preferencia_nao_reinicia_onboarding():
+    from app.conversation.planner import decidir_acao
+    from app.conversation.state import create_state
+
+    state = create_state("hash", "553186687010")
+    state["goal"] = "agendar_consulta"
+    state["collected_data"]["nome"] = "Ana"
+    state["collected_data"]["status_paciente"] = "retorno"
+    state["collected_data"]["preferencia_horario"] = {
+        "tipo": "hora_especifica",
+        "turno": "noite",
+        "hora": "19:00",
+        "dia_semana": None,
+        "descricao": "dia 12 às 19h",
+    }
+    turno = {
+        "intent": "agendar",
+        "_raw_message": "quero no dia 12 às 19",
+        "preferencia_horario": state["collected_data"]["preferencia_horario"],
+        "escolha_slot": None,
+    }
+
+    plano = await decidir_acao(turno, state)
+
+    assert plano["action"] == "execute_tool"
+    assert plano["tool"] == "detectar_tipo_remarcacao"
+
+
+@pytest.mark.asyncio
 async def test_erro_remarcacao_operacional_escala_para_breno():
     from app.conversation.responder import gerar_resposta
 
