@@ -764,6 +764,12 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
 
     if goal == "remarcar" and tipo_remarcacao in ("nao_localizado", "sem_agendamento_confirmado"):
         identificador = turno.get("email") or turno.get("nome")
+        if intent == "remarcar" and not identificador:
+            return _plano(
+                EXECUTE_TOOL,
+                tool="detectar_tipo_remarcacao",
+                params={"telefone": state.get("phone", "")},
+            )
         if identificador and not _identificador_remarcacao_invalido(identificador):
             return _plano(
                 EXECUTE_TOOL,

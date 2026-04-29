@@ -285,6 +285,29 @@ async def test_remarcacao_nao_localizada_com_nome_invalido_pede_identificacao_de
 
 
 @pytest.mark.asyncio
+async def test_remarcacao_nao_localizada_repetida_tenta_telefone_de_novo():
+    from app.conversation.planner import decidir_acao
+    from app.conversation.state import create_state
+
+    state = create_state("hash", "5531986687010")
+    state["goal"] = "remarcar"
+    state["tipo_remarcacao"] = "nao_localizado"
+    turno = {
+        "intent": "remarcar",
+        "nome": None,
+        "email": None,
+        "tem_pergunta": False,
+        "topico_pergunta": None,
+    }
+
+    plano = await decidir_acao(turno, state)
+
+    assert plano["action"] == "execute_tool"
+    assert plano["tool"] == "detectar_tipo_remarcacao"
+    assert plano["params"]["telefone"] == "5531986687010"
+
+
+@pytest.mark.asyncio
 async def test_remarcacao_retorno_pede_preferencia_com_grade_de_horarios():
     from app.conversation.responder import gerar_resposta
 
