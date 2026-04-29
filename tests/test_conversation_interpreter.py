@@ -200,3 +200,27 @@ async def test_interpreter_alterar_consulta_forca_remarcacao_mesmo_se_llm_cancel
         turno = await interpretar_turno("quero alterar a minha consulta", state)
 
     assert turno["intent"] == "remarcar"
+
+
+@pytest.mark.asyncio
+async def test_interpreter_outros_horarios_amplia_preferencia():
+    from app.conversation.interpreter import interpretar_turno
+
+    state = _state_base()
+    state["goal"] = "remarcar"
+    state["collected_data"]["preferencia_horario"] = {
+        "tipo": "turno",
+        "turno": "manha",
+        "descricao": "manhã",
+    }
+
+    fake_response = MagicMock()
+    fake_response.content = [MagicMock(text='{"intent":"remarcar","confirmou_pagamento":false,"tem_pergunta":false,"preferencia_horario":null}')]
+    fake_client = MagicMock()
+    fake_client.messages.create.return_value = fake_response
+
+    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+        turno = await interpretar_turno("na semana do dia 11 só tem esses dois horários? nao tem nenhum outro?", state)
+
+    assert turno["preferencia_horario"]["tipo"] == "qualquer"
+    assert turno["correcao"]["campo"] == "preferencia_horario"

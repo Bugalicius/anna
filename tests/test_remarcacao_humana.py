@@ -102,6 +102,43 @@ async def test_remarcacao_rejeita_slots_com_nova_preferencia_busca_outra_janela(
 
 
 @pytest.mark.asyncio
+async def test_remarcacao_pede_outros_horarios_amplia_busca():
+    from app.conversation.planner import decidir_acao
+
+    state = _state_retorno()
+    state["last_action"] = "consultar_slots_remarcar"
+    state["collected_data"]["preferencia_horario"] = {
+        "tipo": "qualquer",
+        "turno": None,
+        "hora": None,
+        "dia_semana": None,
+        "descricao": "outras opções",
+    }
+    state["last_slots_offered"] = [
+        {"datetime": "2026-05-06T10:00:00", "data_fmt": "quarta, 06/05", "hora": "10h"},
+        {"datetime": "2026-05-12T10:00:00", "data_fmt": "terça, 12/05", "hora": "10h"},
+    ]
+    turno = {
+        "intent": "remarcar",
+        "escolha_slot": None,
+        "preferencia_horario": {
+            "tipo": "qualquer",
+            "turno": None,
+            "hora": None,
+            "dia_semana": None,
+            "descricao": "outras opções",
+        },
+    }
+
+    plano = await decidir_acao(turno, state)
+
+    assert plano["tool"] == "consultar_slots_remarcar"
+    assert plano["params"]["preferencia"]["tipo"] == "qualquer"
+    assert state["last_slots_offered"] == []
+    assert state["rodada_negociacao"] == 0
+
+
+@pytest.mark.asyncio
 async def test_confirmacao_remarcacao_usa_prontinho_e_data():
     from app.conversation.responder import gerar_resposta
 

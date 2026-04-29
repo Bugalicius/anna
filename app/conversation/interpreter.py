@@ -247,6 +247,15 @@ async def interpretar_turno(message: str, state: dict) -> dict:
             turno["intent"] = "remarcar"
             turno["correcao"] = None
 
+        pref_heuristica = _extract_preferencia(msg_lower)
+        if pref_heuristica and (
+            turno.get("preferencia_horario") is None
+            or pref_heuristica.get("tipo") == "qualquer"
+        ):
+            turno["preferencia_horario"] = pref_heuristica
+            if state.get("last_slots_offered") or cd.get("preferencia_horario"):
+                turno["correcao"] = {"campo": "preferencia_horario", "valor_novo": pref_heuristica}
+
         # Heurística pós-LLM: mensagem é só um número 1-3 com slots disponíveis
         # O LLM às vezes não extrai escolha_slot de mensagens muito curtas.
         import re as _re
@@ -596,6 +605,10 @@ def _extract_objetivo(t: str) -> str | None:
 
 
 def _extract_preferencia(t: str) -> dict | None:
+    if re.search(r"\b(outr[ao]s?|mais)\b.{0,30}\b(hor[aá]rios?|op[cç][oõ]es)\b", t) or re.search(
+        r"\b(nenhum|algum)\b.{0,30}\b(outr[ao]s?)\b", t
+    ):
+        return {"tipo": "qualquer", "turno": None, "hora": None, "dia_semana": None, "descricao": "outras opções"}
     if "manhã" in t or "manha" in t:
         return {"tipo": "turno", "turno": "manha", "hora": None, "dia_semana": None, "descricao": "manhã"}
     if "tarde" in t:

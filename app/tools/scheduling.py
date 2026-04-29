@@ -23,6 +23,16 @@ _HORAS_MANHA = {"8h", "9h", "10h"}
 _HORAS_TARDE = {"15h", "16h", "17h"}
 _HORAS_NOITE = {"18h", "19h"}
 _EMAIL_RE = re.compile(r"\b[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}\b", re.I)
+_DESCRICOES_PREF_VALIDAS = {
+    "manha",
+    "manhã",
+    "tarde",
+    "noite",
+    "qualquer horário",
+    "qualquer horario",
+    "outras opções",
+    "outras opcoes",
+}
 _MESES_PT = {
     "janeiro": 1, "fevereiro": 2, "marco": 3, "março": 3, "abril": 4,
     "maio": 5, "junho": 6, "julho": 7, "agosto": 8, "setembro": 9,
@@ -356,7 +366,7 @@ def _selecionar_slots(
     turno = preferencia.get("turno")
     hora = preferencia.get("hora")
     dia_pref = preferencia.get("dia_semana")
-    descricao = preferencia.get("descricao", "")
+    descricao = str(preferencia.get("descricao") or "").strip().lower()
 
     horas_alvo: set[str] | None = None
     if tipo == "turno" and turno:
@@ -375,8 +385,9 @@ def _selecionar_slots(
         return _diversificar(matches)[:3], None
 
     # Preferência não encontrada — aviso e fallback
+    alvo = descricao if descricao in _DESCRICOES_PREF_VALIDAS else "com essa preferência"
     aviso = (
-        f"Não encontrei opções {descricao} nos próximos dias úteis.\n\n"
+        f"Não encontrei opções {alvo} nos próximos dias úteis.\n\n"
         "Para não te deixar sem opção, separei os 3 horários mais próximos disponíveis:"
     )
     return _diversificar(slots)[:3], aviso
