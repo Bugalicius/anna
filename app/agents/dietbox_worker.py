@@ -324,6 +324,52 @@ def consultar_slots_disponiveis(
 
 # ── Pacientes ─────────────────────────────────────────────────────────────────
 
+def _phone_digits(valor: str | None) -> str:
+    return "".join(filter(str.isdigit, str(valor or "")))
+
+
+def _phone_variants_br(telefone: str | None) -> list[str]:
+    """Gera variantes brasileiras para comparar WhatsApp/Dietbox com ou sem nono digito."""
+    digits = _phone_digits(telefone)
+    if not digits:
+        return []
+
+    national = digits[2:] if digits.startswith("55") and len(digits) > 11 else digits
+    variants: list[str] = []
+
+    def add(value: str) -> None:
+        if value and value not in variants:
+            variants.append(value)
+
+    add(digits)
+    add(national)
+    if len(national) == 10:
+        add(national[:2] + "9" + national[2:])
+    elif len(national) == 11 and national[2] == "9":
+        add(national[:2] + national[3:])
+
+    for value in list(variants):
+        if not value.startswith("55") and len(value) in (10, 11):
+            add("55" + value)
+
+    return variants
+
+
+def _telefone_bate(telefone_busca: str | None, telefone_dietbox: str | None) -> bool:
+    alvo = _phone_digits(telefone_dietbox)
+    if not alvo:
+        return False
+
+    variantes = _phone_variants_br(telefone_busca)
+    alvo_variantes = _phone_variants_br(alvo)
+    if set(variantes) & set(alvo_variantes):
+        return True
+
+    nacionais = [v[2:] if v.startswith("55") and len(v) > 11 else v for v in variantes]
+    alvos = [v[2:] if v.startswith("55") and len(v) > 11 else v for v in alvo_variantes]
+    return any(a.endswith(n[-8:]) for n in nacionais for a in alvos if len(n) >= 8 and len(a) >= 8)
+
+
 def buscar_paciente_por_telefone(telefone: str) -> dict | None:
     """
     Busca paciente pelo número de telefone (formato E.164 ou DDD+número).
@@ -333,38 +379,40 @@ def buscar_paciente_por_telefone(telefone: str) -> dict | None:
     1. Busca direta por nome/telefone nos pacientes (API do Dietbox não indexa phone)
     2. Fallback: percorre agenda (últimos 180 + próximos 180 dias) filtrando phonePatient
     """
-    # Normaliza: remove não-dígitos, descarta prefixo 55 para comparação
-    digitos = "".join(filter(str.isdigit, telefone))
-    if digitos.startswith("55") and len(digitos) > 11:
-        numero_busca = digitos[2:]
-    else:
-        numero_busca = digitos
+    variantes_busca = _phone_variants_br(telefone)
+    termos_busca = [
+        v[2:] if v.startswith("55") and len(v) > 11 else v
+        for v in variantes_busca
+    ]
+    termos_busca = list(dict.fromkeys(termos_busca + variantes_busca))
+    if not termos_busca:
+        return None
 
     # ── Estratégia 1: busca direta nos pacientes ────────────────────────────
-    try:
-        resp = requests.get(
-            f"{DIETBOX_API}/patients",
-            headers=_headers(),
-            params={"Search": numero_busca, "Take": 10},
-            timeout=15,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            items = data.get("Data") or data.get("data") or []
-            if isinstance(items, dict):
-                items = items.get("Items") or items.get("items") or []
-            for p in items:
-                for campo in ("MobilePhone", "mobilePhone", "Phone", "phone"):
-                    tel = "".join(filter(str.isdigit, str(p.get(campo, "") or "")))
-                    if numero_busca in tel or tel.endswith(numero_busca[-8:]):
-                        return {
-                            "id": p.get("Id") or p.get("id"),
-                            "nome": p.get("Name") or p.get("name") or p.get("nome"),
-                            "email": p.get("Email") or p.get("email") or "",
-                            "telefone": telefone,
-                        }
-    except Exception as e:
-        logger.warning("Busca direta de paciente falhou: %s", e)
+    for termo in termos_busca:
+        try:
+            resp = requests.get(
+                f"{DIETBOX_API}/patients",
+                headers=_headers(),
+                params={"Search": termo, "Take": 10},
+                timeout=15,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                items = data.get("Data") or data.get("data") or []
+                if isinstance(items, dict):
+                    items = items.get("Items") or items.get("items") or []
+                for p in items:
+                    for campo in ("MobilePhone", "mobilePhone", "Phone", "phone"):
+                        if _telefone_bate(telefone, p.get(campo)):
+                            return {
+                                "id": p.get("Id") or p.get("id"),
+                                "nome": p.get("Name") or p.get("name") or p.get("nome"),
+                                "email": p.get("Email") or p.get("email") or "",
+                                "telefone": telefone,
+                            }
+        except Exception as e:
+            logger.warning("Busca direta de paciente por telefone falhou (termo=%s): %s", termo[-4:], e)
 
     # ── Estratégia 2: busca via campo phonePatient na agenda ────────────────
     try:
@@ -380,10 +428,8 @@ def buscar_paciente_por_telefone(telefone: str) -> dict | None:
         resp.raise_for_status()
         items = resp.json().get("Data") or []
         for a in items:
-            phone_ag = "".join(filter(str.isdigit, str(a.get("phonePatient") or "")))
-            if not phone_ag:
-                continue
-            if numero_busca in phone_ag or phone_ag.endswith(numero_busca[-8:]):
+            phone_ag = a.get("phonePatient") or a.get("PhonePatient") or ""
+            if _telefone_bate(telefone, phone_ag):
                 patient = a.get("patient") or {}
                 pid = patient.get("id")
                 pname = patient.get("name") or a.get("namePatient") or ""
