@@ -186,11 +186,13 @@ async def _get_chatwoot_conversation_id(p: str) -> str | None:
             )
             resp.raise_for_status()
             data = resp.json()
-            contacts = (
-                data.get("payload", {}).get("contacts")
-                or data.get("payload")
-                or []
-            )
+            payload = data.get("payload")
+            if isinstance(payload, dict):
+                contacts = payload.get("contacts") or []
+            elif isinstance(payload, list):
+                contacts = payload
+            else:
+                contacts = []
             if not contacts or not isinstance(contacts, list):
                 return None
             contact_id = str(contacts[0]["id"])

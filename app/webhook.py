@@ -122,10 +122,10 @@ async def receive_chatwoot_webhook(request: Request, background_tasks: Backgroun
         phone = extract_phone_from_chatwoot_payload(payload)
         if phone:
             message = _chatwoot_payload_to_meta_message(payload, phone)
-            background_tasks.add_task(process_message_debounced, message, {})
             conversation_id = extract_conversation_id_from_chatwoot_payload(payload)
             if conversation_id:
                 background_tasks.add_task(bind_chatwoot_conversation, conversation_id, phone)
+            background_tasks.add_task(process_message_debounced, message, {})
         else:
             logger.warning(
                 "Chatwoot enviou mensagem incoming, mas telefone nao foi encontrado "
