@@ -27,7 +27,7 @@ from app.conversation.state import (
 )
 from app.conversation.interpreter import interpretar_turno
 from app.conversation.planner import decidir_acao
-from app.conversation.responder import gerar_resposta
+from app.conversation.responder import gerar_resposta, sanitize_patient_responses
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +80,7 @@ class ConversationEngine:
 
         # 8. Gerar resposta
         resposta = await gerar_resposta(state, plano, resultado_tool)
+        resposta = sanitize_patient_responses(resposta, state)
 
         # 9. Adicionar respostas ao histórico
         for msg in resposta:

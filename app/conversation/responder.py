@@ -215,6 +215,67 @@ _WAITING = [
     "Aguarda um instante que já te respondo 💚",
 ]
 
+_INTERNAL_LEAK_PATTERNS = [
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"\bpaciente rejeita\b",
+        r"\bslots? oferecidos?\b",
+        r"\bdraft(?:_message)?\b",
+        r"\bplanner\b",
+        r"\bexecute_tool\b",
+        r"\btool\b",
+        r"\bjson\b",
+        r"\blast_action\b",
+        r"\btipo_remarcacao\b",
+        r"\bconsulta_atual\b",
+        r"\bask_context\b",
+        r"\bupdate_(?:data|appointment|flags)\b",
+        r"\bintent\s*[:=]",
+    )
+]
+
+
+def _contains_internal_leak(text: str) -> bool:
+    return any(pattern.search(text or "") for pattern in _INTERNAL_LEAK_PATTERNS)
+
+
+def _safe_replacement(state: dict, has_buttons: bool = False) -> str:
+    if has_buttons:
+        return "Separei estas opções disponíveis:\n\nQual horário funciona melhor pra você?"
+    if state.get("goal") == "remarcar" or state.get("tipo_remarcacao") == "retorno":
+        return (
+            "Vou verificar as opções disponíveis dentro do prazo de remarcação e te retorno por aqui."
+        )
+    return "Vou verificar direitinho e te retorno por aqui."
+
+
+def sanitize_patient_responses(messages: list, state: dict) -> list:
+    """Bloqueia vazamento de termos internos do planner/LLM antes do envio ao paciente."""
+    sanitized: list = []
+    for msg in messages:
+        if isinstance(msg, str):
+            if _contains_internal_leak(msg):
+                logger.warning("Resposta textual bloqueada por conter termo interno: %s", msg[:160])
+                sanitized.append(_safe_replacement(state))
+            else:
+                sanitized.append(msg)
+            continue
+
+        if isinstance(msg, dict) and isinstance(msg.get("body"), str):
+            body = msg["body"]
+            if _contains_internal_leak(body):
+                logger.warning("Body interativo bloqueado por conter termo interno: %s", body[:160])
+                cleaned = dict(msg)
+                cleaned["body"] = _safe_replacement(state, has_buttons=bool(msg.get("buttons")))
+                sanitized.append(cleaned)
+            else:
+                sanitized.append(msg)
+            continue
+
+        sanitized.append(msg)
+    return sanitized
+
+
 # ── Função pública ─────────────────────────────────────────────────────────────
 
 
