@@ -202,6 +202,29 @@ async def test_saudacao_inicial_nao_usa_draft_generico_do_llm():
 
 
 @pytest.mark.asyncio
+async def test_saudacao_paciente_conhecido_e_curta_sem_llm():
+    from app.conversation.planner import decidir_acao
+    from app.conversation.state import create_state
+
+    state = create_state("hash", "5531999990000")
+    state["collected_data"]["nome"] = "Ana Assistente"
+    state["goal"] = "agendar_consulta"
+    turno = {
+        "intent": "fora_de_contexto",
+        "_raw_message": "oi",
+        "tem_pergunta": False,
+        "topico_pergunta": None,
+    }
+
+    plano = await decidir_acao(turno, state)
+
+    assert plano["action"] == "respond_fora_de_contexto"
+    assert plano["draft_message"] == "Oi Ana! Como posso te ajudar hoje? 💚"
+    assert "👋" not in plano["draft_message"]
+    assert "Claro" not in plano["draft_message"]
+
+
+@pytest.mark.asyncio
 async def test_bloqueia_confirmacao_remarcacao_sem_sucesso_da_tool(monkeypatch):
     from app.conversation.planner import decidir_acao
 
@@ -285,3 +308,26 @@ async def test_remarcacao_retorno_pede_preferencia_com_grade_de_horarios():
     assert "Manhã: 08h, 09h e 10h" in texto
     assert "Tarde: 15h, 16h e 17h" in texto
     assert "Noite: 18h e 19h (exceto sexta à noite)" in texto
+
+
+@pytest.mark.asyncio
+async def test_pergunta_sobre_perda_retorno_explica_janela_sem_politica():
+    from app.conversation.planner import decidir_acao
+    from app.conversation.state import create_state
+
+    state = create_state("hash", "5531999990000")
+    state["goal"] = "agendar_consulta"
+    state["tipo_remarcacao"] = "perda_retorno"
+    turno = {
+        "intent": "tirar_duvida",
+        "_raw_message": "pq não consegue marcar como retorno?",
+        "tem_pergunta": True,
+        "topico_pergunta": "politica",
+    }
+
+    plano = await decidir_acao(turno, state)
+
+    assert plano["action"] == "answer_question"
+    assert plano["ask_context"] == "perda_retorno"
+    assert "7 dias corridos" in plano["draft_message"]
+    assert "PIX" not in plano["draft_message"]

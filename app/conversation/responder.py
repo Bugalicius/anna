@@ -486,10 +486,9 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
     # ── Perda de janela de remarcação ─────────────────────────────────────────
     if action == "execute_tool" and plano.get("tool") == "perda_retorno":
         return [
-            "Entendo. Como não encontramos um horário dentro do prazo de remarcação do retorno, "
-            "não consigo remarcar essa consulta como retorno 😕\n\n"
-            "Mas posso te ajudar a ver uma nova consulta com a Thaynara e tentar achar "
-            "um horário bom pra você. Posso te mandar os planos."
+            "Entendo. Esse período fica fora do prazo de remarcação do retorno 😕\n\n"
+            "A remarcação como retorno precisa acontecer em até 7 dias corridos da data original da consulta. "
+            "Depois desse prazo, consigo te ajudar a marcar uma nova consulta com a Thaynara."
         ]
 
     # ── Resposta a dúvida do KB ───────────────────────────────────────────────

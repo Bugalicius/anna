@@ -684,6 +684,16 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
     appt = state.get("appointment", {})
     raw_msg = turno.get("_raw_message", "")
 
+    if _SAUDACAO.match(raw_msg) and cd.get("nome"):
+        if goal == "cancelar":
+            state["goal"] = "desconhecido"
+            state["flags"]["aguardando_motivo_cancel"] = False
+        primeiro_nome = str(cd.get("nome") or "").strip().split()[0]
+        return _plano(
+            FORA_DE_CONTEXTO,
+            draft_message=f"Oi {primeiro_nome}! Como posso te ajudar hoje? 💚",
+        )
+
     if _SAUDACAO.match(raw_msg) and goal in ("desconhecido", "duvida"):
         if not cd.get("nome"):
             return _plano(ASK_FIELD, ask_context="nome")
@@ -691,6 +701,28 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
 
     if intent == "duvida_clinica" or turno.get("topico_pergunta") == "clinica":
         return _plano(ESCALATE)
+
+    if tipo_remarcacao == "perda_retorno":
+        raw_norm = _normalizar_texto_simples(raw_msg)
+        pergunta_sobre_retorno = (
+            "?" in raw_msg
+            or "pq" in raw_norm
+            or "por que" in raw_norm
+            or "porque" in raw_norm
+            or "retorno" in raw_norm
+            or "remarcar" in raw_norm
+        )
+        if pergunta_sobre_retorno:
+            return _plano(
+                ANSWER_QUESTION,
+                ask_context="perda_retorno",
+                draft_message=(
+                    "Porque a remarcação como retorno só pode acontecer dentro do prazo do retorno: "
+                    "até 7 dias corridos a partir da data original da consulta.\n\n"
+                    "Depois desse prazo, o sistema não permite tratar como retorno. "
+                    "Aí eu consigo te ajudar a marcar uma nova consulta."
+                ),
+            )
 
     if (
         turno.get("tem_pergunta")
