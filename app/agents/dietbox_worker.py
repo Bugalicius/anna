@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import time
+import unicodedata
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -408,6 +409,8 @@ def buscar_paciente_por_identificador(identificador: str) -> dict | None:
     if len(termo) < 3:
         return None
 
+    termo_norm = _normalizar_busca(termo)
+
     try:
         resp = requests.get(
             f"{DIETBOX_API}/patients",
@@ -420,11 +423,10 @@ def buscar_paciente_por_identificador(identificador: str) -> dict | None:
         items = data.get("Data") or data.get("data") or []
         if isinstance(items, dict):
             items = items.get("Items") or items.get("items") or []
-        termo_lower = termo.lower()
         for p in items:
             nome = p.get("Name") or p.get("name") or p.get("nome") or ""
             email = p.get("Email") or p.get("email") or ""
-            if termo_lower in str(nome).lower() or termo_lower == str(email).lower():
+            if _identificador_bate(termo_norm, termo, nome, email):
                 return {
                     "id": p.get("Id") or p.get("id"),
                     "nome": nome,
@@ -440,7 +442,66 @@ def buscar_paciente_por_identificador(identificador: str) -> dict | None:
     except Exception as e:
         logger.warning("Busca de paciente por identificador falhou: %s", e)
 
+    try:
+        hoje = date.today()
+        start = hoje.isoformat()
+        end = (hoje + timedelta(days=180)).isoformat()
+        resp = requests.get(
+            f"{DIETBOX_API}/agenda",
+            headers=_headers(),
+            params={"start": start, "end": end, "per_page": 5000},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        items = resp.json().get("Data") or []
+        for a in items:
+            nome = a.get("namePatient") or ""
+            email = a.get("emailPatient") or ""
+            if not _identificador_bate(termo_norm, termo, nome, email):
+                continue
+            patient = a.get("patient") or {}
+            pid = (
+                patient.get("id")
+                or patient.get("Id")
+                or a.get("idPatient")
+                or a.get("IdPatient")
+                or a.get("idPaciente")
+                or a.get("IdPaciente")
+            )
+            if pid and int(pid) > 0:
+                return {
+                    "id": pid,
+                    "nome": patient.get("name") or patient.get("Name") or nome,
+                    "email": email,
+                    "telefone": a.get("phonePatient") or "",
+                }
+    except Exception as e:
+        logger.warning("Busca de paciente por agenda falhou: %s", e)
+
     return None
+
+
+def _normalizar_busca(valor: str | None) -> str:
+    texto = str(valor or "").strip().lower()
+    sem_acento = unicodedata.normalize("NFKD", texto)
+    texto = "".join(ch for ch in sem_acento if not unicodedata.combining(ch))
+    return " ".join(texto.split())
+
+
+def _identificador_bate(termo_norm: str, termo_original: str, nome: str | None, email: str | None) -> bool:
+    email_busca = str(termo_original or "").strip().lower()
+    email_paciente = str(email or "").strip().lower()
+    if "@" in email_busca and email_busca == email_paciente:
+        return True
+
+    nome_norm = _normalizar_busca(nome)
+    if not nome_norm:
+        return False
+    if termo_norm == nome_norm or termo_norm in nome_norm:
+        return True
+
+    partes = [p for p in termo_norm.split() if len(p) >= 3]
+    return len(partes) >= 2 and all(p in nome_norm for p in partes)
 
 
 def cadastrar_paciente(dados: dict) -> int:

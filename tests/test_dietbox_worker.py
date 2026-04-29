@@ -218,6 +218,36 @@ def test_busca_paciente_por_identificador_nome():
     assert result["nome"] == "Ana Assistente"
 
 
+def test_busca_paciente_por_identificador_fallback_agenda():
+    resp_patients = MagicMock()
+    resp_patients.status_code = 200
+    resp_patients.raise_for_status = MagicMock()
+    resp_patients.json.return_value = {"Data": []}
+
+    resp_agenda = MagicMock()
+    resp_agenda.status_code = 200
+    resp_agenda.raise_for_status = MagicMock()
+    resp_agenda.json.return_value = {
+        "Data": [
+            {
+                "namePatient": "Ana Assistente",
+                "emailPatient": "ana@email.com",
+                "phonePatient": "31999990000",
+                "patient": {"id": 42, "name": "Ana Assistente"},
+            }
+        ]
+    }
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.get", side_effect=[resp_patients, resp_agenda]):
+        from app.agents.dietbox_worker import buscar_paciente_por_identificador
+        result = buscar_paciente_por_identificador("Ana Assistente")
+
+    assert result is not None
+    assert result["id"] == 42
+    assert result["nome"] == "Ana Assistente"
+
+
 # ── cadastrar_paciente ────────────────────────────────────────────────────────
 
 def test_cadastrar_paciente_retorna_id():
