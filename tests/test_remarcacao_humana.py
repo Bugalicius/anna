@@ -139,6 +139,44 @@ async def test_remarcacao_pede_outros_horarios_amplia_busca():
 
 
 @pytest.mark.asyncio
+async def test_remarcacao_pergunta_outros_horarios_nao_responde_politica():
+    from app.conversation.planner import decidir_acao
+
+    state = _state_retorno()
+    state["last_action"] = "consultar_slots_remarcar"
+    state["last_slots_offered"] = [
+        {"datetime": "2026-05-06T10:00:00", "data_fmt": "quarta, 06/05", "hora": "10h"},
+        {"datetime": "2026-05-12T10:00:00", "data_fmt": "terça, 12/05", "hora": "10h"},
+    ]
+    state["collected_data"]["preferencia_horario"] = {
+        "tipo": "qualquer",
+        "turno": None,
+        "hora": None,
+        "dia_semana": None,
+        "descricao": "outras opções",
+    }
+    turno = {
+        "intent": "remarcar",
+        "_raw_message": "na semana do dia 11 só tem esses dois horários? nao tem nenhum outro?",
+        "tem_pergunta": True,
+        "topico_pergunta": "politica",
+        "escolha_slot": None,
+        "preferencia_horario": {
+            "tipo": "qualquer",
+            "turno": None,
+            "hora": None,
+            "dia_semana": None,
+            "descricao": "outras opções",
+        },
+    }
+
+    plano = await decidir_acao(turno, state)
+
+    assert plano["action"] == "execute_tool"
+    assert plano["tool"] == "consultar_slots_remarcar"
+
+
+@pytest.mark.asyncio
 async def test_confirmacao_remarcacao_usa_prontinho_e_data():
     from app.conversation.responder import gerar_resposta
 

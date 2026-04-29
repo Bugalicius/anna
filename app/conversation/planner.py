@@ -724,10 +724,16 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                 ),
             )
 
+    pergunta_em_negociacao_remarcacao = (
+        tipo_remarcacao == "retorno"
+        and bool(state.get("last_slots_offered"))
+        and turno.get("topico_pergunta") in ("pagamento", "planos", "modalidade", "politica")
+    )
     if (
         turno.get("tem_pergunta")
         and not turno.get("confirmou_pagamento")
         and turno.get("topico_pergunta") in ("pagamento", "planos", "modalidade", "politica")
+        and not pergunta_em_negociacao_remarcacao
     ):
         return _plano(ANSWER_QUESTION, ask_context=turno.get("topico_pergunta"))
 
