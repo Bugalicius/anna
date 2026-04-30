@@ -38,3 +38,19 @@ async def test_engine_salva_estado_concluido_para_router_persistir_contato():
     mock_save.assert_awaited_once()
     saved_state = mock_save.await_args.args[1]
     assert saved_state["status"] == "concluido"
+
+
+def test_apply_tool_result_remarcacao_sucesso_conclui_estado():
+    from app.conversation.state import apply_tool_result
+
+    state = _state()
+    state["goal"] = "remarcar"
+    state["last_slots_offered"] = [{"datetime": "2026-05-11T17:00:00"}]
+    state["slots_pool"] = [{"datetime": "2026-05-11T17:00:00"}]
+
+    apply_tool_result(state, "remarcar_dietbox", {"sucesso": True})
+
+    assert state["status"] == "concluido"
+    assert state["last_tool_success"] is True
+    assert state["last_slots_offered"] == []
+    assert state["slots_pool"] == []

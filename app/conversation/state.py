@@ -224,6 +224,11 @@ def apply_tool_result(state: dict, tool: str, result: dict) -> None:
 
     appt = state["appointment"]
 
+    if tool == "remarcar_dietbox" and result.get("sucesso"):
+        state["status"] = "concluido"
+        state["last_slots_offered"] = []
+        state["slots_pool"] = []
+
     if "slots" in result:
         state["last_slots_offered"] = result["slots"][:3]
         state["slots_pool"] = result.get("slots_pool", result["slots"])
