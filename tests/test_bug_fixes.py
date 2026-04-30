@@ -13,7 +13,7 @@ Cenários testados:
 """
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -315,13 +315,8 @@ async def test_trocar_plano_gera_correcao_no_interpreter():
     state = _state_agendamento_sem_consulta()
     state["status"] = "coletando"
 
-    fake_response = MagicMock()
     # LLM pode errar e classificar como remarcar
-    fake_response.content = [MagicMock(text='{"intent":"remarcar","confirmou_pagamento":false,"tem_pergunta":false}')]
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = fake_response
-
-    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+    with patch("app.conversation.interpreter.llm_client.complete_text", return_value='{"intent":"remarcar","confirmou_pagamento":false,"tem_pergunta":false}'):
         turno = await interpretar_turno("quero trocar o plano", state)
 
     assert turno["intent"] == "agendar"
@@ -337,12 +332,7 @@ async def test_trocar_plano_nao_dispara_para_cancelar():
 
     state = _state_agendamento_sem_consulta()
 
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(text='{"intent":"cancelar","confirmou_pagamento":false,"tem_pergunta":false}')]
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = fake_response
-
-    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+    with patch("app.conversation.interpreter.llm_client.complete_text", return_value='{"intent":"cancelar","confirmou_pagamento":false,"tem_pergunta":false}'):
         turno = await interpretar_turno("Não quero apenas trocar o plano", state)
 
     assert turno["intent"] == "agendar"
@@ -356,12 +346,7 @@ async def test_mudar_plano_variacao():
 
     state = _state_agendamento_sem_consulta()
 
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(text='{"intent":"fora_de_contexto","confirmou_pagamento":false,"tem_pergunta":false}')]
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = fake_response
-
-    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+    with patch("app.conversation.interpreter.llm_client.complete_text", return_value='{"intent":"fora_de_contexto","confirmou_pagamento":false,"tem_pergunta":false}'):
         turno = await interpretar_turno("quero mudar a opção", state)
 
     assert turno["intent"] == "agendar"
@@ -506,14 +491,7 @@ async def test_resposta_livre_bloqueia_confirmacao_alucinada():
         ],
     }
 
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(
-        text="✅ Consulta remarcada com sucesso!\n\n📅 Nova data: segunda, 27/04 às 19h"
-    )]
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = fake_response
-
-    with patch("app.conversation.responder.anthropic.Anthropic", return_value=fake_client):
+    with patch("app.conversation.responder.llm_client.complete_text", return_value="✅ Consulta remarcada com sucesso!\n\n📅 Nova data: segunda, 27/04 às 19h"):
         resultado = await _resposta_livre(state)
 
     # Deve ter sido bloqueada e retornar mensagem genérica
@@ -533,14 +511,7 @@ async def test_resposta_livre_permite_resposta_normal():
         ],
     }
 
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(
-        text="A Aura Clinic fica na Rua Melo Franco, 204 em Vespasiano 😊"
-    )]
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = fake_response
-
-    with patch("app.conversation.responder.anthropic.Anthropic", return_value=fake_client):
+    with patch("app.conversation.responder.llm_client.complete_text", return_value="A Aura Clinic fica na Rua Melo Franco, 204 em Vespasiano 😊"):
         resultado = await _resposta_livre(state)
 
     assert "Aura Clinic" in resultado
@@ -617,3 +588,104 @@ async def test_cenario_trocar_plano_retorna_ao_fluxo():
 
     plano = await decidir_acao(turno, state)
     assert plano["action"] == "send_planos"
+
+
+@pytest.mark.asyncio
+async def test_pergunta_reputacao_nao_escala_duvida_clinica():
+    """Pergunta sobre conhecer a profissional/depoimentos não deve enviar contato da nutri."""
+    from app.conversation.planner import decidir_acao
+
+    state = _state_agendamento_sem_consulta()
+    state["goal"] = "desconhecido"
+    state["collected_data"]["nome"] = None
+    state["collected_data"]["status_paciente"] = None
+
+    turno = {
+        "intent": "duvida_clinica",
+        "nome": None,
+        "status_paciente": None,
+        "objetivo": None,
+        "plano": None,
+        "modalidade": None,
+        "forma_pagamento": None,
+        "escolha_slot": None,
+        "aceita_upgrade": None,
+        "confirmou_pagamento": False,
+        "valor_comprovante": None,
+        "correcao": None,
+        "tem_pergunta": True,
+        "topico_pergunta": "clinica",
+        "preferencia_horario": None,
+        "_raw_message": "você conhece a thaynara a muito tempo? o que os pacientes dizem dela?",
+    }
+
+    plano = await decidir_acao(turno, state)
+
+    assert plano["action"] == "answer_question"
+    assert plano["action"] != "escalate"
+    assert "depoimentos individuais" in plano["draft_message"]
+
+
+@pytest.mark.asyncio
+async def test_nova_consulta_sai_do_loop_de_remarcacao_nao_localizada():
+    """Pedido explícito de nova consulta deve limpar remarcação não localizada."""
+    from app.conversation.planner import decidir_acao
+
+    state = _state_agendamento_sem_consulta()
+    state["goal"] = "remarcar"
+    state["tipo_remarcacao"] = "nao_localizado"
+    state["appointment"]["consulta_atual"] = None
+    state["appointment"]["id_agenda"] = None
+    state["collected_data"]["status_paciente"] = "retorno"
+    state["collected_data"]["objetivo"] = None
+
+    turno = {
+        "intent": "agendar",
+        "nome": None,
+        "status_paciente": None,
+        "objetivo": None,
+        "plano": None,
+        "modalidade": None,
+        "forma_pagamento": None,
+        "escolha_slot": None,
+        "aceita_upgrade": None,
+        "confirmou_pagamento": False,
+        "valor_comprovante": None,
+        "correcao": None,
+        "tem_pergunta": False,
+        "topico_pergunta": None,
+        "preferencia_horario": None,
+        "_raw_message": "quero agendar uma nova consulta",
+    }
+
+    plano = await decidir_acao(turno, state)
+
+    assert state["goal"] == "agendar_consulta"
+    assert state["tipo_remarcacao"] == "nova_consulta"
+    assert state["collected_data"]["status_paciente"] == "novo"
+    assert plano["action"] == "ask_field"
+    assert plano["ask_context"] == "objetivo"
+
+
+def test_engine_agendar_nova_consulta_reseta_goal_remarcar():
+    """O motor deve persistir a troca de goal antes do planner."""
+    from app.conversation.engine import ConversationEngine
+
+    engine = ConversationEngine()
+    state = _state_agendamento_sem_consulta()
+    state["goal"] = "remarcar"
+    state["tipo_remarcacao"] = "nao_localizado"
+    state["appointment"]["id_agenda"] = "agenda-antiga"
+    state["appointment"]["consulta_atual"] = {"id": "agenda-antiga"}
+    state["collected_data"]["status_paciente"] = "retorno"
+
+    engine._atualizar_goal(
+        state,
+        {"intent": "agendar", "_raw_message": "quero agendar uma nova consulta"},
+    )
+
+    assert state["goal"] == "agendar_consulta"
+    assert state["tipo_remarcacao"] == "nova_consulta"
+    assert state["appointment"]["id_agenda"] is None
+    assert state["appointment"]["consulta_atual"] is None
+    assert state["collected_data"]["status_paciente"] == "novo"

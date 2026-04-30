@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -62,12 +62,7 @@ async def test_interpreter_button_slot_id_nao_quebra_e_extrai_escolha():
 
     state = _state_base()
 
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(text='{"intent":"agendar","escolha_slot":null,"confirmou_pagamento":false,"tem_pergunta":false}')]
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = fake_response
-
-    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+    with patch("app.conversation.interpreter.llm_client.complete_text", return_value='{"intent":"agendar","escolha_slot":null,"confirmou_pagamento":false,"tem_pergunta":false}'):
         turno = await interpretar_turno("slot_2", state)
 
     assert turno["escolha_slot"] == 2
@@ -79,12 +74,7 @@ async def test_interpreter_pix_button_no_fluxo_extrai_forma_pagamento():
 
     state = _state_base()
 
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(text='{"intent":"agendar","forma_pagamento":null,"escolha_slot":null,"confirmou_pagamento":false,"tem_pergunta":false}')]
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = fake_response
-
-    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+    with patch("app.conversation.interpreter.llm_client.complete_text", return_value='{"intent":"agendar","forma_pagamento":null,"escolha_slot":null,"confirmou_pagamento":false,"tem_pergunta":false}'):
         turno = await interpretar_turno("pix", state)
 
     assert turno["forma_pagamento"] == "pix"
@@ -97,12 +87,7 @@ async def test_interpreter_lista_planos_extrai_id_curto():
 
     state = _state_base()
 
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(text='{"intent":"agendar","plano":null,"confirmou_pagamento":false,"tem_pergunta":false}')]
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = fake_response
-
-    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+    with patch("app.conversation.interpreter.llm_client.complete_text", return_value='{"intent":"agendar","plano":null,"confirmou_pagamento":false,"tem_pergunta":false}'):
         turno = await interpretar_turno("ouro", state)
 
     assert turno["plano"] == "ouro"
@@ -115,12 +100,7 @@ async def test_interpreter_texto_visivel_do_slot_resolve_escolha():
 
     state = _state_base()
 
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(text='{"intent":"fora_de_contexto","escolha_slot":null,"confirmou_pagamento":false,"tem_pergunta":false}')]
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = fake_response
-
-    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+    with patch("app.conversation.interpreter.llm_client.complete_text", return_value='{"intent":"fora_de_contexto","escolha_slot":null,"confirmou_pagamento":false,"tem_pergunta":false}'):
         turno = await interpretar_turno("terça, 05/05 15h", state)
 
     assert turno["escolha_slot"] == 2
@@ -144,19 +124,13 @@ async def test_interpreter_slot_visivel_prioriza_escolha_sobre_preferencia():
         {"datetime": "2026-05-11T17:00:00", "data_fmt": "segunda, 11/05", "hora": "17h"},
     ]
 
-    fake_response = MagicMock()
-    fake_response.content = [
-        MagicMock(
-            text=(
-                '{"intent":"remarcar","escolha_slot":null,"confirmou_pagamento":false,'
-                '"tem_pergunta":false,"preferencia_horario":null}'
-            )
-        )
-    ]
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = fake_response
-
-    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+    with patch(
+        "app.conversation.interpreter.llm_client.complete_text",
+        return_value=(
+            '{"intent":"remarcar","escolha_slot":null,"confirmou_pagamento":false,'
+            '"tem_pergunta":false,"preferencia_horario":null}'
+        ),
+    ):
         turno = await interpretar_turno("segunda, 11/05 17h", state)
 
     assert turno["escolha_slot"] == 1
@@ -174,10 +148,7 @@ async def test_interpreter_fallback_com_erro_llm_preserva_slots_do_estado():
         {"datetime": "2026-05-25T08:00:00", "data_fmt": "segunda, 25/05", "hora": "8h"},
     ]
 
-    fake_client = MagicMock()
-    fake_client.messages.create.side_effect = RuntimeError("sem credito")
-
-    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+    with patch("app.conversation.interpreter.llm_client.complete_text", side_effect=RuntimeError("sem credito")):
         turno = await interpretar_turno("segunda, 25/05 8h", state)
 
     assert turno["intent"] == "remarcar"
@@ -193,11 +164,11 @@ async def test_interpreter_remarcacao_clara_nao_chama_llm():
     state = _state_base()
     state["goal"] = "remarcar"
 
-    with patch("app.conversation.interpreter.anthropic.Anthropic") as mock_anthropic:
+    with patch("app.conversation.interpreter.llm_client.complete_text") as mock_complete:
         turno = await interpretar_turno("quero remarcar minha consulta", state)
 
     assert turno["intent"] == "remarcar"
-    mock_anthropic.assert_not_called()
+    mock_complete.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -208,11 +179,11 @@ async def test_interpreter_preferencia_remarcacao_nao_chama_llm():
     state["goal"] = "remarcar"
     state["last_slots_offered"] = []
 
-    with patch("app.conversation.interpreter.anthropic.Anthropic") as mock_anthropic:
+    with patch("app.conversation.interpreter.llm_client.complete_text") as mock_complete:
         turno = await interpretar_turno("qualquer horário na semana seguinte", state)
 
     assert turno["preferencia_horario"]["tipo"] == "qualquer"
-    mock_anthropic.assert_not_called()
+    mock_complete.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -225,11 +196,11 @@ async def test_interpreter_escolha_slot_nao_chama_llm():
         {"datetime": "2026-05-25T08:00:00", "data_fmt": "segunda, 25/05", "hora": "8h"},
     ]
 
-    with patch("app.conversation.interpreter.anthropic.Anthropic") as mock_anthropic:
+    with patch("app.conversation.interpreter.llm_client.complete_text") as mock_complete:
         turno = await interpretar_turno("segunda, 25/05 8h", state)
 
     assert turno["escolha_slot"] == 1
-    mock_anthropic.assert_not_called()
+    mock_complete.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -241,12 +212,7 @@ async def test_interpreter_midia_em_pagamento_confirma_pagamento():
     state["collected_data"]["forma_pagamento"] = "pix"
     state["last_action"] = "await_payment"
 
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(text='{"intent":"fora_de_contexto","confirmou_pagamento":false,"tem_pergunta":false}')]
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = fake_response
-
-    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+    with patch("app.conversation.interpreter.llm_client.complete_text", return_value='{"intent":"fora_de_contexto","confirmou_pagamento":false,"tem_pergunta":false}'):
         turno = await interpretar_turno("[comprovante valor=240.00 favorecido=Thaynara]", state)
 
     assert turno["confirmou_pagamento"] is True
@@ -260,13 +226,8 @@ async def test_interpreter_extrai_email_e_data_nascimento_do_cadastro():
 
     state = _state_base()
 
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(text='{"intent":"agendar","confirmou_pagamento":false,"tem_pergunta":false,"email":null,"data_nascimento":null}')]
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = fake_response
-
     msg = "Meu e-mail é breno@email.com e nasci em 20/04/1990"
-    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+    with patch("app.conversation.interpreter.llm_client.complete_text", return_value='{"intent":"agendar","confirmou_pagamento":false,"tem_pergunta":false,"email":null,"data_nascimento":null}'):
         turno = await interpretar_turno(msg, state)
 
     assert turno["email"] == "breno@email.com"
@@ -278,12 +239,8 @@ async def test_interpreter_extrai_data_nascimento_em_formato_curto():
     from app.conversation.interpreter import interpretar_turno
 
     state = _state_base()
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(text='{"intent":"agendar","confirmou_pagamento":false,"tem_pergunta":false,"data_nascimento":null}')]
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = fake_response
 
-    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+    with patch("app.conversation.interpreter.llm_client.complete_text", return_value='{"intent":"agendar","confirmou_pagamento":false,"tem_pergunta":false,"data_nascimento":null}'):
         turno = await interpretar_turno("nasci em 2/3/93", state)
 
     assert turno["data_nascimento"] == "1993-03-02"
@@ -296,12 +253,7 @@ async def test_interpreter_alterar_consulta_forca_remarcacao_mesmo_se_llm_cancel
     state = _state_base()
     state["goal"] = "desconhecido"
 
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(text='{"intent":"cancelar","confirmou_pagamento":false,"tem_pergunta":false}')]
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = fake_response
-
-    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+    with patch("app.conversation.interpreter.llm_client.complete_text", return_value='{"intent":"cancelar","confirmou_pagamento":false,"tem_pergunta":false}'):
         turno = await interpretar_turno("quero alterar a minha consulta", state)
 
     assert turno["intent"] == "remarcar"
@@ -319,12 +271,7 @@ async def test_interpreter_outros_horarios_amplia_preferencia():
         "descricao": "manhã",
     }
 
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(text='{"intent":"remarcar","confirmou_pagamento":false,"tem_pergunta":false,"preferencia_horario":null}')]
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = fake_response
-
-    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+    with patch("app.conversation.interpreter.llm_client.complete_text", return_value='{"intent":"remarcar","confirmou_pagamento":false,"tem_pergunta":false,"preferencia_horario":null}'):
         turno = await interpretar_turno("na semana do dia 11 só tem esses dois horários? nao tem nenhum outro?", state)
 
     assert turno["preferencia_horario"]["tipo"] == "qualquer"
@@ -339,12 +286,7 @@ async def test_interpreter_texto_horario_visivel_extrai_hora_e_dia():
     state["goal"] = "remarcar"
     state["last_slots_offered"] = []
 
-    fake_response = MagicMock()
-    fake_response.content = [MagicMock(text='{"intent":"remarcar","confirmou_pagamento":false,"tem_pergunta":false,"preferencia_horario":null}')]
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = fake_response
-
-    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+    with patch("app.conversation.interpreter.llm_client.complete_text", return_value='{"intent":"remarcar","confirmou_pagamento":false,"tem_pergunta":false,"preferencia_horario":null}'):
         turno = await interpretar_turno("segunda, 11/05 17h", state)
 
     assert turno["preferencia_horario"]["tipo"] == "hora_especifica"
