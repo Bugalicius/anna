@@ -591,6 +591,51 @@ def _identificador_remarcacao_invalido(valor: str | None) -> bool:
     return False
 
 
+def _pedido_explicito_nova_consulta(texto: str | None) -> bool:
+    t = _normalizar_texto_simples(texto)
+    if not t:
+        return False
+    fala_agendar = any(p in t for p in (
+        "agendar", "marcar", "nova consulta", "primeira consulta",
+        "consulta nova", "quero consulta", "quero uma consulta",
+    ))
+    nega_remarcacao = any(p in t for p in (
+        "nao e remarc", "nao quero remarc", "nao tenho consulta",
+        "nao tenho email cadastrado", "sem email cadastrado",
+    ))
+    return fala_agendar and ("nova" in t or "primeira" in t or nega_remarcacao)
+
+
+def _pergunta_sobre_reputacao_profissional(texto: str | None) -> bool:
+    t = _normalizar_texto_simples(texto)
+    if not t:
+        return False
+    fala_da_profissional = any(p in t for p in (
+        "thaynara", "nutri", "nutricionista", "ela",
+    ))
+    reputacao = any(p in t for p in (
+        "conhece", "conhecer", "pacientes dizem", "paciente diz",
+        "depoimento", "depoimentos", "recomendam", "recomenda",
+        "boa profissional", "e boa", "experiencia", "experiencia dela",
+    ))
+    return fala_da_profissional and reputacao
+
+
+def _restricao_atendimento(texto: str | None) -> bool:
+    t = _normalizar_texto_simples(texto)
+    if not t:
+        return False
+    gestante = any(p in t for p in (
+        "gestante", "gravida", "gravidez", "estou gravida", "sou gravida",
+    ))
+    menor = any(p in t for p in (
+        "tenho 15", "tenho 14", "tenho 13", "tenho 12", "tenho 11",
+        "tenho 10", "menor de 16", "menor que 16", "15 anos", "14 anos",
+        "13 anos", "12 anos", "11 anos", "10 anos",
+    ))
+    return gestante or menor
+
+
 def _override_cancelamento(turno: dict, state: dict) -> dict | None:
     """
     Regras determinísticas para cancelamento/desistência.
@@ -684,6 +729,16 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
     appt = state.get("appointment", {})
     raw_msg = turno.get("_raw_message", "")
 
+    if _pedido_explicito_nova_consulta(raw_msg) and goal == "remarcar":
+        state["goal"] = "agendar_consulta"
+        state["tipo_remarcacao"] = "nova_consulta"
+        state["appointment"]["consulta_atual"] = None
+        state["appointment"]["id_agenda"] = None
+        state["last_slots_offered"] = []
+        state["slots_pool"] = []
+        state["collected_data"]["status_paciente"] = "novo"
+        return _plano(ASK_FIELD, ask_context="objetivo")
+
     if _SAUDACAO.match(raw_msg) and cd.get("nome"):
         if goal == "cancelar":
             state["goal"] = "desconhecido"
@@ -698,6 +753,29 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
         if not cd.get("nome"):
             return _plano(ASK_FIELD, ask_context="nome")
         return _plano(FORA_DE_CONTEXTO)
+
+    if _restricao_atendimento(raw_msg):
+        return _plano(
+            ANSWER_QUESTION,
+            ask_context="restricao_atendimento",
+            new_status="concluido",
+            draft_message=(
+                "Infelizmente a Thaynara não realiza atendimento para gestantes "
+                "e menores de 16 anos no momento. Qualquer outra dúvida, estou à disposição! 💚"
+            ),
+        )
+
+    if _pergunta_sobre_reputacao_profissional(raw_msg):
+        return _plano(
+            ANSWER_QUESTION,
+            ask_context="profissional",
+            draft_message=(
+                "Eu sou a Ana, assistente de agendamentos, então não tenho acesso "
+                "a depoimentos individuais de pacientes.\n\n"
+                "Posso te ajudar com informações sobre modalidades, planos, valores "
+                "e horários disponíveis para consulta."
+            ),
+        )
 
     if intent == "duvida_clinica" or turno.get("topico_pergunta") == "clinica":
         return _plano(ESCALATE)
@@ -786,6 +864,16 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
         )
 
     if goal == "remarcar" and tipo_remarcacao in ("nao_localizado", "sem_agendamento_confirmado"):
+        if _pedido_explicito_nova_consulta(raw_msg):
+            state["goal"] = "agendar_consulta"
+            state["tipo_remarcacao"] = "nova_consulta"
+            state["appointment"]["consulta_atual"] = None
+            state["appointment"]["id_agenda"] = None
+            state["last_slots_offered"] = []
+            state["slots_pool"] = []
+            state["collected_data"]["status_paciente"] = "novo"
+            return _plano(ASK_FIELD, ask_context="objetivo")
+
         identificador = turno.get("email") or turno.get("nome")
         if intent == "remarcar" and not identificador:
             return _plano(

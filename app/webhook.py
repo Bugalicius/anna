@@ -5,6 +5,8 @@ import os
 import hashlib as _hashlib
 import asyncio
 import json as _json
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import redis.asyncio as aioredis
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
 from app.meta_api import verify_signature
@@ -17,6 +19,14 @@ VERIFY_TOKEN = os.environ.get("WEBHOOK_VERIFY_TOKEN", "")
 
 _DEDUP_TTL = 14400  # 4 horas em segundos
 _DEBOUNCE_TTL = 60
+
+MSG_AUDIO_NAO_SUPORTADO = "Oi! Por enquanto só consigo ler mensagens de texto. Pode me escrever o que precisa? 😊"
+MSG_MIDIA_NAO_COMPROVANTE = "Recebo comprovantes de pagamento por aqui 😊 Posso te ajudar com mais alguma coisa?"
+MSG_FORA_HORARIO = (
+    "Eiii! No momento estou fora do meu horário de atendimento. "
+    "Vou responder assim que possível. Agradeço sua compreensão e paciência! 💚"
+)
+MSG_LOCATION_NAO_SUPORTADO = "Recebo mensagens de texto por aqui 😊 Como posso te ajudar?"
 
 
 async def _is_duplicate_message(meta_message_id: str) -> bool:
@@ -237,6 +247,41 @@ def _is_internal_number_local(numero: str) -> bool:
     return recebido in {interno, _sem_nono_digito_brasil(interno)}
 
 
+def _em_horario_atendimento(now: datetime | None = None) -> bool:
+    agora = now or datetime.now(ZoneInfo("America/Sao_Paulo"))
+    return agora.weekday() < 5 and 8 <= agora.hour < 20
+
+
+async def _send_text_direct(phone: str, text: str) -> None:
+    from app.meta_api import MetaAPIClient
+
+    meta = MetaAPIClient()
+    await meta.send_text(phone, text)
+    try:
+        from app.chatwoot_bridge import log_bot_message
+        await log_bot_message(phone, text)
+    except Exception as e:
+        logger.debug("log_bot_message direto falhou: %s", e)
+
+
+async def _should_send_after_hours_once(phone_hash: str) -> bool:
+    if os.environ.get("DISABLE_AFTER_HOURS_NOTICE", "").lower() == "true":
+        return False
+    if _em_horario_atendimento():
+        return False
+    redis_url = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+    today = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y%m%d")
+    key = f"after_hours:{phone_hash}:{today}"
+    try:
+        r = aioredis.Redis.from_url(redis_url, decode_responses=True)
+        created = await r.set(key, "1", nx=True, ex=86400)
+        await r.aclose()
+        return bool(created)
+    except Exception as e:
+        logger.warning("Redis after-hours indisponivel: %s", e)
+        return True
+
+
 def _should_debounce_message(message: dict) -> bool:
     """Agrupa apenas textos de pacientes; mídia e mensagens internas seguem imediatas."""
     if _is_internal_number_local(message.get("from", "")):
@@ -337,6 +382,22 @@ async def process_message(message: dict, metadata: dict):
     if await is_whatsapp_rate_limited(phone_hash):
         return
 
+    if not _is_internal_number_local(phone) and await _should_send_after_hours_once(phone_hash):
+        await _send_text_direct(phone, MSG_FORA_HORARIO)
+        return
+
+    if msg_type == "audio":
+        await _send_text_direct(phone, MSG_AUDIO_NAO_SUPORTADO)
+        return
+
+    if msg_type == "location":
+        await _send_text_direct(phone, MSG_LOCATION_NAO_SUPORTADO)
+        return
+
+    if msg_type == "sticker":
+        await _send_text_direct(phone, MSG_MIDIA_NAO_COMPROVANTE)
+        return
+
     if msg_type == "interactive":
         interactive = message.get("interactive", {})
         itype = interactive.get("type", "")
@@ -346,22 +407,17 @@ async def process_message(message: dict, metadata: dict):
             text = interactive.get("list_reply", {}).get("id", "") or "[mídia]"
         else:
             text = "[mídia]"
-    elif msg_type == "audio":
-        media_id = message.get("audio", {}).get("id", "")
-        text = "[mídia]"
-        if media_id:
-            media = await processar_midia(media_id)
-            if media.get("transcricao"):
-                text = media["transcricao"]
     elif msg_type in ("image", "document"):
         media_payload = message.get(msg_type, {})
         media_id = media_payload.get("id", "")
         chatwoot_url = media_payload.get("chatwoot_url", "")
         text = "[mídia]"
+        eh_comprovante = False
         if media_id:
             media = await processar_midia(media_id)
             analise = analisar_comprovante_pagamento(media.get("bytes", b""), media.get("mime_type", ""))
             if analise.get("eh_comprovante"):
+                eh_comprovante = True
                 valor = analise.get("valor")
                 valor_txt = f"{valor:.2f}" if isinstance(valor, (float, int)) else "null"
                 favorecido = (analise.get("favorecido") or "").replace("|", " ")[:120]
@@ -372,12 +428,16 @@ async def process_message(message: dict, metadata: dict):
                 mime_type = media_payload.get("mime_type", "")
                 analise = analisar_comprovante_pagamento(content, mime_type)
                 if analise.get("eh_comprovante"):
+                    eh_comprovante = True
                     valor = analise.get("valor")
                     valor_txt = f"{valor:.2f}" if isinstance(valor, (float, int)) else "null"
                     favorecido = (analise.get("favorecido") or "").replace("|", " ")[:120]
                     text = f"[comprovante valor={valor_txt} favorecido={favorecido}]"
             except Exception as e:
                 logger.error("Falha ao processar anexo Chatwoot %s: %s", meta_id, e)
+        if msg_type == "image" and not eh_comprovante:
+            await _send_text_direct(phone, MSG_MIDIA_NAO_COMPROVANTE)
+            return
     else:
         text = message.get("text", {}).get("body", "") or "[mídia]"
 

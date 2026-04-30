@@ -23,6 +23,7 @@ _FAKE_ENV = {
     "DIETBOX_SENHA": "fake-senha",
     "REDE_EMAIL": "test@test.com",
     "REDE_SENHA": "fake-senha",
+    "DISABLE_AFTER_HOURS_NOTICE": "true",
 }
 
 for key, value in _FAKE_ENV.items():

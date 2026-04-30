@@ -274,3 +274,51 @@ async def test_dedup_graceful_degradation():
 
     # fail open: deve retornar False mesmo com Redis down
     assert result is False
+
+
+@pytest.mark.asyncio
+async def test_audio_responde_pedindo_texto():
+    from app.webhook import MSG_AUDIO_NAO_SUPORTADO, process_message
+
+    message = {"id": "audio-1", "from": "5531999990000", "type": "audio", "audio": {"id": "mid"}}
+    with patch("app.webhook._is_duplicate_message", new_callable=AsyncMock, return_value=False), \
+         patch("app.rate_limit.is_whatsapp_rate_limited", new_callable=AsyncMock, return_value=False), \
+         patch("app.webhook._should_send_after_hours_once", new_callable=AsyncMock, return_value=False), \
+         patch("app.webhook._send_text_direct", new_callable=AsyncMock) as mock_send, \
+         patch("app.router.route_message", new_callable=AsyncMock) as mock_route:
+        await process_message(message, {})
+
+    mock_send.assert_awaited_once_with("5531999990000", MSG_AUDIO_NAO_SUPORTADO)
+    mock_route.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_location_responde_pedindo_texto():
+    from app.webhook import MSG_LOCATION_NAO_SUPORTADO, process_message
+
+    message = {"id": "loc-1", "from": "5531999990000", "type": "location", "location": {}}
+    with patch("app.webhook._is_duplicate_message", new_callable=AsyncMock, return_value=False), \
+         patch("app.rate_limit.is_whatsapp_rate_limited", new_callable=AsyncMock, return_value=False), \
+         patch("app.webhook._should_send_after_hours_once", new_callable=AsyncMock, return_value=False), \
+         patch("app.webhook._send_text_direct", new_callable=AsyncMock) as mock_send, \
+         patch("app.router.route_message", new_callable=AsyncMock) as mock_route:
+        await process_message(message, {})
+
+    mock_send.assert_awaited_once_with("5531999990000", MSG_LOCATION_NAO_SUPORTADO)
+    mock_route.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_sticker_responde_midia_nao_comprovante():
+    from app.webhook import MSG_MIDIA_NAO_COMPROVANTE, process_message
+
+    message = {"id": "sticker-1", "from": "5531999990000", "type": "sticker", "sticker": {}}
+    with patch("app.webhook._is_duplicate_message", new_callable=AsyncMock, return_value=False), \
+         patch("app.rate_limit.is_whatsapp_rate_limited", new_callable=AsyncMock, return_value=False), \
+         patch("app.webhook._should_send_after_hours_once", new_callable=AsyncMock, return_value=False), \
+         patch("app.webhook._send_text_direct", new_callable=AsyncMock) as mock_send, \
+         patch("app.router.route_message", new_callable=AsyncMock) as mock_route:
+        await process_message(message, {})
+
+    mock_send.assert_awaited_once_with("5531999990000", MSG_MIDIA_NAO_COMPROVANTE)
+    mock_route.assert_not_awaited()

@@ -689,3 +689,40 @@ def test_engine_agendar_nova_consulta_reseta_goal_remarcar():
     assert state["appointment"]["id_agenda"] is None
     assert state["appointment"]["consulta_atual"] is None
     assert state["collected_data"]["status_paciente"] == "novo"
+
+
+@pytest.mark.asyncio
+async def test_gestante_recebe_recusa_de_atendimento():
+    from app.conversation.planner import decidir_acao
+
+    state = _state_agendamento_sem_consulta()
+    turno = {
+        "intent": "tirar_duvida",
+        "tem_pergunta": True,
+        "topico_pergunta": "politica",
+        "_raw_message": "estou grávida, consigo consultar?",
+    }
+
+    plano = await decidir_acao(turno, state)
+
+    assert plano["action"] == "answer_question"
+    assert plano["new_status"] == "concluido"
+    assert "gestantes" in plano["draft_message"]
+
+
+@pytest.mark.asyncio
+async def test_menor_de_16_recebe_recusa_de_atendimento():
+    from app.conversation.planner import decidir_acao
+
+    state = _state_agendamento_sem_consulta()
+    turno = {
+        "intent": "tirar_duvida",
+        "tem_pergunta": True,
+        "topico_pergunta": "politica",
+        "_raw_message": "tenho 15 anos, posso marcar?",
+    }
+
+    plano = await decidir_acao(turno, state)
+
+    assert plano["action"] == "answer_question"
+    assert "menores de 16" in plano["draft_message"]
