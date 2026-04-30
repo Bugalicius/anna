@@ -14,8 +14,7 @@ import os
 import random
 import re
 
-import anthropic
-
+from app import llm_client
 from app.knowledge_base import kb
 from app.pii_sanitizer import sanitize_historico
 
@@ -881,23 +880,22 @@ async def _resposta_livre(state: dict) -> str:
     if os.environ.get("DISABLE_LLM_FOR_TESTS") == "true":
         return "Posso te ajudar com agendamentos e informações sobre as consultas. Como posso te ajudar? 😊"
 
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
     history_clean = sanitize_historico(state.get("history", [])[-6:])
-    msgs = [{"role": m["role"], "content": m["content"]} for m in history_clean]
+    # Lineariza o histórico em uma mensagem única (compatível com providers que só aceitam texto)
+    history_lines = []
+    for m in history_clean:
+        role_label = "Paciente" if m["role"] == "user" else "Ana"
+        history_lines.append(f"{role_label}: {m['content']}")
+    history_lines.append("Ana:")  # estimula o modelo a continuar como Ana
+    user_prompt = "\n".join(history_lines) if history_lines else "Paciente: oi\nAna:"
+
     try:
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+        text = llm_client.complete_text(
+            system=_RESPOSTA_LIVRE_GUARDRAIL,
+            user=user_prompt,
             max_tokens=256,
-            system=[
-                {
-                    "type": "text",
-                    "text": _RESPOSTA_LIVRE_GUARDRAIL,
-                    "cache_control": {"type": "ephemeral"}
-                }
-            ],
-            messages=msgs,
+            cache_system=True,
         )
-        text = response.content[0].text.strip()
         # Guardrail pós-geração: bloquear respostas que parecem confirmações
         _BLOCKED_PATTERNS = (
             "consulta foi confirmada", "consulta confirmada com sucesso",

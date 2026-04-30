@@ -17,7 +17,7 @@ import re
 import unicodedata
 from datetime import date, datetime
 
-import anthropic
+from app import llm_client
 from app.knowledge_base import kb
 
 logger = logging.getLogger(__name__)
@@ -1225,19 +1225,14 @@ async def decidir_acao(turno: dict, state: dict) -> dict:
         return _fallback(turno, state)
 
     prompt = _build_prompt(turno, state)
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 
     try:
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+        raw = llm_client.complete_text(
+            system="",
+            user=prompt,
             max_tokens=700,
-            messages=[{"role": "user", "content": prompt}],
         )
-        raw = response.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
+        raw = llm_client.strip_json_fences(raw)
         data = json.loads(raw)
         plano = _parse_plano(data, state)
         plano = _validar_plano_operacional(plano, turno, state)

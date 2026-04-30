@@ -15,8 +15,7 @@ import os
 import re
 from datetime import datetime
 
-import anthropic
-
+from app import llm_client
 from app.pii_sanitizer import sanitize_historico
 
 logger = logging.getLogger(__name__)
@@ -205,7 +204,7 @@ async def interpretar_turno(message: str, state: dict) -> dict:
         for m in history_clean
     ) or "(sem histórico)"
 
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+    client = None  # cliente provider abstraído via llm_client
     msg_lower = message.lower().strip()
 
     try:
@@ -218,23 +217,13 @@ async def interpretar_turno(message: str, state: dict) -> dict:
             history=history_txt,
             message=message,
         )
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+        raw = llm_client.complete_text(
+            system=_SYSTEM_PROMPT,
+            user=context,
             max_tokens=450,
-            system=[
-                {
-                    "type": "text",
-                    "text": _SYSTEM_PROMPT,
-                    "cache_control": {"type": "ephemeral"}
-                }
-            ],
-            messages=[{"role": "user", "content": context}],
+            cache_system=True,
         )
-        raw = response.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
+        raw = llm_client.strip_json_fences(raw)
         data = json.loads(raw)
         turno = _parse_turno(data)
 

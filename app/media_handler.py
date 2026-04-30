@@ -13,7 +13,6 @@ Fluxo:
 """
 from __future__ import annotations
 
-import base64
 import json
 import logging
 import os
@@ -21,8 +20,9 @@ import re
 import tempfile
 from pathlib import Path
 
-import anthropic
 import httpx
+
+from app import llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -177,44 +177,26 @@ def analisar_comprovante_pagamento(content: bytes, mime_type: str) -> dict:
     if mime_type not in MIME_IMAGENS:
         return {"eh_comprovante": False, "valor": None, "texto_extraido": "", "favorecido": None}
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key:
-        logger.warning("ANTHROPIC_API_KEY não configurado — leitura de comprovante indisponível")
+    # llm_client cuida do provider; só validamos a chave do provider ativo abaixo no try
+    provider = os.environ.get("LLM_PROVIDER", "gemini").lower().strip()
+    key_var = "GEMINI_API_KEY" if provider == "gemini" else "ANTHROPIC_API_KEY"
+    if not os.environ.get(key_var, ""):
+        logger.warning("%s não configurado — leitura de comprovante indisponível", key_var)
         return {"eh_comprovante": False, "valor": None, "texto_extraido": "", "favorecido": None}
 
     try:
-        client = anthropic.Anthropic(api_key=api_key)
-        encoded = base64.b64encode(content).decode("ascii")
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=300,
-            messages=[{
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": mime_type,
-                            "data": encoded,
-                        },
-                    },
-                    {
-                        "type": "text",
-                        "text": (
-                            "Analise a imagem e responda SOMENTE JSON válido com os campos "
-                            '{"eh_comprovante":true|false,"valor":number|null,"favorecido":string|null,"texto_extraido":string}. '
-                            "Se não parecer comprovante bancário/PIX, use eh_comprovante=false."
-                        ),
-                    },
-                ],
-            }],
+        prompt = (
+            "Analise a imagem e responda SOMENTE JSON válido com os campos "
+            '{"eh_comprovante":true|false,"valor":number|null,"favorecido":string|null,"texto_extraido":string}. '
+            "Se não parecer comprovante bancário/PIX, use eh_comprovante=false."
         )
-        raw = response.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
+        raw = llm_client.complete_with_image(
+            user_text=prompt,
+            image_bytes=content,
+            mime_type=mime_type,
+            max_tokens=300,
+        )
+        raw = llm_client.strip_json_fences(raw)
         data = json.loads(raw)
         valor = data.get("valor")
         try:
