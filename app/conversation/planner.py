@@ -837,7 +837,13 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                 ),
             )
 
-        if pref_atual and not slots and not slot_escolhido and last_action != "consultar_slots_remarcar":
+        preferencia_corrigida = (turno.get("correcao") or {}).get("campo") == "preferencia_horario"
+        if (
+            pref_atual
+            and not slots
+            and not slot_escolhido
+            and (last_action != "consultar_slots_remarcar" or preferencia_corrigida)
+        ):
             return _plano(
                 EXECUTE_TOOL,
                 tool="consultar_slots_remarcar",

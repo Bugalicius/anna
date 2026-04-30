@@ -609,6 +609,23 @@ def _extract_preferencia(t: str) -> dict | None:
         r"\b(nenhum|algum)\b.{0,30}\b(outr[ao]s?)\b", t
     ):
         return {"tipo": "qualquer", "turno": None, "hora": None, "dia_semana": None, "descricao": "outras opções"}
+    dias = {"segunda": 0, "terça": 1, "terca": 1, "quarta": 2, "quinta": 3, "sexta": 4}
+    hora_match = re.search(r"\b(?:às|as|ás)?\s*(\d{1,2})\s*h\b|\b(?:às|as|ás)\s*(\d{1,2})(?::00)?\b", t)
+    if hora_match:
+        hora_int = int(hora_match.group(1) or hora_match.group(2))
+        if 0 <= hora_int <= 23:
+            dia_pref = None
+            for nome, idx in dias.items():
+                if nome in t:
+                    dia_pref = idx
+                    break
+            return {
+                "tipo": "hora_especifica",
+                "turno": None,
+                "hora": f"{hora_int}h",
+                "dia_semana": dia_pref,
+                "descricao": t[:80],
+            }
     if "manhã" in t or "manha" in t:
         return {"tipo": "turno", "turno": "manha", "hora": None, "dia_semana": None, "descricao": "manhã"}
     if "tarde" in t:
@@ -617,7 +634,6 @@ def _extract_preferencia(t: str) -> dict | None:
         return {"tipo": "turno", "turno": "noite", "hora": None, "dia_semana": None, "descricao": "noite"}
     if any(w in t for w in ("qualquer", "tanto faz", "mais próximo", "mais proximo")):
         return {"tipo": "qualquer", "turno": None, "hora": None, "dia_semana": None, "descricao": "qualquer horário"}
-    dias = {"segunda": 0, "terça": 1, "terca": 1, "quarta": 2, "quinta": 3, "sexta": 4}
     for nome, idx in dias.items():
         if nome in t:
             return {"tipo": "dia_semana", "turno": None, "hora": None, "dia_semana": idx, "descricao": nome}

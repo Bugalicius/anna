@@ -224,3 +224,24 @@ async def test_interpreter_outros_horarios_amplia_preferencia():
 
     assert turno["preferencia_horario"]["tipo"] == "qualquer"
     assert turno["correcao"]["campo"] == "preferencia_horario"
+
+
+@pytest.mark.asyncio
+async def test_interpreter_texto_horario_visivel_extrai_hora_e_dia():
+    from app.conversation.interpreter import interpretar_turno
+
+    state = _state_base()
+    state["goal"] = "remarcar"
+    state["last_slots_offered"] = []
+
+    fake_response = MagicMock()
+    fake_response.content = [MagicMock(text='{"intent":"remarcar","confirmou_pagamento":false,"tem_pergunta":false,"preferencia_horario":null}')]
+    fake_client = MagicMock()
+    fake_client.messages.create.return_value = fake_response
+
+    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+        turno = await interpretar_turno("segunda, 11/05 17h", state)
+
+    assert turno["preferencia_horario"]["tipo"] == "hora_especifica"
+    assert turno["preferencia_horario"]["hora"] == "17h"
+    assert turno["preferencia_horario"]["dia_semana"] == 0

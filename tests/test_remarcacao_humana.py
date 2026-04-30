@@ -102,6 +102,37 @@ async def test_remarcacao_rejeita_slots_com_nova_preferencia_busca_outra_janela(
 
 
 @pytest.mark.asyncio
+async def test_remarcacao_preferencia_corrigida_reconsulta_mesmo_apos_consultar_slots():
+    from app.conversation.planner import decidir_acao
+
+    state = _state_retorno()
+    state["last_action"] = "consultar_slots_remarcar"
+    state["collected_data"]["preferencia_horario"] = {
+        "tipo": "hora_especifica",
+        "turno": None,
+        "hora": "17h",
+        "dia_semana": 0,
+        "descricao": "segunda, 11/05 17h",
+    }
+    state["last_slots_offered"] = []
+    turno = {
+        "intent": "remarcar",
+        "escolha_slot": None,
+        "preferencia_horario": state["collected_data"]["preferencia_horario"],
+        "correcao": {
+            "campo": "preferencia_horario",
+            "valor_novo": state["collected_data"]["preferencia_horario"],
+        },
+    }
+
+    plano = await decidir_acao(turno, state)
+
+    assert plano["action"] == "execute_tool"
+    assert plano["tool"] == "consultar_slots_remarcar"
+    assert plano["params"]["preferencia"]["hora"] == "17h"
+
+
+@pytest.mark.asyncio
 async def test_remarcacao_pede_outros_horarios_amplia_busca():
     from app.conversation.planner import decidir_acao
 
