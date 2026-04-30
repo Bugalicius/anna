@@ -107,32 +107,25 @@ def complete_with_image(
 
 
 def _gemini_text(system: str, user: str, max_tokens: int, temperature: float) -> str:
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types
 
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY não configurado")
 
-    genai.configure(api_key=api_key)
-
-    # Gemini suporta system_instruction nativamente desde 1.5
-    model = genai.GenerativeModel(
-        model_name=_model_text(),
+    client = genai.Client(api_key=api_key)
+    config = types.GenerateContentConfig(
         system_instruction=system if system else None,
-        generation_config={
-            "max_output_tokens": max_tokens,
-            "temperature": temperature,
-        },
+        max_output_tokens=max_tokens,
+        temperature=temperature,
     )
-    response = model.generate_content(user)
-    text = (getattr(response, "text", None) or "").strip()
-    if not text:
-        # fallback: olhar candidates direto se .text vier vazio (raro)
-        try:
-            text = response.candidates[0].content.parts[0].text.strip()
-        except Exception:
-            text = ""
-    return text
+    response = client.models.generate_content(
+        model=_model_text(),
+        contents=user,
+        config=config,
+    )
+    return (getattr(response, "text", None) or "").strip()
 
 
 def _gemini_vision(
@@ -143,31 +136,26 @@ def _gemini_vision(
     max_tokens: int,
     temperature: float,
 ) -> str:
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types
 
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY não configurado")
 
-    genai.configure(api_key=api_key)
-
-    model = genai.GenerativeModel(
-        model_name=_model_vision(),
+    client = genai.Client(api_key=api_key)
+    config = types.GenerateContentConfig(
         system_instruction=system if system else None,
-        generation_config={
-            "max_output_tokens": max_tokens,
-            "temperature": temperature,
-        },
+        max_output_tokens=max_tokens,
+        temperature=temperature,
     )
-    image_part = {"mime_type": mime_type, "data": image_bytes}
-    response = model.generate_content([user_text, image_part])
-    text = (getattr(response, "text", None) or "").strip()
-    if not text:
-        try:
-            text = response.candidates[0].content.parts[0].text.strip()
-        except Exception:
-            text = ""
-    return text
+    image_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+    response = client.models.generate_content(
+        model=_model_vision(),
+        contents=[user_text, image_part],
+        config=config,
+    )
+    return (getattr(response, "text", None) or "").strip()
 
 
 # ── Implementação Anthropic (fallback) ────────────────────────────────────────
