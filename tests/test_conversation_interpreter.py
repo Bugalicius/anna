@@ -124,7 +124,7 @@ async def test_interpreter_texto_visivel_do_slot_resolve_escolha():
         turno = await interpretar_turno("terça, 05/05 15h", state)
 
     assert turno["escolha_slot"] == 2
-    assert turno["intent"] == "fora_de_contexto"
+    assert turno["intent"] == "agendar"
 
 
 @pytest.mark.asyncio
@@ -184,6 +184,52 @@ async def test_interpreter_fallback_com_erro_llm_preserva_slots_do_estado():
     assert turno["escolha_slot"] == 1
     assert turno["preferencia_horario"] is None
     assert turno["correcao"] is None
+
+
+@pytest.mark.asyncio
+async def test_interpreter_remarcacao_clara_nao_chama_llm():
+    from app.conversation.interpreter import interpretar_turno
+
+    state = _state_base()
+    state["goal"] = "remarcar"
+
+    with patch("app.conversation.interpreter.anthropic.Anthropic") as mock_anthropic:
+        turno = await interpretar_turno("quero remarcar minha consulta", state)
+
+    assert turno["intent"] == "remarcar"
+    mock_anthropic.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_interpreter_preferencia_remarcacao_nao_chama_llm():
+    from app.conversation.interpreter import interpretar_turno
+
+    state = _state_base()
+    state["goal"] = "remarcar"
+    state["last_slots_offered"] = []
+
+    with patch("app.conversation.interpreter.anthropic.Anthropic") as mock_anthropic:
+        turno = await interpretar_turno("qualquer horário na semana seguinte", state)
+
+    assert turno["preferencia_horario"]["tipo"] == "qualquer"
+    mock_anthropic.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_interpreter_escolha_slot_nao_chama_llm():
+    from app.conversation.interpreter import interpretar_turno
+
+    state = _state_base()
+    state["goal"] = "remarcar"
+    state["last_slots_offered"] = [
+        {"datetime": "2026-05-25T08:00:00", "data_fmt": "segunda, 25/05", "hora": "8h"},
+    ]
+
+    with patch("app.conversation.interpreter.anthropic.Anthropic") as mock_anthropic:
+        turno = await interpretar_turno("segunda, 25/05 8h", state)
+
+    assert turno["escolha_slot"] == 1
+    mock_anthropic.assert_not_called()
 
 
 @pytest.mark.asyncio

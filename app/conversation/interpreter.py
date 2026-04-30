@@ -173,6 +173,16 @@ async def interpretar_turno(message: str, state: dict) -> dict:
     if os.environ.get("DISABLE_LLM_FOR_TESTS") == "true":
         return _heuristic_turno(message, state)
 
+    turno_heuristico = _heuristic_turno(message, state)
+    if _heuristic_is_confident(turno_heuristico, state):
+        logger.info(
+            "Interpreter sem LLM: intent=%s escolha_slot=%s pref=%s",
+            turno_heuristico.get("intent"),
+            turno_heuristico.get("escolha_slot"),
+            bool(turno_heuristico.get("preferencia_horario")),
+        )
+        return turno_heuristico
+
     collected_summary = (
         f"nome={cd['nome'] or '?'}, plano={cd['plano'] or '?'}, "
         f"modalidade={cd['modalidade'] or '?'}, pagamento={cd['forma_pagamento'] or '?'}"
@@ -409,6 +419,31 @@ def _one_of(v, valid) -> str | None:
 def _fallback(text: str) -> dict:
     """Interpretação heurística mínima quando o LLM falha."""
     return _heuristic_turno(text, {"collected_data": {}, "last_slots_offered": [], "history": []})
+
+
+def _heuristic_is_confident(turno: dict, state: dict) -> bool:
+    """Casos locais seguros em que não vale gastar LLM."""
+    if turno.get("escolha_slot") is not None:
+        return True
+
+    if any(turno.get(k) is not None for k in ("forma_pagamento", "modalidade", "plano", "objetivo")):
+        return True
+
+    if turno.get("confirmou_pagamento"):
+        return True
+
+    goal = state.get("goal")
+    if goal == "remarcar":
+        return (
+            turno.get("intent") in ("remarcar", "cancelar")
+            or turno.get("preferencia_horario") is not None
+            or bool(turno.get("correcao"))
+        )
+
+    if turno.get("intent") in ("remarcar", "cancelar", "confirmar_pagamento", "duvida_clinica"):
+        return True
+
+    return False
 
 
 def _empty_turno(intent: str = "fora_de_contexto") -> dict:
