@@ -1128,3 +1128,116 @@ def confirmar_pagamento(id_transacao: str) -> bool:
     except Exception as e:
         logger.error(f"Erro ao confirmar pagamento: {e}")
         return False
+
+
+# ── Busca de consultas para confirmação de presença ───────────────────────────
+
+_TIPOS_IGNORAR_AGENDA: set[int] = {4, 5, 6}  # Aniversario, Outro, Google
+
+
+def buscar_consultas_periodo(data_inicio: date, data_fim: date) -> list[dict]:
+    """
+    Busca consultas confirmadas em um período de datas (para lembretes de presença).
+
+    Cada item retornado: {primeiro_nome, telefone, datetime, tipo}.
+    tipo: 'consulta_presencial' | 'consulta_online' | 'retorno_presencial' |
+          'retorno_online' | 'pre_agendamento'
+    """
+    start_str = f"{data_inicio.isoformat()}T00:00:00"
+    end_str = f"{data_fim.isoformat()}T23:59:59"
+    try:
+        resp = requests.get(
+            f"{DIETBOX_API}/agenda",
+            headers=_headers(),
+            params={"Start": start_str, "End": end_str},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        items = resp.json().get("Data", [])
+    except Exception as e:
+        logger.error("Erro ao buscar consultas do período %s–%s: %s", data_inicio, data_fim, e)
+        return []
+
+    _carregar_locais()
+    resultado: list[dict] = []
+    for item in items:
+        if item.get("desmarcada"):
+            continue
+        if item.get("tipo", 0) in _TIPOS_IGNORAR_AGENDA:
+            continue
+        if not item.get("patient"):
+            continue
+        info = _extrair_info_agenda(item)
+        if info:
+            resultado.append(info)
+    return resultado
+
+
+def _extrair_info_agenda(item: dict) -> dict | None:
+    """Normaliza um item de agenda para envio de confirmação de presença."""
+    paciente = item.get("patient") or {}
+    nome_completo = (paciente.get("name") or item.get("namePatient") or "").strip()
+    if not nome_completo:
+        return None
+    primeiro_nome = nome_completo.split()[0].capitalize()
+
+    # Telefone — pode vir no item ou no objeto paciente
+    telefone = (
+        item.get("phonePatient") or
+        paciente.get("mobilephone") or paciente.get("MobilePhone") or
+        paciente.get("phone") or paciente.get("Phone") or ""
+    )
+    telefone = _normalizar_tel_presenca(str(telefone))
+
+    # Fallback: busca pelo ID do paciente na API
+    if not telefone:
+        id_pac = paciente.get("id")
+        if id_pac:
+            try:
+                dados = buscar_dados_paciente(int(id_pac))
+                for campo in ("MobilePhone", "mobilephone", "Phone", "phone", "celular"):
+                    tel = dados.get(campo) or ""
+                    if tel:
+                        telefone = _normalizar_tel_presenca(str(tel))
+                        break
+            except Exception as e:
+                logger.warning("Fallback telefone falhou (paciente %s): %s", id_pac, e)
+
+    if not telefone:
+        return None
+
+    # Data/hora
+    dt = _parse_agenda_datetime(item.get("inicio", ""), item.get("timezone"))
+    if not dt:
+        return None
+
+    # Tipo de atendimento (mesma lógica do thay)
+    tipo_num = item.get("tipo", 0)
+    id_local = str(item.get("idLocalAtendimento") or "").upper()
+    is_online = id_local in (_LOCAIS_ONLINE or set())
+    tem_servico = bool(item.get("idServico"))
+
+    if tipo_num == 2:
+        tipo = "pre_agendamento"
+    elif tipo_num == 3 and is_online:
+        tipo = "retorno_online"
+    elif tipo_num == 3:
+        tipo = "retorno_presencial"
+    elif tipo_num == 1 and not tem_servico:
+        tipo = "pre_agendamento"
+    elif tipo_num == 1 and is_online:
+        tipo = "consulta_online"
+    else:
+        tipo = "consulta_presencial"
+
+    return {"primeiro_nome": primeiro_nome, "telefone": telefone, "datetime": dt, "tipo": tipo}
+
+
+def _normalizar_tel_presenca(tel: str) -> str:
+    """Normaliza telefone para formato E.164 sem '+' (prefixo 55). Mín. 12 dígitos."""
+    digitos = "".join(c for c in tel if c.isdigit())
+    if not digitos:
+        return ""
+    if not digitos.startswith("55"):
+        digitos = "55" + digitos
+    return digitos if len(digitos) >= 12 else ""
