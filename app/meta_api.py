@@ -5,6 +5,8 @@ import hmac
 import httpx
 import os
 
+from app.config import get_meta_access_token, get_meta_phone_number_id
+
 META_API_BASE = "https://graph.facebook.com/v19.0"
 
 
@@ -22,8 +24,8 @@ class MetaAPIClient:
         phone_number_id: str | None = None,
         access_token: str | None = None,
     ):
-        self._phone_id = phone_number_id or os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "")
-        token = access_token or os.environ.get("WHATSAPP_TOKEN", "")
+        self._phone_id = phone_number_id or get_meta_phone_number_id()
+        token = access_token or get_meta_access_token()
         self._headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",

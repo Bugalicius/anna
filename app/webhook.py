@@ -316,8 +316,10 @@ async def process_message_debounced(message: dict, metadata: dict):
 async def process_message(message: dict, metadata: dict):
     """Processa uma mensagem em background. Deduplicação + roteamento."""
     from app.database import SessionLocal
+    from app.input_safety import sanitize_inbound_text
     from app.media_handler import analisar_comprovante_pagamento, processar_midia
     from app.models import Message, Contact, Conversation
+    from app.rate_limit import is_whatsapp_rate_limited
     from app.router import route_message
     import hashlib
     from datetime import datetime, UTC
@@ -325,6 +327,16 @@ async def process_message(message: dict, metadata: dict):
     meta_id = message.get("id", "")
     phone = message.get("from", "")
     msg_type = message.get("type", "")
+
+    # Deduplicacao atomica via Redis SET NX antes de qualquer trabalho caro.
+    if await _is_duplicate_message(meta_id):
+        logger.debug("Dedup Redis: mensagem %s ja processada, ignorando", meta_id)
+        return
+
+    phone_hash = hashlib.sha256(phone.encode()).hexdigest()[:64]
+    if await is_whatsapp_rate_limited(phone_hash):
+        return
+
     if msg_type == "interactive":
         interactive = message.get("interactive", {})
         itype = interactive.get("type", "")
@@ -369,10 +381,7 @@ async def process_message(message: dict, metadata: dict):
     else:
         text = message.get("text", {}).get("body", "") or "[mídia]"
 
-    # Deduplicacao atomica via Redis SET NX (camada primaria)
-    if await _is_duplicate_message(meta_id):
-        logger.debug("Dedup Redis: mensagem %s ja processada, ignorando", meta_id)
-        return
+    text = sanitize_inbound_text(text)
 
     with SessionLocal() as db:
         # Deduplicação: se já existe, ignora
@@ -382,7 +391,6 @@ async def process_message(message: dict, metadata: dict):
             return
 
         # Buscar ou criar contato (usando hash do phone; phone_e164 salvo para uso no remarketing)
-        phone_hash = hashlib.sha256(phone.encode()).hexdigest()[:64]
         contact = db.query(Contact).filter_by(phone_hash=phone_hash).first()
         if not contact:
             contact = Contact(

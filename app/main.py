@@ -10,6 +10,7 @@ from app.test_chat import router as test_chat_router
 from app.remarketing import create_scheduler
 from app.retry import _retry_failed_messages
 from app.database import engine, Base
+from app.config import validate_required_env
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -17,6 +18,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    validate_required_env()
     Base.metadata.create_all(bind=engine)  # Fallback se Alembic não rodou
 
     # Inicializa persistência de estado de conversa no Redis

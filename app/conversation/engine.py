@@ -16,6 +16,9 @@ O Planner LLM decide tudo em um único passo — sem loop de re-planejamento.
 from __future__ import annotations
 
 import logging
+import os
+import unicodedata
+import asyncio
 
 from app.conversation.state import (
     add_message,
@@ -39,6 +42,20 @@ class ConversationEngine:
     """
 
     async def handle_message(self, phone_hash: str, message: str, phone: str = "") -> list:
+        timeout = float(os.environ.get("TURN_TIMEOUT_SECONDS", "25"))
+        try:
+            return await asyncio.wait_for(
+                self._handle_message_impl(phone_hash, message, phone=phone),
+                timeout=timeout,
+            )
+        except asyncio.TimeoutError:
+            logger.error("Timeout geral do turno para hash=%s apos %.1fs", phone_hash[-8:], timeout)
+            return [
+                "Estou com instabilidade para processar sua mensagem agora. "
+                "Pode tentar novamente em alguns instantes? 💚"
+            ]
+
+    async def _handle_message_impl(self, phone_hash: str, message: str, phone: str = "") -> list:
         """
         Processa uma mensagem e retorna lista de respostas.
 
@@ -215,11 +232,38 @@ class ConversationEngine:
             "recusou_remarketing": "recusou_remarketing",
         }
         intent = turno.get("intent", "fora_de_contexto")
+        raw = turno.get("_raw_message", "")
+        if intent == "agendar" and state.get("goal") == "remarcar" and self._pedido_explicito_nova_consulta(raw):
+            state["goal"] = "agendar_consulta"
+            state["tipo_remarcacao"] = "nova_consulta"
+            state["appointment"]["consulta_atual"] = None
+            state["appointment"]["id_agenda"] = None
+            state["last_slots_offered"] = []
+            state["slots_pool"] = []
+            state["collected_data"]["status_paciente"] = "novo"
+            return
+
         new_goal = _MAP.get(intent)
         if new_goal and state.get("goal") == "desconhecido":
             state["goal"] = new_goal
         elif new_goal and intent in ("remarcar", "cancelar"):
             state["goal"] = new_goal
+
+    @staticmethod
+    def _pedido_explicito_nova_consulta(texto: str | None) -> bool:
+        if not texto:
+            return False
+        sem_acento = unicodedata.normalize("NFKD", str(texto))
+        t = "".join(ch for ch in sem_acento if not unicodedata.combining(ch)).lower()
+        fala_agendar = any(p in t for p in (
+            "agendar", "marcar", "nova consulta", "primeira consulta",
+            "consulta nova", "quero consulta", "quero uma consulta",
+        ))
+        nega_remarcacao = any(p in t for p in (
+            "nao e remarc", "nao quero remarc", "nao tenho consulta",
+            "nao tenho email cadastrado", "sem email cadastrado",
+        ))
+        return fala_agendar and ("nova" in t or "primeira" in t or nega_remarcacao)
 
 
 # ── Instância global ──────────────────────────────────────────────────────────

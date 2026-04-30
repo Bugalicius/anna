@@ -16,6 +16,7 @@ from unittest.mock import patch
 
 from app.router import route_message
 from app import router as _router
+from app.input_safety import sanitize_inbound_text
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -151,7 +152,7 @@ async def test_chat(body: ChatRequest):
         await route_message(
             phone=body.phone,
             phone_hash=phone_hash,
-            text=body.message,
+            text=sanitize_inbound_text(body.message),
             meta_message_id=f"test_{uuid4().hex}",
         )
 
