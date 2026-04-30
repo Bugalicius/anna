@@ -610,11 +610,8 @@ def _ask_field(campo: str, nome: str, state: dict) -> list:
     if campo == "nome":
         history = state.get("history", [])
         if len(history) <= 1:
-            return [MSG_BOAS_VINDAS, MSG_BOAS_VINDAS_BUTTONS]
-        return [
-            "Antes de continuar, pode me informar seu *nome e sobrenome*? 😊",
-            MSG_BOAS_VINDAS_BUTTONS,
-        ]
+            return [MSG_BOAS_VINDAS]
+        return ["Antes de continuar, pode me informar seu *nome e sobrenome*? 😊"]
     if campo == "status_paciente":
         primeiro = nome.split()[0] if nome else ""
         body = (
