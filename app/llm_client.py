@@ -23,6 +23,7 @@ from __future__ import annotations
 import base64
 import logging
 import os
+import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -120,12 +121,25 @@ def _gemini_text(system: str, user: str, max_tokens: int, temperature: float) ->
         max_output_tokens=max_tokens,
         temperature=temperature,
     )
-    response = client.models.generate_content(
-        model=_model_text(),
-        contents=user,
-        config=config,
-    )
-    return (getattr(response, "text", None) or "").strip()
+    last_exc: Exception | None = None
+    for attempt, delay in enumerate([0, 2, 4, 8]):
+        if delay:
+            time.sleep(delay)
+        try:
+            response = client.models.generate_content(
+                model=_model_text(),
+                contents=user,
+                config=config,
+            )
+            return (getattr(response, "text", None) or "").strip()
+        except Exception as e:
+            is_429 = "429" in str(e) or "quota" in str(e).lower() or "rate" in str(e).lower()
+            if is_429 and attempt < 3:
+                logger.warning("Gemini 429 (tentativa %d/3), aguardando %ds...", attempt + 1, [2, 4, 8][attempt])
+                last_exc = e
+                continue
+            raise
+    raise last_exc  # type: ignore[misc]
 
 
 def _gemini_vision(
@@ -150,12 +164,25 @@ def _gemini_vision(
         temperature=temperature,
     )
     image_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
-    response = client.models.generate_content(
-        model=_model_vision(),
-        contents=[user_text, image_part],
-        config=config,
-    )
-    return (getattr(response, "text", None) or "").strip()
+    last_exc: Exception | None = None
+    for attempt, delay in enumerate([0, 2, 4, 8]):
+        if delay:
+            time.sleep(delay)
+        try:
+            response = client.models.generate_content(
+                model=_model_vision(),
+                contents=[user_text, image_part],
+                config=config,
+            )
+            return (getattr(response, "text", None) or "").strip()
+        except Exception as e:
+            is_429 = "429" in str(e) or "quota" in str(e).lower() or "rate" in str(e).lower()
+            if is_429 and attempt < 3:
+                logger.warning("Gemini vision 429 (tentativa %d/3), aguardando %ds...", attempt + 1, [2, 4, 8][attempt])
+                last_exc = e
+                continue
+            raise
+    raise last_exc  # type: ignore[misc]
 
 
 # ── Implementação Anthropic (fallback) ────────────────────────────────────────
