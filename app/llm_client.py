@@ -28,6 +28,10 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+# ── Estado interno ────────────────────────────────────────────────────────────
+
+_TEST_OVERRIDE: Any | None = None
+
 # ── Configuração ──────────────────────────────────────────────────────────────
 
 
