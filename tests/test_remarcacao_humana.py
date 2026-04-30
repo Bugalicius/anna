@@ -133,6 +133,36 @@ async def test_remarcacao_preferencia_corrigida_reconsulta_mesmo_apos_consultar_
 
 
 @pytest.mark.asyncio
+async def test_remarcacao_escolha_slot_texto_visivel_confirma_remarcacao():
+    from app.conversation.planner import decidir_acao
+
+    state = _state_retorno()
+    state["last_action"] = "consultar_slots_remarcar"
+    state["collected_data"]["preferencia_horario"] = {
+        "tipo": "qualquer",
+        "turno": None,
+        "hora": None,
+        "dia_semana": None,
+        "descricao": "qualquer horario",
+    }
+    slot = {"datetime": "2026-05-11T17:00:00", "data_fmt": "segunda, 11/05", "hora": "17h"}
+    state["last_slots_offered"] = [slot]
+    turno = {
+        "intent": "remarcar",
+        "escolha_slot": 1,
+        "preferencia_horario": None,
+        "correcao": None,
+    }
+
+    plano = await decidir_acao(turno, state)
+
+    assert plano["action"] == "execute_tool"
+    assert plano["tool"] == "remarcar_dietbox"
+    assert plano["params"]["novo_slot"] == slot
+    assert plano["update_appointment"]["slot_escolhido"] == slot
+
+
+@pytest.mark.asyncio
 async def test_remarcacao_pede_outros_horarios_amplia_busca():
     from app.conversation.planner import decidir_acao
 

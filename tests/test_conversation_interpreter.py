@@ -128,6 +128,43 @@ async def test_interpreter_texto_visivel_do_slot_resolve_escolha():
 
 
 @pytest.mark.asyncio
+async def test_interpreter_slot_visivel_prioriza_escolha_sobre_preferencia():
+    from app.conversation.interpreter import interpretar_turno
+
+    state = _state_base()
+    state["goal"] = "remarcar"
+    state["collected_data"]["preferencia_horario"] = {
+        "tipo": "qualquer",
+        "turno": None,
+        "hora": None,
+        "dia_semana": None,
+        "descricao": "qualquer horario",
+    }
+    state["last_slots_offered"] = [
+        {"datetime": "2026-05-11T17:00:00", "data_fmt": "segunda, 11/05", "hora": "17h"},
+    ]
+
+    fake_response = MagicMock()
+    fake_response.content = [
+        MagicMock(
+            text=(
+                '{"intent":"remarcar","escolha_slot":null,"confirmou_pagamento":false,'
+                '"tem_pergunta":false,"preferencia_horario":null}'
+            )
+        )
+    ]
+    fake_client = MagicMock()
+    fake_client.messages.create.return_value = fake_response
+
+    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+        turno = await interpretar_turno("segunda, 11/05 17h", state)
+
+    assert turno["escolha_slot"] == 1
+    assert turno["preferencia_horario"] is None
+    assert turno["correcao"] is None
+
+
+@pytest.mark.asyncio
 async def test_interpreter_midia_em_pagamento_confirma_pagamento():
     from app.conversation.interpreter import interpretar_turno
 

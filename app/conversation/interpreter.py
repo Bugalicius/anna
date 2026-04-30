@@ -273,6 +273,10 @@ async def interpretar_turno(message: str, state: dict) -> dict:
         # Ex: "quarta, 29/04 10h", "29/04 10h", "quarta"
         if turno["escolha_slot"] is None and state.get("last_slots_offered"):
             turno["escolha_slot"] = _match_slot_choice_from_text(message, state["last_slots_offered"])
+        if turno["escolha_slot"] is not None:
+            turno["preferencia_horario"] = None
+            if (turno.get("correcao") or {}).get("campo") == "preferencia_horario":
+                turno["correcao"] = None
 
         # Heurística pós-LLM: resposta de botão interativo (ID normalizado)
         if turno["forma_pagamento"] is None and msg_lower in ("pix", "cartao"):
