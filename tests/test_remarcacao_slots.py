@@ -57,7 +57,31 @@ async def test_remarcacao_mesma_semana_usa_frase_desistencias():
         },
     )
 
-    assert resposta[0] == "Tive desistências essa semana:"
+    assert len(resposta) == 1
+    assert resposta[0]["_interactive"] == "button"
+    assert resposta[0]["body"].startswith("Tive desistências essa semana:")
+
+
+@pytest.mark.asyncio
+async def test_remarcacao_slots_sem_aviso_envia_apenas_botoes():
+    from app.conversation.responder import gerar_resposta
+    from app.conversation.state import create_state
+
+    state = create_state("hash", "5531999990000")
+    state["goal"] = "remarcar"
+    resposta = await gerar_resposta(
+        state,
+        {"action": "execute_tool", "tool": "consultar_slots_remarcar"},
+        {
+            "slots": [
+                {"datetime": "2026-05-18T16:00:00", "data_fmt": "segunda, 18/05", "hora": "16h"},
+            ],
+        },
+    )
+
+    assert len(resposta) == 1
+    assert resposta[0]["_interactive"] == "button"
+    assert "Olhei aqui" not in resposta[0]["body"]
 
 
 @pytest.mark.asyncio
