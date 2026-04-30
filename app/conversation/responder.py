@@ -725,7 +725,7 @@ def _build_confirmacao(state: dict) -> list:
              "caption": "Como se preparar para a consulta online"},
             {"media_type": "document", "media_key": "pdf_guia_circunf_mulher",
              "caption": "Guia de medidas corporais"},
-            f"Contato da nutricionista: {kb.contatos['numero_nutri_publico']}",
+            # Contato da nutricionista é enviado em send_formulario_link (após pagamento confirmado), não aqui
             "Não esquece de mandar a foto e as medidas no número da Nutri 💚",
         ]
     return [

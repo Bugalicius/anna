@@ -136,14 +136,15 @@ async def escalar_duvida(
     D-07: outro motivo → relay Breno
     """
     if motivo == "duvida_clinica" and is_paciente_cadastrado:
-        # D-05: envia mensagem + contato VCard da Thaynara
+        # D-05: envia mensagem. Contato da Thaynara NUNCA é enviado automaticamente.
+        # Apenas Breno (número interno) pode autorizar o envio do contato ao paciente.
         await meta_client.send_text(telefone_paciente, _MSG_DUVIDA_CLINICA_PACIENTE)
-        await meta_client.send_contact(telefone_paciente, "Thaynara Teixeira", _NUMERO_THAYNARA)
         logger.info(
-            "D-05: contato Thaynara enviado ao paciente cadastrado %s",
+            "D-05: dúvida clínica recebida de paciente cadastrado %s, encaminhando ao Breno",
             telefone_paciente[-4:],
         )
-        return "contato_thaynara"
+        # D-05 agora usa relay (não mais direct contact) — vai para D-06/D-07
+        is_paciente_cadastrado = False  # força o fluxo de relay abaixo
 
     # D-06 e D-07: relay para Breno
     await meta_client.send_text(telefone_paciente, _MSG_AGUARDANDO_VERIFICACAO)
