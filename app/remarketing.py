@@ -12,11 +12,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from datetime import datetime, UTC, timedelta
+import random
+from datetime import date, datetime, UTC, timedelta
 
 import redis.asyncio as aioredis
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.orm import Session
 from app.models import Contact, RemarketingQueue
 
@@ -363,6 +365,189 @@ async def _dispatch_from_db(
             # positions 2/3 sem template aprovado: nao muda status — retry no proximo ciclo
 
 
+# ── Confirmação de presença ───────────────────────────────────────────────────
+
+_DIAS_SEMANA_PT = {
+    0: "Segunda-feira", 1: "Terça-feira", 2: "Quarta-feira",
+    3: "Quinta-feira", 4: "Sexta-feira", 5: "Sábado", 6: "Domingo",
+}
+
+_ENDERECO_PRESENCIAL = (
+    "📍 Aura Clinic & Beauty – Rua Melo Franco, 204, Sala 103, Jardim da Glória – Vespasiano."
+)
+
+
+def _formatar_dt(dt: datetime) -> str:
+    dia = _DIAS_SEMANA_PT[dt.weekday()]
+    hora = dt.strftime("%Hh%M") if dt.minute != 0 else dt.strftime("%Hh")
+    return f"{dia}, {dt.day:02d}/{dt.month:02d}/{dt.year}, às {hora}"
+
+
+def _corpo_confirmacao_sexta(primeiro_nome: str, dt: datetime, tipo: str) -> str:
+    """
+    Corpo da mensagem de sexta (com botões interativos).
+    Inclui orientações específicas por tipo, mas sem botão embutido no texto.
+    """
+    data_fmt = _formatar_dt(dt)
+
+    _POLITICA = (
+        "👉 Caso precise cancelar ou remarcar, avise com pelo menos 24h de antecedência.\n"
+        "⚠️ Sem aviso no prazo, a consulta é considerada realizada e o valor não é reembolsado."
+    )
+
+    if tipo in ("consulta_presencial", "retorno_presencial"):
+        tipo_label = "retorno presencial" if tipo == "retorno_presencial" else "consulta presencial"
+        return (
+            f"Oi, {primeiro_nome}! Tudo bem?\n\n"
+            "Aqui é a Ana, assistente da Nutri Thaynara.\n"
+            f"Sua {tipo_label} está marcada para {data_fmt}.\n\n"
+            f"{_POLITICA}\n\n"
+            f"{_ENDERECO_PRESENCIAL}\n"
+            "⏳ Tolerância de atraso: 10 min.\n"
+            "Lembre-se de vir com short e top/camiseta de treino 💚"
+        )
+    elif tipo in ("consulta_online", "retorno_online"):
+        tipo_label = "retorno online" if tipo == "retorno_online" else "consulta online"
+        extras = (
+            "\n\nNão se esqueça:\n"
+            "  • Pese-se pela manhã\n"
+            "  • Envie as fotos antes da consulta (no número da nutri)\n"
+            "  • Certifique-se de ter boa conexão de internet\n"
+            "⏳ Tolerância de atraso: 10 min."
+        )
+        return (
+            f"Oi, {primeiro_nome}! Tudo bem?\n\n"
+            "Aqui é a Ana, assistente da Nutri Thaynara.\n"
+            f"Seu {tipo_label} está marcado para {data_fmt}.\n\n"
+            f"{_POLITICA}"
+            f"{extras}"
+        )
+    else:  # pre_agendamento
+        return (
+            f"Oi, {primeiro_nome}! Tudo bem?\n\n"
+            "Aqui é a Ana, assistente da Nutri Thaynara.\n"
+            f"Sua consulta pré-agendada está marcada para {data_fmt}.\n\n"
+            f"{_POLITICA}"
+        )
+
+
+def _msg_lembrete_vespera(primeiro_nome: str, dt: datetime, tipo: str) -> str:
+    """Mensagem simples de lembrete na véspera (18h), sem botões."""
+    data_fmt = _formatar_dt(dt)
+
+    if tipo in ("consulta_online", "retorno_online"):
+        extras = (
+            "\n\nNão esqueça de se pesar pela manhã e enviar as fotos antes da consulta 📸"
+        )
+    elif tipo in ("consulta_presencial", "retorno_presencial"):
+        extras = "\n\nLembra de chegar com 10 minutinhos de antecedência 😊"
+    else:
+        extras = ""
+
+    return (
+        f"Oi, {primeiro_nome}! Passando só para te lembrar da sua consulta *amanhã*, {data_fmt} 💚"
+        f"{extras}\n\n"
+        "Qualquer dúvida ou imprevisto, me avisa por aqui!"
+    )
+
+
+_BOTOES_CONFIRMACAO = [
+    {"id": "confirmar_presenca", "title": "Confirmar ✅"},
+    {"id": "remarcar_consulta", "title": "Preciso remarcar 📅"},
+]
+
+
+async def _disparar_confirmacoes_sexta(consultas: list[dict]) -> None:
+    """Envia mensagem com botões interativos (confirmar / remarcar) para cada consulta."""
+    from app.meta_api import MetaAPIClient
+
+    meta = MetaAPIClient(
+        phone_number_id=os.environ.get("WHATSAPP_PHONE_NUMBER_ID", ""),
+        access_token=os.environ.get("WHATSAPP_TOKEN", ""),
+    )
+
+    for consulta in consultas:
+        telefone = consulta["telefone"]
+        corpo = _corpo_confirmacao_sexta(
+            consulta["primeiro_nome"], consulta["datetime"], consulta["tipo"]
+        )
+        try:
+            await meta.send_interactive_buttons(
+                to=telefone, body=corpo, buttons=_BOTOES_CONFIRMACAO,
+            )
+            logger.info(
+                "Confirmação semanal (botões) enviada → %s [%s]", telefone[-4:], consulta["tipo"],
+            )
+        except Exception as e:
+            error_str = str(e)
+            if "131026" in error_str or "re-engage" in error_str.lower():
+                logger.warning("Janela 24h fechada para %s — confirmação semanal não enviada", telefone[-4:])
+            else:
+                logger.error("Falha ao enviar confirmação semanal para %s: %s", telefone[-4:], e)
+        await asyncio.sleep(random.randint(8, 20))
+
+
+async def _disparar_lembretes_vespera(consultas: list[dict]) -> None:
+    """Envia lembrete simples de texto para cada consulta do dia seguinte."""
+    from app.meta_api import MetaAPIClient
+
+    meta = MetaAPIClient(
+        phone_number_id=os.environ.get("WHATSAPP_PHONE_NUMBER_ID", ""),
+        access_token=os.environ.get("WHATSAPP_TOKEN", ""),
+    )
+
+    for consulta in consultas:
+        telefone = consulta["telefone"]
+        mensagem = _msg_lembrete_vespera(
+            consulta["primeiro_nome"], consulta["datetime"], consulta["tipo"]
+        )
+        try:
+            await meta.send_text(to=telefone, text=mensagem)
+            logger.info("Lembrete véspera enviado → %s [%s]", telefone[-4:], consulta["tipo"])
+        except Exception as e:
+            error_str = str(e)
+            if "131026" in error_str or "re-engage" in error_str.lower():
+                logger.warning("Janela 24h fechada para %s — lembrete véspera não enviado", telefone[-4:])
+            else:
+                logger.error("Falha ao enviar lembrete véspera para %s: %s", telefone[-4:], e)
+        await asyncio.sleep(random.randint(8, 20))
+
+
+# ── Jobs de confirmação de presença (DESATIVADOS — ativar no lançamento) ──────
+# Para ativar: descomentar os add_job correspondentes em create_scheduler().
+
+async def _confirmacao_semanal() -> None:
+    """Job: toda sexta às 13h — envia confirmação com botões para consultas da semana seguinte."""
+    from app.agents.dietbox_worker import buscar_consultas_periodo
+
+    hoje = date.today()
+    dias_ate_segunda = (7 - hoje.weekday()) % 7 or 7
+    proxima_segunda = hoje + timedelta(days=dias_ate_segunda)
+    proxima_sexta = proxima_segunda + timedelta(days=4)
+
+    logger.info("Confirmação semanal: buscando consultas de %s a %s", proxima_segunda, proxima_sexta)
+    try:
+        consultas = buscar_consultas_periodo(proxima_segunda, proxima_sexta)
+        logger.info("Confirmação semanal: %d consulta(s) encontrada(s)", len(consultas))
+        await _disparar_confirmacoes_sexta(consultas)
+    except Exception as e:
+        logger.error("Falha no job de confirmação semanal: %s", e)
+
+
+async def _lembrete_vespera() -> None:
+    """Job: todo dia às 18h — envia lembrete de texto para consultas do dia seguinte."""
+    from app.agents.dietbox_worker import buscar_consultas_periodo
+
+    amanha = date.today() + timedelta(days=1)
+    logger.info("Lembrete véspera: buscando consultas de %s", amanha)
+    try:
+        consultas = buscar_consultas_periodo(amanha, amanha)
+        logger.info("Lembrete véspera: %d consulta(s) encontrada(s)", len(consultas))
+        await _disparar_lembretes_vespera(consultas)
+    except Exception as e:
+        logger.error("Falha no job de lembrete véspera: %s", e)
+
+
 # ── Factory do scheduler ──────────────────────────────────────────────────────
 
 def create_scheduler() -> AsyncIOScheduler:
@@ -378,4 +563,16 @@ def create_scheduler() -> AsyncIOScheduler:
         _check_escalation_reminders, "interval", minutes=5,
         id="escalation_reminders", replace_existing=True,
     )
+    # ── Confirmação de presença — DESATIVADA até o lançamento ─────────────────
+    # Descomentar quando pronto para ativar:
+    # scheduler.add_job(
+    #     _confirmacao_semanal,
+    #     CronTrigger(day_of_week="fri", hour=13, minute=0, timezone="America/Sao_Paulo"),
+    #     id="confirmacao_semanal", replace_existing=True,
+    # )
+    # scheduler.add_job(
+    #     _lembrete_vespera,
+    #     CronTrigger(hour=18, minute=0, timezone="America/Sao_Paulo"),
+    #     id="lembrete_vespera", replace_existing=True,
+    # )
     return scheduler
