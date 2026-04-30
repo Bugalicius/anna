@@ -77,7 +77,7 @@ def _patch_db(result):
 
 @pytest.mark.asyncio
 async def test_duvida_clinica_paciente_cadastrado_envia_vcard():
-    """D-05: paciente cadastrado com dúvida clínica recebe contato da Thaynara."""
+    """D-05: paciente cadastrado com dúvida clínica → relay ao Breno (contato nunca é enviado automaticamente)."""
     from app.escalation import escalar_duvida
 
     meta = _make_meta_client()
@@ -92,14 +92,12 @@ async def test_duvida_clinica_paciente_cadastrado_envia_vcard():
         is_paciente_cadastrado=True,
     )
 
-    assert resultado == "contato_thaynara"
-    # Deve enviar mensagem de texto E contato (VCard)
+    # D-05 agora usa relay (não mais direct contact) — Breno pode autorizar o envio do contato
+    assert resultado == "relay_breno"
+    # Deve enviar mensagem de texto ao paciente (aguardando)
     assert meta.send_text.called
-    assert meta.send_contact.called
-
-    # O contato enviado deve ser o número da Thaynara (5531991394759)
-    contact_args = meta.send_contact.call_args
-    assert "5531991394759" in str(contact_args)
+    # NOT send_contact — contato NUNCA é enviado automaticamente (segurança de privacidade)
+    assert not meta.send_contact.called
 
 
 # ── Test 2: duvida_clinica + lead → relay Breno ───────────────────────────────

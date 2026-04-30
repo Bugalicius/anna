@@ -196,13 +196,23 @@ def analisar_comprovante_pagamento(content: bytes, mime_type: str) -> dict:
             mime_type=mime_type,
             max_tokens=300,
         )
+        logger.debug("Raw LLM response para análise de comprovante: %s", raw[:300])
         raw = llm_client.strip_json_fences(raw)
         data = json.loads(raw)
         valor = data.get("valor")
+        logger.debug("Valor bruto extraído do LLM: %s (tipo: %s)", valor, type(valor).__name__)
+
         try:
             valor = float(valor) if valor is not None else None
-        except Exception:
-            valor = _parse_brl_value(str(valor))
+        except (TypeError, ValueError):
+            valor_str = str(valor).strip() if valor is not None else ""
+            logger.debug("Tentando parse BRL de: %s", valor_str)
+            valor = _parse_brl_value(valor_str)
+            if valor is not None:
+                logger.info("Valor BRL parseado com sucesso: %s → %.2f", valor_str, valor)
+            else:
+                logger.warning("Falha ao parsear valor BRL: %s", valor_str)
+
         return {
             "eh_comprovante": bool(data.get("eh_comprovante")),
             "valor": valor,
@@ -210,19 +220,45 @@ def analisar_comprovante_pagamento(content: bytes, mime_type: str) -> dict:
             "favorecido": data.get("favorecido"),
         }
     except Exception as e:
-        logger.error("Erro ao analisar comprovante: %s", e)
+        logger.error("Erro ao analisar comprovante: %s (raw até agora: %s)", e, locals().get("raw", "N/A")[:200])
         return {"eh_comprovante": False, "valor": None, "texto_extraido": "", "favorecido": None}
 
 
 def _parse_brl_value(text: str) -> float | None:
+    """
+    Parse valor em reais em múltiplos formatos:
+    - R$ 150,00 (com símbolo e vírgula)
+    - 150.00 (ponto decimal)
+    - 150,00 (vírgula decimal)
+    - 150 (inteiro)
+    """
     text = text.strip()
     if not text:
         return None
-    m = re.search(r"(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:[.,]\d{2})?)", text)
-    if not m:
-        return None
-    raw = m.group(1).replace(".", "").replace(",", ".")
+
+    # Remove R$, espaços e símbolos de moeda
+    text = re.sub(r"[R$\s]+", "", text)
+
+    # Detecta se usa ponto ou vírgula como separador decimal
+    # Padrão: 1.234,56 (europeu) vs 1,234.56 (americano)
+    pontos = text.count(".")
+    virgulas = text.count(",")
+
+    if pontos > 0 and virgulas > 0:
+        # Ambos presentes: o último é o decimal
+        if text.rfind(".") > text.rfind(","):
+            # Ponto é decimal: 1.234.567,89 → remove pontos, troca vírgula por ponto
+            text = text.replace(".", "").replace(",", ".")
+        else:
+            # Vírgula é decimal: 1.234,56 → remove pontos, vírgula vira ponto
+            text = text.replace(".", "").replace(",", ".")
+    elif virgulas > 0:
+        # Apenas vírgulas: tratar como decimal
+        text = text.replace(",", ".")
+    # elif pontos > 0: mantém como está (já em formato decimal)
+
+    # Tenta fazer parse
     try:
-        return float(raw)
+        return float(text)
     except ValueError:
         return None
