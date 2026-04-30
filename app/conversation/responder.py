@@ -25,12 +25,17 @@ logger = logging.getLogger(__name__)
 MSG_BOAS_VINDAS = (
     "Olá! Que bom ter você por aqui 💚\n\n"
     "Sou a Ana, responsável pelos agendamentos da nutricionista Thaynara Teixeira.\n\n"
-    "Pra começar, você poderia me informar:\n"
-    "• Qual seu nome e sobrenome?\n"
-    "• É sua primeira consulta ou você já é paciente?\n\n"
-    "Ah, um aviso importante: no momento a Thaynara não realiza atendimento "
-    "para gestantes e menores de 16 anos."
+    "Pra começar, qual é o seu nome e sobrenome?"
 )
+
+MSG_BOAS_VINDAS_BUTTONS = {
+    "_interactive": "button",
+    "body": "É sua primeira consulta com a Thaynara ou você já é paciente?",
+    "buttons": [
+        {"id": "primeira_consulta", "title": "Primeira consulta"},
+        {"id": "ja_paciente", "title": "Já sou paciente"},
+    ],
+}
 
 MSG_OBJETIVOS = (
     "Ótimo, {nome}! 😊\n\n"
@@ -605,16 +610,27 @@ def _ask_field(campo: str, nome: str, state: dict) -> list:
     if campo == "nome":
         history = state.get("history", [])
         if len(history) <= 1:
-            return [MSG_BOAS_VINDAS]
+            return [MSG_BOAS_VINDAS, MSG_BOAS_VINDAS_BUTTONS]
         return [
-            "Antes de continuar, pode me informar seu *nome e sobrenome* "
-            "e se é sua *primeira consulta* ou se você *já é paciente*? 😊"
+            "Antes de continuar, pode me informar seu *nome e sobrenome*? 😊",
+            MSG_BOAS_VINDAS_BUTTONS,
         ]
     if campo == "status_paciente":
-        return [
-            f"Obrigada, {nome.split()[0] if nome else ''}! 😊\n\n"
+        primeiro = nome.split()[0] if nome else ""
+        body = (
+            f"Obrigada, {primeiro}! 😊\n\n"
             "É sua primeira consulta com a Thaynara ou você já é paciente?"
-        ]
+            if primeiro else
+            "É sua primeira consulta com a Thaynara ou você já é paciente?"
+        )
+        return [{
+            "_interactive": "button",
+            "body": body,
+            "buttons": [
+                {"id": "primeira_consulta", "title": "Primeira consulta"},
+                {"id": "ja_paciente", "title": "Já sou paciente"},
+            ],
+        }]
     if campo == "cadastro":
         primeiro_nome = nome.split()[0] if nome else "você"
         return [MSG_CADASTRO.format(nome=primeiro_nome)]

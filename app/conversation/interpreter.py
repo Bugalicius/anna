@@ -291,6 +291,16 @@ async def interpretar_turno(message: str, state: dict) -> dict:
             if turno["intent"] == "fora_de_contexto":
                 turno["intent"] = "agendar"
 
+        # Heurística: botão interativo de status_paciente (boas-vindas)
+        if turno["status_paciente"] is None and msg_lower == "primeira_consulta":
+            turno["status_paciente"] = "novo"
+            if turno["intent"] == "fora_de_contexto":
+                turno["intent"] = "agendar"
+        if turno["status_paciente"] is None and msg_lower == "ja_paciente":
+            turno["status_paciente"] = "retorno"
+            if turno["intent"] == "fora_de_contexto":
+                turno["intent"] = "agendar"
+
         # Heurística: botão interativo de objetivo
         _OBJETIVO_BUTTONS = {"emagrecer", "ganhar_massa", "lipedema", "outro"}
         if turno["objetivo"] is None and msg_lower in _OBJETIVO_BUTTONS:
