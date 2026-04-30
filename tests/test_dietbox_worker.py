@@ -649,12 +649,12 @@ def test_verificar_lancamento_financeiro_excecao_retorna_false():
 # ── alterar_agendamento ───────────────────────────────────────────────────────
 
 _AGENDA_MOCK = {
-    "idPaciente": 42,
+    "patient": {"id": 42},
     "idLocalAtendimento": "LOCAL-001",
     "idServico": "SVC-001",
     "tipo": 1,
-    "isOnline": False,
-    "isVideoConference": False,
+    "online": False,
+    "videoconferencia": False,
     "timezone": "America/Sao_Paulo",
 }
 
@@ -732,7 +732,7 @@ def test_alterar_agendamento_timeout_retorna_false():
 
 
 def test_alterar_agendamento_payload_correto():
-    """alterar_agendamento envia inicio, fim e descricao corretos via PUT."""
+    """alterar_agendamento envia DTO compatível com create via PUT."""
     from datetime import datetime, timedelta, timezone
     BRT = timezone(timedelta(hours=-3))
     novo_dt = datetime(2026, 4, 14, 9, 0, tzinfo=BRT)
@@ -745,11 +745,14 @@ def test_alterar_agendamento_payload_correto():
         alterar_agendamento("ID-123", novo_dt, observacao)
 
     payload = mock_put.call_args[1]["json"]
-    assert "inicio" in payload
-    assert "fim" in payload
-    assert "descricao" in payload
-    assert payload["descricao"] == observacao
-    assert "2026-04-14T09:00:00" in payload["inicio"]
+    assert set(payload) == {"Agenda", "Lancamento"}
+    agenda = payload["Agenda"]
+    assert agenda["IdPaciente"] == 42
+    assert agenda["IdLocalAtendimento"] == "LOCAL-001"
+    assert agenda["IdServico"] == "SVC-001"
+    assert agenda["Descricao"] == observacao
+    assert "2026-04-14T09:00:00" in agenda["Start"]
+    assert "2026-04-14T10:00:00" in agenda["End"]
 
 
 def test_alterar_agendamento_url_correta():

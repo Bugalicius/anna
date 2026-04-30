@@ -827,6 +827,25 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
         pref_turno = turno.get("preferencia_horario")
         pref_atual = cd.get("preferencia_horario")
 
+        try:
+            escolha = turno.get("escolha_slot")
+            escolha_valida = bool(escolha and slots and 1 <= int(str(escolha)) <= len(slots))
+        except (ValueError, TypeError):
+            escolha_valida = False
+
+        if escolha_valida and state.get("last_tool_success") is not True:
+            slot_obj = slots[int(str(turno.get("escolha_slot"))) - 1]
+            return _plano(
+                EXECUTE_TOOL,
+                tool="remarcar_dietbox",
+                params={
+                    "id_agenda_original": appt.get("id_agenda"),
+                    "novo_slot": slot_obj,
+                    "consulta_atual": appt.get("consulta_atual"),
+                },
+                update_appointment={"slot_escolhido": slot_obj},
+            )
+
         if not pref_atual and not slots and not slot_escolhido:
             return _plano(
                 ASK_FIELD,
@@ -861,12 +880,6 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
             and last_action in ("consultar_slots_remarcar", "ask_slot_choice")
             and intent not in ("tirar_duvida", "duvida_clinica", "cancelar", "recusou_remarketing")
         ):
-            try:
-                escolha = turno.get("escolha_slot")
-                escolha_valida = bool(escolha and 1 <= int(str(escolha)) <= len(slots))
-            except (ValueError, TypeError):
-                escolha_valida = False
-
             if escolha_valida:
                 slot_obj = slots[int(str(escolha)) - 1]
                 return _plano(

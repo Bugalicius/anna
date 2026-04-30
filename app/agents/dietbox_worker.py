@@ -808,24 +808,29 @@ def alterar_agendamento(
                 return v
         return None
 
-    # Payload mínimo — apenas campos escalares necessários.
-    # Não espalhar current inteiro para evitar objetos aninhados (servico, paciente,
-    # localAtendimento, etc.) que o Dietbox rejeita com 500.
-    payload = {
-        "inicio": novo_dt_inicio.isoformat(),
-        "fim": novo_dt_fim.isoformat(),
-        "timezone": _get("timezone", "Timezone") or "America/Sao_Paulo",
-        "idPaciente": _get("idPaciente", "IdPaciente"),
-        "idLocalAtendimento": _get("idLocalAtendimento", "IdLocalAtendimento"),
-        "idServico": _get("idServico", "IdServico"),
-        "tipo": _get("tipo", "Type") or 1,
-        "isOnline": _get("isOnline", "IsOnline") or False,
-        "isVideoConference": _get("isVideoConference", "IsVideoConference") or False,
-        "alert": True,
-        "allDay": False,
-        "descricao": observacao or _get("descricao", "Descricao") or "",
+    patient = current.get("patient") or current.get("Paciente") or {}
+    id_paciente = _get("idPaciente", "IdPaciente") or patient.get("id") or patient.get("Id")
+
+    # Mesmo contrato usado no create: envelope Agenda + DTO em PascalCase.
+    # O GET do Dietbox retorna parte dos campos em lowercase/português, então
+    # preservamos os escalares e normalizamos só na saída do PUT.
+    agenda_dto = {
+        "Type": _get("Type", "tipo") or 1,
+        "Start": novo_dt_inicio.isoformat(),
+        "End": novo_dt_fim.isoformat(),
+        "Timezone": _get("Timezone", "timezone") or "America/Sao_Paulo",
+        "IdPaciente": id_paciente,
+        "IdLocalAtendimento": _get("IdLocalAtendimento", "idLocalAtendimento"),
+        "IdServico": _get("IdServico", "idServico"),
+        "IsOnline": bool(_get("IsOnline", "isOnline", "online")),
+        "IsVideoConference": bool(_get("IsVideoConference", "isVideoConference", "videoconferencia")),
+        "Alert": True,
+        "Confirmed": bool(_get("Confirmed", "confirmada", "confirmado")),
+        "AllDay": bool(_get("AllDay", "allDay", "todoDia")),
+        "Descricao": observacao or _get("Descricao", "descricao") or "",
     }
-    payload = {k: v for k, v in payload.items() if v is not None}
+    agenda_dto = {k: v for k, v in agenda_dto.items() if v is not None}
+    payload = {"Agenda": agenda_dto, "Lancamento": None}
 
     try:
         resp = requests.put(
@@ -834,6 +839,19 @@ def alterar_agendamento(
             json=payload,
             timeout=20,
         )
+        if not resp.ok and resp.status_code >= 500:
+            # Algumas instalações aceitam o DTO direto no PUT. Tenta uma vez
+            # sem o envelope antes de declarar falha.
+            logger.warning(
+                "PUT agendamento com envelope falhou %s: status=%s body=%s; tentando DTO direto",
+                id_agenda, resp.status_code, resp.text[:300],
+            )
+            resp = requests.put(
+                f"{DIETBOX_API}/agenda/{id_agenda}",
+                headers=_headers(),
+                json=agenda_dto,
+                timeout=20,
+            )
         if not resp.ok:
             logger.error(
                 "Falha PUT agendamento %s: status=%s body=%s",
