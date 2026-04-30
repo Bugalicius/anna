@@ -328,7 +328,7 @@ async def interpretar_turno(message: str, state: dict) -> dict:
 
     except Exception as e:
         logger.error("Erro ao interpretar turno: %s", e)
-        return _fallback(message)
+        return _heuristic_turno(message, state)
 
 
 # ── Parsing ───────────────────────────────────────────────────────────────────

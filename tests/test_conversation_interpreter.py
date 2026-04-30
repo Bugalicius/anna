@@ -165,6 +165,28 @@ async def test_interpreter_slot_visivel_prioriza_escolha_sobre_preferencia():
 
 
 @pytest.mark.asyncio
+async def test_interpreter_fallback_com_erro_llm_preserva_slots_do_estado():
+    from app.conversation.interpreter import interpretar_turno
+
+    state = _state_base()
+    state["goal"] = "remarcar"
+    state["last_slots_offered"] = [
+        {"datetime": "2026-05-25T08:00:00", "data_fmt": "segunda, 25/05", "hora": "8h"},
+    ]
+
+    fake_client = MagicMock()
+    fake_client.messages.create.side_effect = RuntimeError("sem credito")
+
+    with patch("app.conversation.interpreter.anthropic.Anthropic", return_value=fake_client):
+        turno = await interpretar_turno("segunda, 25/05 8h", state)
+
+    assert turno["intent"] == "remarcar"
+    assert turno["escolha_slot"] == 1
+    assert turno["preferencia_horario"] is None
+    assert turno["correcao"] is None
+
+
+@pytest.mark.asyncio
 async def test_interpreter_midia_em_pagamento_confirma_pagamento():
     from app.conversation.interpreter import interpretar_turno
 
