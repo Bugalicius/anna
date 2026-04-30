@@ -747,6 +747,7 @@ def test_alterar_agendamento_payload_correto():
     payload = mock_put.call_args[1]["json"]
     assert set(payload) == {"Agenda", "Lancamento"}
     agenda = payload["Agenda"]
+    assert agenda["Id"] == "ID-123"
     assert agenda["IdPaciente"] == 42
     assert agenda["IdLocalAtendimento"] == "LOCAL-001"
     assert agenda["IdServico"] == "SVC-001"

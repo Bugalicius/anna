@@ -815,6 +815,7 @@ def alterar_agendamento(
     # O GET do Dietbox retorna parte dos campos em lowercase/português, então
     # preservamos os escalares e normalizamos só na saída do PUT.
     agenda_dto = {
+        "Id": id_agenda,
         "Type": _get("Type", "tipo") or 1,
         "Start": novo_dt_inicio.isoformat(),
         "End": novo_dt_fim.isoformat(),
