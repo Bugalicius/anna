@@ -121,7 +121,7 @@ def _gerar_link_portal(
                 _gerar_link_portal_sync,
                 valor, parcelas, descricao, referencia, email, senha, validade, valor_str,
             )
-            return future.result(timeout=180)
+            return future.result(timeout=300)
     except Exception as e:
         logger.error("Erro no portal Rede: %s", e)
         return LinkPagamento(url=None, valor=valor, parcelas=parcelas, sucesso=False, erro=str(e))
