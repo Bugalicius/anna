@@ -29,7 +29,7 @@ MSG_BOAS_VINDAS = (
     "• Qual seu nome e sobrenome?\n"
     "• É sua primeira consulta ou você já é paciente?\n\n"
     "Ah, um aviso importante: no momento a Thaynara não realiza atendimento "
-    "para gestantes e menores de 16 anos, tudo bem?"
+    "para gestantes e menores de 16 anos."
 )
 
 MSG_OBJETIVOS = (
