@@ -58,3 +58,31 @@ async def test_remarcacao_mesma_semana_usa_frase_desistencias():
     )
 
     assert resposta[0] == "Tive desistências essa semana:"
+
+
+@pytest.mark.asyncio
+async def test_fallback_preferencia_remarcacao_envia_uma_mensagem_humana():
+    from app.conversation.responder import gerar_resposta
+    from app.conversation.state import create_state
+
+    state = create_state("hash", "5531999990000")
+    state["goal"] = "remarcar"
+    resposta = await gerar_resposta(
+        state,
+        {"action": "execute_tool", "tool": "consultar_slots_remarcar"},
+        {
+            "aviso_preferencia": (
+                "Olha, infelizmente não tenho disponibilidade com essa preferência.\n\n"
+                "Mas, para não te deixar sem opção, separei os 3 horários mais próximos disponíveis:"
+            ),
+            "slots": [
+                {"datetime": "2026-05-11T17:00:00", "data_fmt": "segunda, 11/05", "hora": "17h"},
+                {"datetime": "2026-05-12T10:00:00", "data_fmt": "terça, 12/05", "hora": "10h"},
+            ],
+        },
+    )
+
+    assert len(resposta) == 1
+    assert resposta[0]["_interactive"] == "button"
+    assert resposta[0]["body"].startswith("Olha, infelizmente")
+    assert "Olhei aqui" not in resposta[0]["body"]

@@ -327,9 +327,13 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
                     intro = "Tive desistências essa semana:"
                 else:
                     intro = plano.get("draft_message") or "Olhei aqui e encontrei estas opções para remarcar:"
-                return [intro, _build_slot_buttons(slots, aviso)]
+                if aviso:
+                    return [_build_slot_buttons(slots, aviso)]
+                return [intro, _build_slot_buttons(slots)]
             intro = plano.get("draft_message") or random.choice(_WAITING)
-            return [intro, _build_slot_buttons(slots, aviso)]
+            if aviso:
+                return [_build_slot_buttons(slots, aviso)]
+            return [intro, _build_slot_buttons(slots)]
         if plano.get("tool") == "consultar_slots_remarcar":
             return [
                 "Poxa, não encontrei um horário disponível dentro dessa janela 😕\n\n"

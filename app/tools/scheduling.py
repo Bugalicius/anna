@@ -390,8 +390,8 @@ def _selecionar_slots(
     # Preferência não encontrada — aviso e fallback
     alvo = descricao if descricao in _DESCRICOES_PREF_VALIDAS else "com essa preferência"
     aviso = (
-        f"Não encontrei opções {alvo} nos próximos dias úteis.\n\n"
-        "Para não te deixar sem opção, separei os 3 horários mais próximos disponíveis:"
+        f"Olha, infelizmente não tenho disponibilidade {alvo}.\n\n"
+        "Mas, para não te deixar sem opção, separei os 3 horários mais próximos disponíveis:"
     )
     return _diversificar(slots)[:3], aviso
 
