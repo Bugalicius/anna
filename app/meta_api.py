@@ -162,6 +162,12 @@ class MetaAPIClient:
         }
         return await self._post(payload)
 
+    async def encaminhar_midia(self, to: str, image_bytes: bytes, mime_type: str, caption: str = "") -> None:
+        """Faz upload de imagem e envia para o destinatário com legenda."""
+        ext = "jpg" if "jpeg" in mime_type else mime_type.split("/")[-1]
+        media_id = await self.upload_media(image_bytes, mime_type, f"comprovante.{ext}")
+        await self.send_image(to=to, media_id=media_id, caption=caption)
+
     async def mark_as_read(self, message_id: str) -> None:
         """Marca mensagem do paciente como lida (double-check azul no WhatsApp)."""
         payload = {

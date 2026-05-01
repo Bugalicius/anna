@@ -242,6 +242,57 @@ def _is_internal_number_local(numero: str) -> bool:
     return recebido in {interno, _sem_nono_digito_brasil(interno)}
 
 
+async def _encaminhar_comprovante_thaynara(
+    phone: str,
+    phone_hash: str,
+    image_bytes: bytes,
+    mime_type: str,
+    valor: float | None,
+    favorecido: str | None,
+) -> None:
+    """Encaminha comprovante PIX recebido para o número da Thaynara com resumo."""
+    thaynara = os.environ.get("THAYNARA_PHONE", "5531991394759")
+    from app.meta_api import MetaAPIClient
+
+    nome = "Paciente"
+    plano = "—"
+    modalidade = "—"
+    valor_esperado: float | None = None
+    try:
+        from app.conversation.state import load_state
+        state = await load_state(phone_hash)
+        cd = state.get("collected_data", {})
+        nome = cd.get("nome") or nome
+        plano = cd.get("plano") or plano
+        modalidade = cd.get("modalidade") or modalidade
+        from app import knowledge_base as _kb_mod
+        if plano != "—" and modalidade != "—":
+            valor_esperado = _kb_mod.kb.get_valor(plano, modalidade)
+    except Exception:
+        pass
+
+    valor_txt = f"R$ {valor:.2f}" if isinstance(valor, (float, int)) else "—"
+    if valor_esperado and isinstance(valor, (float, int)):
+        confere = abs(valor - valor_esperado) <= 1.0
+        confere_txt = "✅ Valor confere: Sim" if confere else f"⚠️ Valor divergente: esperado R${valor_esperado:.2f}"
+    else:
+        confere_txt = "⚠️ Não foi possível verificar"
+
+    caption = (
+        f"🧾 Comprovante recebido\n"
+        f"👤 Paciente: {nome}\n"
+        f"💰 Valor: {valor_txt}\n"
+        f"📋 Plano: {plano} ({modalidade})\n"
+        f"{confere_txt}"
+    )
+    try:
+        meta = MetaAPIClient()
+        await meta.encaminhar_midia(to=thaynara, image_bytes=image_bytes, mime_type=mime_type, caption=caption)
+        logger.info("Comprovante encaminhado para Thaynara (%s, R$%s)", nome, valor_txt)
+    except Exception as e:
+        logger.warning("Falha ao encaminhar comprovante para Thaynara: %s", e)
+
+
 def _typing_delay(text: str) -> float:
     n = len(text) if isinstance(text, str) else 0
     if n <= 50:
@@ -368,6 +419,8 @@ async def process_message(message: dict, metadata: dict):
     if await is_whatsapp_rate_limited(phone_hash):
         return
 
+    _comprovante_fwd: dict | None = None
+
     if msg_type == "audio":
         from app.media_handler import processar_midia as _processar_midia
         audio_id = message.get("audio", {}).get("id", "")
@@ -409,6 +462,12 @@ async def process_message(message: dict, metadata: dict):
                 valor_txt = f"{valor:.2f}" if isinstance(valor, (float, int)) else "null"
                 favorecido = (analise.get("favorecido") or "").replace("|", " ")[:120]
                 text = f"[comprovante valor={valor_txt} favorecido={favorecido}]"
+                _comprovante_fwd = {
+                    "image_bytes": media.get("bytes", b""),
+                    "mime_type": media.get("mime_type", "image/jpeg"),
+                    "valor": analise.get("valor"),
+                    "favorecido": analise.get("favorecido"),
+                }
         elif chatwoot_url:
             try:
                 content = await _download_chatwoot_attachment(chatwoot_url)
@@ -420,6 +479,12 @@ async def process_message(message: dict, metadata: dict):
                     valor_txt = f"{valor:.2f}" if isinstance(valor, (float, int)) else "null"
                     favorecido = (analise.get("favorecido") or "").replace("|", " ")[:120]
                     text = f"[comprovante valor={valor_txt} favorecido={favorecido}]"
+                    _comprovante_fwd = {
+                        "image_bytes": content,
+                        "mime_type": mime_type or "image/jpeg",
+                        "valor": analise.get("valor"),
+                        "favorecido": analise.get("favorecido"),
+                    }
             except Exception as e:
                 logger.error("Falha ao processar anexo Chatwoot %s: %s", meta_id, e)
         if msg_type == "image" and not eh_comprovante:
@@ -511,6 +576,12 @@ async def process_message(message: dict, metadata: dict):
                 msg.processed_at = datetime.now(UTC)
                 db.commit()
         return
+
+    # Encaminha comprovante PIX para Thaynara (após engine processar o pagamento)
+    if _comprovante_fwd:
+        asyncio.create_task(
+            _encaminhar_comprovante_thaynara(phone=phone, phone_hash=phone_hash, **_comprovante_fwd)
+        )
 
     with SessionLocal() as db:
         msg = db.query(Message).filter_by(meta_message_id=meta_id).first()

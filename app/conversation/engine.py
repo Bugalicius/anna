@@ -37,6 +37,40 @@ from app.metrics import record_turn_error, reset_error_count, write_turn_metric
 logger = logging.getLogger(__name__)
 
 
+async def _notificar_cartao_thaynara(state: dict) -> None:
+    """Notifica Thaynara quando pagamento via cartão é confirmado pelo engine."""
+    import os
+    thaynara = os.environ.get("THAYNARA_PHONE", "5531991394759")
+    cd = state.get("collected_data", {})
+    nome = cd.get("nome") or "Paciente"
+    plano = cd.get("plano") or "—"
+    modalidade = cd.get("modalidade") or "—"
+    link_url = state.get("appointment", {}).get("link_cartao") or ""
+    valor_txt = "—"
+    try:
+        from app import knowledge_base as _kb
+        v = _kb.kb.get_valor(plano, modalidade)
+        if v:
+            valor_txt = f"R$ {v:.2f}"
+    except Exception:
+        pass
+    msg = (
+        f"💳 Pagamento via cartão confirmado\n"
+        f"👤 Paciente: {nome}\n"
+        f"💰 Valor: {valor_txt}\n"
+        f"📋 Plano: {plano} ({modalidade})"
+    )
+    if link_url:
+        msg += f"\n🔗 Link: {link_url}"
+    try:
+        from app.meta_api import MetaAPIClient
+        meta = MetaAPIClient()
+        await meta.send_text(thaynara, msg)
+        logger.info("Notificação cartão enviada para Thaynara (paciente %s)", nome)
+    except Exception as e:
+        logger.warning("Falha ao notificar Thaynara sobre cartão: %s", e)
+
+
 class ConversationEngine:
     """
     Motor central de conversação — stateless entre chamadas.
@@ -119,6 +153,13 @@ class ConversationEngine:
                 resultado_tool = await self._executar_tool(plano, state, turno)
                 apply_tool_result(state, plano["tool"], resultado_tool or {})
                 state["last_action"] = plano["tool"]
+                # Notifica Thaynara quando pagamento via cartão é confirmado
+                if (
+                    plano["tool"] == "confirmar_pagamento_dietbox"
+                    and isinstance(resultado_tool, dict)
+                    and resultado_tool.get("sucesso")
+                ):
+                    asyncio.create_task(_notificar_cartao_thaynara(state))
             else:
                 state["last_action"] = plano.get("action")
 
