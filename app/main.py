@@ -27,7 +27,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 async def lifespan(app: FastAPI):
     # Startup
     validate_required_env()
-    Base.metadata.create_all(bind=engine)  # Fallback se Alembic não rodou
+    if os.environ.get("AUTO_CREATE_TABLES", "false").lower() == "true":
+        Base.metadata.create_all(bind=engine)  # Apenas local/teste; producao deve usar migrations.
 
     # Inicializa persistência de estado de conversa no Redis
     from app.router import init_state_manager
@@ -49,7 +50,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Agente Ana — Nutri Thaynara", lifespan=lifespan)
 app.include_router(webhook_router)
-app.include_router(test_chat_router)
+if os.environ.get("ENABLE_TEST_CHAT", "false").lower() == "true":
+    app.include_router(test_chat_router)
 
 # Serve arquivos de mídia (PDF, imagens) para o chat de teste
 _docs_path = Path("/app/docs")

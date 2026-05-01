@@ -7,6 +7,11 @@ knowledge_base/*
 !knowledge_base/*.json
 scripts/mining_progress.json
 docs/reports/
+arquivos_modificados.zip
+conversas_export.json
+tests/*.log
+tests/relatorio_*.md
+tests/relatorio*.md
 *.db
 TEST_RESULTS_*.txt
 C*test_cache_simple.py

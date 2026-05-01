@@ -233,10 +233,7 @@ async def _dispatch_due_messages() -> None:
     redis_url = os.environ.get("REDIS_URL", "redis://redis:6379/0")
     redis_client = aioredis.Redis.from_url(redis_url, decode_responses=True)
 
-    meta = MetaAPIClient(
-        phone_number_id=os.environ.get("WHATSAPP_PHONE_NUMBER_ID", ""),
-        access_token=os.environ.get("WHATSAPP_TOKEN", ""),
-    )
+    meta = MetaAPIClient()
 
     try:
         with SessionLocal() as db:
@@ -384,10 +381,7 @@ async def _check_escalation_reminders() -> None:
     from app.meta_api import MetaAPIClient
     from app.escalation import enviar_lembretes_pendentes
 
-    meta = MetaAPIClient(
-        phone_number_id=os.environ.get("WHATSAPP_PHONE_NUMBER_ID", ""),
-        access_token=os.environ.get("WHATSAPP_TOKEN", ""),
-    )
+    meta = MetaAPIClient()
 
     try:
         enviados = await enviar_lembretes_pendentes(meta)
@@ -562,10 +556,7 @@ async def _disparar_confirmacoes_sexta(consultas: list[dict]) -> None:
     from app.meta_api import MetaAPIClient
     from app.models import Contact
 
-    meta = MetaAPIClient(
-        phone_number_id=os.environ.get("WHATSAPP_PHONE_NUMBER_ID", ""),
-        access_token=os.environ.get("WHATSAPP_TOKEN", ""),
-    )
+    meta = MetaAPIClient()
 
     for consulta in consultas:
         telefone = consulta["telefone"]
@@ -608,10 +599,7 @@ async def _disparar_lembretes_vespera(consultas: list[dict]) -> None:
     """Envia lembrete simples de texto para cada consulta do dia seguinte."""
     from app.meta_api import MetaAPIClient
 
-    meta = MetaAPIClient(
-        phone_number_id=os.environ.get("WHATSAPP_PHONE_NUMBER_ID", ""),
-        access_token=os.environ.get("WHATSAPP_TOKEN", ""),
-    )
+    meta = MetaAPIClient()
 
     for consulta in consultas:
         telefone = consulta["telefone"]

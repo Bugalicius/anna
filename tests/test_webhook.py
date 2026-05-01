@@ -242,6 +242,47 @@ async def test_dedup_redis_allows_first():
 
 
 @pytest.mark.asyncio
+async def test_breno_texto_livre_cai_no_relay_de_escalacao():
+    """Breno responde texto livre; webhook nao bloqueia como comando invalido e segue para relay."""
+    from app.webhook import process_message
+
+    breno_phone = "5531992059211"
+    message = {
+        "id": "wamid.breno.reply",
+        "from": breno_phone,
+        "type": "text",
+        "text": {"body": "Pode comer pão integral com moderação."},
+    }
+
+    mock_db = MagicMock()
+    mock_db.__enter__ = MagicMock(return_value=mock_db)
+    mock_db.__exit__ = MagicMock(return_value=False)
+    mock_db.query.return_value.filter_by.return_value.first.return_value = None
+    mock_db.query.return_value.filter_by.return_value.order_by.return_value.first.return_value = None
+
+    meta = AsyncMock()
+    meta.send_text = AsyncMock(return_value={"messages": [{"id": "wamid.relay"}]})
+
+    async def _relay(meta_client, texto_resposta):
+        await meta_client.send_text("5531999990001", texto_resposta)
+        return True
+
+    with patch.dict("os.environ", {"BRENO_PHONE": breno_phone, "NUMERO_INTERNO": breno_phone}), \
+         patch("app.webhook._is_duplicate_message", new_callable=AsyncMock, return_value=False), \
+         patch("app.rate_limit.is_whatsapp_rate_limited", new_callable=AsyncMock, return_value=False), \
+         patch("app.database.SessionLocal", return_value=mock_db), \
+         patch("app.command_processor._parse_command", return_value={"tipo": "desconhecido"}), \
+         patch("app.meta_api.MetaAPIClient", return_value=meta), \
+         patch("app.escalation.processar_resposta_breno", new_callable=AsyncMock, side_effect=_relay) as mock_relay, \
+         patch("app.router.route_message", new_callable=AsyncMock) as mock_route:
+        await process_message(message, {})
+
+    mock_relay.assert_awaited_once_with(meta_client=meta, texto_resposta="Pode comer pão integral com moderação.")
+    meta.send_text.assert_awaited_once_with("5531999990001", "Pode comer pão integral com moderação.")
+    mock_route.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_route_message_ignores_when_human_handoff_active():
     from app.router import route_message
 

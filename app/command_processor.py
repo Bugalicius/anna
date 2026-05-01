@@ -61,6 +61,15 @@ def is_authorized_sender(phone: str) -> bool:
     return _digits_only(phone) in _authorized_phones()
 
 
+def _breno_phones() -> set[str]:
+    breno = _digits_only(os.environ.get("BRENO_PHONE", os.environ.get("NUMERO_INTERNO", "5531992059211")))
+    return {breno, _sem_nono(breno)}
+
+
+def _is_breno_sender(phone: str) -> bool:
+    return _digits_only(phone) in _breno_phones()
+
+
 def _thaynara_phone() -> str:
     return _digits_only(os.environ.get("THAYNARA_PHONE", "5531991394759"))
 
@@ -318,6 +327,8 @@ async def process_command(phone: str, text: str, meta_client) -> bool:
     tipo = parsed.get("tipo", "desconhecido")
 
     if tipo == "desconhecido":
+        if _is_breno_sender(phone):
+            return False
         await meta_client.send_text(phone, "Não entendi o comando 😅 Pode reformular?")
         return True  # tratado — resposta de erro
 

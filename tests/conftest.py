@@ -24,6 +24,8 @@ _FAKE_ENV = {
     "REDE_EMAIL": "test@test.com",
     "REDE_SENHA": "fake-senha",
     "DISABLE_AFTER_HOURS_NOTICE": "true",
+    "ENABLE_TEST_CHAT": "true",
+    "AUTO_CREATE_TABLES": "true",
 }
 
 for key, value in _FAKE_ENV.items():

@@ -1,5 +1,4 @@
 import logging
-import os
 
 logger = logging.getLogger(__name__)
 
@@ -42,16 +41,12 @@ async def handle_flow(phone: str, phone_hash: str, stage: str, text: str):
     from app.meta_api import MetaAPIClient
     from app.database import SessionLocal
     from app.models import Contact
-    import os
 
     response_text = get_flow_response(stage, text)
     if response_text is None:
         return
 
-    meta = MetaAPIClient(
-        phone_number_id=os.environ.get("WHATSAPP_PHONE_NUMBER_ID", ""),
-        access_token=os.environ.get("WHATSAPP_TOKEN", ""),
-    )
+    meta = MetaAPIClient()
     meta.send_text(to=phone, text=response_text)
 
     # Avançar stage após boas-vindas

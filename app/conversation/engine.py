@@ -21,6 +21,7 @@ import unicodedata
 import asyncio
 from time import perf_counter
 
+from app import llm_client
 from app.conversation.state import (
     add_message,
     apply_correction,
@@ -89,10 +90,14 @@ class ConversationEngine:
             await record_turn_error(phone_hash, "timeout")
             write_turn_metric({
                 "phone_hash": phone_hash,
+                "stage": None,
                 "intent": None,
                 "action": "timeout",
+                "tool_duration_ms": None,
+                "llm_calls": llm_client.get_llm_call_count(),
                 "duration_ms": int(timeout * 1000),
                 "decision": None,
+                "integration_error_code": None,
                 "error": "timeout",
             })
             return [
@@ -111,6 +116,9 @@ class ConversationEngine:
         started = perf_counter()
         turno = {}
         plano = {}
+        resultado_tool = None
+        tool_duration_ms = None
+        llm_client.reset_llm_call_count()
         try:
             # 1. Carregar estado
             state = await load_state(phone_hash, phone)
@@ -148,9 +156,10 @@ class ConversationEngine:
             self._aplicar_mutacoes(state, plano)
 
             # 7. Executar tool (se houver)
-            resultado_tool = None
             if plano.get("tool"):
+                tool_started = perf_counter()
                 resultado_tool = await self._executar_tool(plano, state, turno)
+                tool_duration_ms = int((perf_counter() - tool_started) * 1000)
                 apply_tool_result(state, plano["tool"], resultado_tool or {})
                 state["last_action"] = plano["tool"]
                 # Notifica Thaynara quando pagamento via cartão é confirmado
@@ -187,11 +196,19 @@ class ConversationEngine:
                 await reset_error_count(phone_hash)
             write_turn_metric({
                 "phone_hash": phone_hash,
+                "stage": state.get("status"),
                 "intent": turno.get("intent"),
                 "action": plano.get("action"),
                 "tool": plano.get("tool"),
+                "tool_duration_ms": tool_duration_ms,
+                "llm_calls": llm_client.get_llm_call_count(),
                 "duration_ms": int((perf_counter() - started) * 1000),
                 "decision": (plano.get("meta") or {}).get("decision"),
+                "integration_error_code": (
+                    resultado_tool.get("erro")
+                    if isinstance(resultado_tool, dict) and resultado_tool.get("sucesso") is False
+                    else None
+                ),
                 "error": "tool_failure" if tool_error else None,
             })
 
@@ -200,11 +217,19 @@ class ConversationEngine:
             await record_turn_error(phone_hash, type(e).__name__)
             write_turn_metric({
                 "phone_hash": phone_hash,
+                "stage": None,
                 "intent": turno.get("intent"),
                 "action": plano.get("action"),
                 "tool": plano.get("tool"),
+                "tool_duration_ms": tool_duration_ms,
+                "llm_calls": llm_client.get_llm_call_count(),
                 "duration_ms": int((perf_counter() - started) * 1000),
                 "decision": (plano.get("meta") or {}).get("decision"),
+                "integration_error_code": (
+                    resultado_tool.get("erro")
+                    if isinstance(resultado_tool, dict) and resultado_tool.get("sucesso") is False
+                    else None
+                ),
                 "error": type(e).__name__,
             })
             raise

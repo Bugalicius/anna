@@ -541,10 +541,7 @@ async def process_message(message: dict, metadata: dict):
     from app.meta_api import MetaAPIClient
     import os as _os
 
-    _meta = MetaAPIClient(
-        phone_number_id=_os.environ.get("WHATSAPP_PHONE_NUMBER_ID", ""),
-        access_token=_os.environ.get("WHATSAPP_TOKEN", ""),
-    )
+    _meta = MetaAPIClient()
 
     # Remetente autorizado (Thaynara ou Breno) — tenta comando primeiro
     from app.command_processor import is_authorized_sender, process_command, is_command_response_pending, handle_patient_command_response

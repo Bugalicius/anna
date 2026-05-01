@@ -21,6 +21,7 @@ import re
 import httpx
 
 from app import llm_client
+from app.config import get_meta_access_token
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +34,9 @@ MIME_AUDIOS = {"audio/ogg", "audio/mpeg", "audio/mp4", "audio/webm", "audio/wav"
 
 
 def _bearer() -> str:
-    token = os.environ.get("WHATSAPP_TOKEN", "")
+    token = get_meta_access_token()
     if not token:
-        raise RuntimeError("WHATSAPP_TOKEN não configurado")
+        raise RuntimeError("META_ACCESS_TOKEN/WHATSAPP_TOKEN não configurado")
     return f"Bearer {token}"
 
 

@@ -23,12 +23,12 @@ MEDIA_STATIC: dict[str, dict[str, str]] = {
         "filename": "preparo-presencial.jpg",
     },
     "pdf_guia_circunf_mulher": {
-        "path": "docs/Guia - Circunferencias Corporais - Mulheres.pdf",
+        "path": "docs/Guia - Circunferências Corporais - Mulheres.pdf",
         "mime": "application/pdf",
         "filename": "Guia-Circunferencias-Mulheres.pdf",
     },
     "pdf_guia_circunf_homem": {
-        "path": "docs/Guia - Circunferencias Corporais - Homens.pdf",
+        "path": "docs/Guia - Circunferências Corporais - Homens.pdf",
         "mime": "application/pdf",
         "filename": "Guia-Circunferencias-Homens.pdf",
     },

@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import json
 import os
+from pathlib import Path
 import pytest
 import respx
 import httpx
@@ -74,6 +75,21 @@ def test_client_no_args_reads_env():
 
     assert client_no_args._phone_id == "env_phone_id"
     assert "Bearer env_token" in client_no_args._headers["Authorization"]
+
+
+def test_client_no_args_reads_meta_aliases_without_whatsapp_env():
+    """MetaAPIClient() deve funcionar quando apenas META_* estiver configurado."""
+    env = {
+        "META_PHONE_NUMBER_ID": "meta_phone_id",
+        "META_ACCESS_TOKEN": "meta_token",
+        "WHATSAPP_PHONE_NUMBER_ID": "",
+        "WHATSAPP_TOKEN": "",
+    }
+    with patch.dict(os.environ, env, clear=False):
+        client_no_args = MetaAPIClient()
+
+    assert client_no_args._phone_id == "meta_phone_id"
+    assert "Bearer meta_token" in client_no_args._headers["Authorization"]
 
 
 # ── Testes de upload de midia e envio de documento/imagem ─────────────────────
@@ -150,3 +166,16 @@ def test_media_store_has_all_keys():
         assert "path" in entry, f"Entrada '{key}' sem 'path'"
         assert "mime" in entry, f"Entrada '{key}' sem 'mime'"
         assert "filename" in entry, f"Entrada '{key}' sem 'filename'"
+
+
+def test_media_store_paths_exist():
+    """Todos os arquivos declarados no catalogo de midia devem existir."""
+    from app.media_store import MEDIA_STATIC
+
+    root = Path(__file__).resolve().parents[1]
+    missing = [
+        (key, entry["path"])
+        for key, entry in MEDIA_STATIC.items()
+        if not (root / entry["path"]).exists()
+    ]
+    assert missing == []

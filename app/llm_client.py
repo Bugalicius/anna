@@ -21,6 +21,7 @@ Configuração via env:
 from __future__ import annotations
 
 import base64
+from contextvars import ContextVar
 import logging
 import os
 import time
@@ -32,6 +33,19 @@ logger = logging.getLogger(__name__)
 # ── Estado interno ────────────────────────────────────────────────────────────
 
 _TEST_OVERRIDE: Any | None = None
+_LLM_CALLS: ContextVar[int] = ContextVar("llm_calls", default=0)
+
+
+def reset_llm_call_count() -> None:
+    _LLM_CALLS.set(0)
+
+
+def get_llm_call_count() -> int:
+    return _LLM_CALLS.get()
+
+
+def _increment_llm_call_count() -> None:
+    _LLM_CALLS.set(_LLM_CALLS.get() + 1)
 
 # ── Configuração ──────────────────────────────────────────────────────────────
 
@@ -75,6 +89,7 @@ def complete_text(
     # Hook para testes: se _TEST_OVERRIDE estiver setado, usa ele
     if _TEST_OVERRIDE is not None:
         return _TEST_OVERRIDE(system=system, user=user, max_tokens=max_tokens)
+    _increment_llm_call_count()
     provider = _provider()
     if provider == "gemini":
         return _gemini_text(system, user, max_tokens, temperature)
@@ -97,6 +112,7 @@ def complete_with_image(
     Usado para análise de comprovantes de pagamento.
     """
     provider = _provider()
+    _increment_llm_call_count()
     if provider == "gemini":
         return _gemini_vision(user_text, image_bytes, mime_type, system, max_tokens, temperature)
     if provider == "anthropic":
