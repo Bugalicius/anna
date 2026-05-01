@@ -54,24 +54,7 @@ MSG_PLANOS_RESUMO = (
     "ajustes constantes e resultados sustentáveis, sem dietas extremas nem recomeços frustrantes."
 )
 
-MSG_PREFERENCIA_HORARIO = (
-    "Para seguirmos com o agendamento, me informe qual horário atende melhor à sua rotina:\n\n"
-    "Segunda a Sexta-feira:\n"
-    "Manhã: 08h, 09h e 10h\n"
-    "Tarde: 15h, 16h e 17h\n"
-    "Noite: 18h e 19h (exceto sexta à noite)\n\n"
-    "Importante: só realizamos o agendamento mediante confirmação do pagamento. "
-    "Quanto antes o sinal for enviado, maior a chance de garantir o horário de sua preferência."
-)
-
-MSG_PREFERENCIA_REMARCAR = (
-    "Claro, sem problema. Vou tentar te ajudar com isso 😊\n\n"
-    "Me diga qual dia ou horário atende melhor sua rotina:\n\n"
-    "Segunda a Sexta-feira:\n"
-    "Manhã: 08h, 09h e 10h\n"
-    "Tarde: 15h, 16h e 17h\n"
-    "Noite: 18h e 19h (exceto sexta à noite)"
-)
+MSG_PREFERENCIA_REMARCAR = "Qual dia ou período atende melhor sua rotina?"
 
 MSG_AGENDAMENTO_OPCOES = (
     "Tenho essas opções disponíveis para {modalidade}:\n\n{opcoes}\n\nQual horário funciona melhor pra você?"
@@ -103,7 +86,8 @@ MSG_CARTAO = (
 )
 
 MSG_AGUARDA_COMPROVANTE = (
-    "Aguardo o comprovante de pagamento para confirmar sua consulta 😊"
+    "Só realizamos o agendamento mediante confirmação do pagamento. "
+    "Quanto antes o sinal for enviado, maior a chance de garantir o horário 💚"
 )
 
 MSG_CADASTRO = (
@@ -521,23 +505,13 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
                         )
                     else:
                         prazo = ""
-                    pergunta = (
-                        "Me diga qual dia ou horário atende melhor sua rotina:\n\n"
-                        "Segunda a Sexta-feira:\n"
-                        "Manhã: 08h, 09h e 10h\n"
-                        "Tarde: 15h, 16h e 17h\n"
-                        "Noite: 18h e 19h (exceto sexta à noite)"
-                    )
+                    pergunta = "Qual dia ou período atende melhor sua rotina?"
                     return [intro + consulta_info + aviso + prazo + pergunta]
                 except Exception:
                     pass
             return [
-                "Claro, sem problema. Vou tentar te ajudar com isso 😊\n\n"
-                "Me diga qual dia ou horário atende melhor sua rotina:\n\n"
-                "Segunda a Sexta-feira:\n"
-                "Manhã: 08h, 09h e 10h\n"
-                "Tarde: 15h, 16h e 17h\n"
-                "Noite: 18h e 19h (exceto sexta à noite)"
+                "Claro, posso remarcar sim 😊\n\n"
+                "Qual dia ou período atende melhor sua rotina?"
             ]
         if resultado_tool and resultado_tool.get("precisa_identificacao"):
             return [
@@ -638,7 +612,7 @@ def _ask_field(campo: str, nome: str, state: dict) -> list:
     if campo == "preferencia_horario_remarcar":
         return [MSG_PREFERENCIA_REMARCAR]
     if campo == "preferencia_horario":
-        return [MSG_PREFERENCIA_HORARIO]
+        return [_build_turno_buttons()]
     if campo == "data_nascimento":
         return ["Recebi seus dados, mas você pode mandar novamente sua *data de nascimento* no formato DD/MM/AAAA, por favor?"]
     if campo == "email":
@@ -822,6 +796,19 @@ def _build_forma_pagamento_interactive(cd: dict, nome: str) -> dict:
         "buttons": [
             {"id": "pix", "title": "PIX"},
             {"id": "cartao", "title": "Cartão de crédito"},
+        ],
+    }
+
+
+def _build_turno_buttons() -> dict:
+    """Retorna mensagem interativa perguntando turno preferido (manhã/tarde/noite)."""
+    return {
+        "_interactive": "button",
+        "body": "Em qual turno você prefere?",
+        "buttons": [
+            {"id": "manha", "title": "Manhã"},
+            {"id": "tarde", "title": "Tarde"},
+            {"id": "noite", "title": "Noite"},
         ],
     }
 
