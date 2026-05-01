@@ -288,6 +288,19 @@ FAQ_ESTATICO: list[dict[str, str]] = [
 ]
 
 
+# ── Expressões características (extraídas de 1.283 conversas reais) ──────────
+
+EXPRESSOES_CONFIRMACAO: list[str] = [
+    "Perfeitoooo. Obrigadaaa 💚🥰",
+    "Confirmado então! Obrigadaaa 💚😉",
+    "Perfeito! Tudo confirmado 💚",
+]
+
+EXPRESSAO_DISPONHA: str = "Por nada. Disponha! 💚🥰"
+PERGUNTA_PLANO: str = "Qual será o plano e modalidade?"
+PERGUNTA_TURNO: str = "Em qual turno?"
+
+
 # ── Carregamento dos arquivos gerados na Fase 1 ───────────────────────────────
 
 def _load_json(filename: str) -> Any:
