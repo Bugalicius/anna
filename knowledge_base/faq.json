@@ -1,0 +1,152 @@
+[
+  {
+    "question": "Gostaria de informações sobre o acompanhamento nutricional",
+    "frequency": 4,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Prefere atendimento presencial ou online?",
+    "frequency": 4,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Quero garantir minha vaga para o próximo Nosso Momento em Movimento",
+    "frequency": 2,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Qual horário atende melhor à sua rotina?",
+    "frequency": 2,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Qual opção de pagamento prefere?",
+    "frequency": 2,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Qual seu nome e sobrenome?",
+    "frequency": 2,
+    "suggested_answer": ""
+  },
+  {
+    "question": "É sua primeira consulta ou você já é paciente?",
+    "frequency": 2,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Qual é o seu principal objetivo?",
+    "frequency": 2,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Qual é o seu principal objetivo agora?",
+    "frequency": 2,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Pode ser em 5x?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "A Thai atende aos sábados também?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Porque pra chegar lá 19 hrs depende do trânsito",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Na semana que vem teria algum dia nesse horário?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Qual será o plano e modalidade?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Podemos remarcar a consulta?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Atenderia até o dia 10/04?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Consigo remarcar essa consulta para essa semana ainda?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Quais seriam os horários disponíveis para semana que vem?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Tem horário após as 18:00 a partir do dia 30?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Tem horário nos dias 30/03 ou 31/03?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Pode ser quarta-feira, dia 11/03, as 8h00?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Pode ser dia 31/03 as 08h?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "É primeira consulta?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "O email ainda é o mesmo?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Não seria cancelando a compra?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Qual seria o valor para fazer o PIX?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Teria outra data disponível?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Teria horário disponível na terça ou quinta de manhã ou tarde?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Teria outra data disponível esse mês?",
+    "frequency": 1,
+    "suggested_answer": ""
+  },
+  {
+    "question": "Poderia agendar para abril?",
+    "frequency": 1,
+    "suggested_answer": ""
+  }
+]

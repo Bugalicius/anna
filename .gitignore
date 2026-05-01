@@ -2,8 +2,9 @@
 scripts/.env
 .env
 
-# Dados de pacientes — não versionar
-knowledge_base/
+# Dados de pacientes — não versionar; JSONs da knowledge base são versionados
+knowledge_base/*
+!knowledge_base/*.json
 scripts/mining_progress.json
 docs/reports/
 *.db

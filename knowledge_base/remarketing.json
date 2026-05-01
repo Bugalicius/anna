@@ -1,0 +1,43 @@
+{
+  "sumiu_apos_ver_preco": {
+    "delay_horas": 24,
+    "mensagens": [
+      "Oi {nome}! Tudo bem? 💚\nSei que investir em saúde às vezes gera aquela dúvida... Fica à vontade pra me perguntar qualquer coisa, tô aqui! 😊",
+      "Oi {nome}! Só passando pra saber se ficou alguma dúvida sobre os planos. Posso te ajudar a escolher o que faz mais sentido pra você 💚",
+      "Oi {nome}! Vou ser direta pra não tomar seu tempo. A Thaynara tem poucas vagas disponíveis e eu não quero que você perca. Quer que eu reserve um horário pra você? 💚"
+    ]
+  },
+  "sumiu_apos_link_pagamento": {
+    "delay_horas": 4,
+    "mensagens": [
+      "Oi {nome}! Tudo certo com o link de pagamento? Se tiver algum problema me fala que resolvo 💚",
+      "Oi {nome}! Seu horário ainda está reservado, mas preciso confirmar o pagamento pra garantir a vaga. Conseguiu acessar o link? 💚"
+    ]
+  },
+  "sumiu_apos_receber_info": {
+    "delay_horas": 48,
+    "mensagens": [
+      "Ficou alguma dúvida? 💚",
+      "Vamos agendar? 😊"
+    ]
+  },
+  "nao_respondeu_confirmacao_presenca": {
+    "delay_horas": 24,
+    "mensagens": [
+      "{nome}?",
+      "Oi {nome}! Ainda aguardo confirmação da sua consulta de {data} às {hora}. Consegue comparecer? 💚"
+    ]
+  },
+  "cancelou_sem_remarcar": {
+    "delay_dias": 7,
+    "mensagens": [
+      "Oi {nome}! Tudo bem? 💚\nVi que sua consulta foi cancelada. Quando quiser retomar o acompanhamento, é só me chamar! A Thaynara vai adorar te receber 💚"
+    ]
+  },
+  "consulta_realizada_sem_retorno": {
+    "delay_dias": 30,
+    "mensagens": [
+      "Oi {nome}! Tudo bem? 💚\nFaz um tempinho que você fez sua consulta com a Thaynara. Como você está se sentindo? Se quiser continuar o acompanhamento, tenho horários disponíveis 😊"
+    ]
+  }
+}

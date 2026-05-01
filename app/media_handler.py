@@ -4,12 +4,12 @@ Processamento de mídia recebida via WhatsApp (Meta Cloud API).
 Suporta:
   - Imagens (comprovantes de pagamento) → bytes + tamanho
   - PDFs (comprovantes)                 → bytes
-  - Áudios (mensagens de voz)           → transcrição via OpenAI Whisper API
+  - Áudios (mensagens de voz)           → transcrição via Gemini (nativo)
 
 Fluxo:
   1. Meta envia webhook com media_id
   2. download_media(media_id) baixa os bytes via Graph API
-  3. Para áudio: transcribe_audio(bytes, mime_type) chama Whisper
+  3. Para áudio: transcribe_audio(bytes, mime_type) chama Gemini
 """
 from __future__ import annotations
 
@@ -17,8 +17,6 @@ import json
 import logging
 import os
 import re
-import tempfile
-from pathlib import Path
 
 import httpx
 
@@ -76,7 +74,7 @@ def download_media(media_id: str) -> tuple[bytes, str]:
 
 def transcribe_audio(audio_bytes: bytes, mime_type: str) -> str:
     """
-    Transcreve áudio usando OpenAI Whisper API.
+    Transcreve áudio usando Gemini (nativo — suporta audio/ogg, audio/mp4, audio/mpeg).
 
     Args:
         audio_bytes: conteúdo do arquivo de áudio
@@ -85,48 +83,25 @@ def transcribe_audio(audio_bytes: bytes, mime_type: str) -> str:
     Returns:
         Texto transcrito ou string vazia se falhar.
     """
-    api_key = os.environ.get("OPENAI_API_KEY", "")
-    if not api_key:
-        logger.warning("OPENAI_API_KEY não configurado — transcrição indisponível")
+    if not os.environ.get("GEMINI_API_KEY", ""):
+        logger.warning("GEMINI_API_KEY não configurado — transcrição indisponível")
         return ""
 
-    # Determina extensão para o nome do arquivo (Whisper exige extensão reconhecível)
-    _ext_map = {
-        "audio/ogg": "ogg",
-        "audio/mpeg": "mp3",
-        "audio/mp4": "m4a",
-        "audio/webm": "webm",
-        "audio/wav": "wav",
-    }
-    ext = _ext_map.get(mime_type, "ogg")
-
     try:
-        with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
-            tmp.write(audio_bytes)
-            tmp_path = tmp.name
-
-        with httpx.Client(timeout=60) as client:
-            with open(tmp_path, "rb") as f:
-                resp = client.post(
-                    "https://api.openai.com/v1/audio/transcriptions",
-                    headers={"Authorization": f"Bearer {api_key}"},
-                    data={"model": "whisper-1", "language": "pt"},
-                    files={"file": (Path(tmp_path).name, f, mime_type)},
-                )
-            resp.raise_for_status()
-            texto = resp.json().get("text", "")
-
-        logger.info("Áudio transcrito: %d chars", len(texto))
+        texto = llm_client.complete_with_image(
+            user_text=(
+                "Transcreva o áudio exatamente como foi falado, em português do Brasil. "
+                "Retorne apenas o texto transcrito, sem comentários adicionais."
+            ),
+            image_bytes=audio_bytes,
+            mime_type=mime_type,
+            max_tokens=1000,
+        )
+        logger.info("Áudio transcrito via Gemini: %d chars", len(texto))
         return texto
-
     except Exception as e:
         logger.error("Erro ao transcrever áudio: %s", e)
         return ""
-    finally:
-        try:
-            Path(tmp_path).unlink(missing_ok=True)
-        except Exception:
-            pass
 
 
 def classify_media(mime_type: str) -> str:
