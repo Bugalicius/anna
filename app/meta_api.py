@@ -162,6 +162,18 @@ class MetaAPIClient:
         }
         return await self._post(payload)
 
+    async def mark_as_read(self, message_id: str) -> None:
+        """Marca mensagem do paciente como lida (double-check azul no WhatsApp)."""
+        payload = {
+            "messaging_product": "whatsapp",
+            "status": "read",
+            "message_id": message_id,
+        }
+        try:
+            await self._post(payload)
+        except Exception:
+            pass  # Falha silenciosa — não bloqueia o envio da resposta
+
     async def _post(self, payload: dict) -> dict:
         url = f"{META_API_BASE}/{self._phone_id}/messages"
         async with httpx.AsyncClient(headers=self._headers, timeout=10) as client:

@@ -242,10 +242,24 @@ def _is_internal_number_local(numero: str) -> bool:
     return recebido in {interno, _sem_nono_digito_brasil(interno)}
 
 
-async def _send_text_direct(phone: str, text: str) -> None:
+def _typing_delay(text: str) -> float:
+    n = len(text) if isinstance(text, str) else 0
+    if n <= 50:
+        return 1.0
+    elif n <= 150:
+        return 2.0
+    elif n <= 300:
+        return 3.0
+    return 4.0
+
+
+async def _send_text_direct(phone: str, text: str, message_id: str = "") -> None:
     from app.meta_api import MetaAPIClient
 
     meta = MetaAPIClient()
+    if message_id:
+        await meta.mark_as_read(message_id)
+    await asyncio.sleep(_typing_delay(text))
     await meta.send_text(phone, text)
     try:
         from app.chatwoot_bridge import log_bot_message
@@ -355,15 +369,15 @@ async def process_message(message: dict, metadata: dict):
         return
 
     if msg_type == "audio":
-        await _send_text_direct(phone, MSG_AUDIO_NAO_SUPORTADO)
+        await _send_text_direct(phone, MSG_AUDIO_NAO_SUPORTADO, meta_id)
         return
 
     if msg_type == "location":
-        await _send_text_direct(phone, MSG_LOCATION_NAO_SUPORTADO)
+        await _send_text_direct(phone, MSG_LOCATION_NAO_SUPORTADO, meta_id)
         return
 
     if msg_type == "sticker":
-        await _send_text_direct(phone, MSG_MIDIA_NAO_COMPROVANTE)
+        await _send_text_direct(phone, MSG_MIDIA_NAO_COMPROVANTE, meta_id)
         return
 
     if msg_type == "interactive":
@@ -404,7 +418,7 @@ async def process_message(message: dict, metadata: dict):
             except Exception as e:
                 logger.error("Falha ao processar anexo Chatwoot %s: %s", meta_id, e)
         if msg_type == "image" and not eh_comprovante:
-            await _send_text_direct(phone, MSG_MIDIA_NAO_COMPROVANTE)
+            await _send_text_direct(phone, MSG_MIDIA_NAO_COMPROVANTE, meta_id)
             return
     else:
         text = message.get("text", {}).get("body", "") or "[mídia]"

@@ -11,6 +11,7 @@ O router é responsável apenas por:
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib as _hashlib
 import logging
 from datetime import datetime, UTC
@@ -43,6 +44,25 @@ def init_state_manager(redis_url: str) -> None:
     from app.conversation.state import init_state_manager as _init
     _init(redis_url)
     logger.info("ConversationEngine Redis inicializado: %s", redis_url)
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+
+def _typing_delay(msg) -> float:
+    if isinstance(msg, str):
+        n = len(msg)
+    elif isinstance(msg, dict):
+        n = len(msg.get("body", "") or msg.get("caption", "") or "")
+    else:
+        n = 0
+    if n <= 50:
+        return 1.0
+    elif n <= 150:
+        return 2.0
+    elif n <= 300:
+        return 3.0
+    return 4.0
 
 
 # ── Ponto de entrada ──────────────────────────────────────────────────────────
@@ -85,7 +105,7 @@ async def route_message(phone: str, phone_hash: str, text: str, meta_message_id:
     respostas = await engine.handle_message(phone_hash, text, phone=phone)
 
     # 4. Envia respostas
-    await _enviar_respostas(meta, phone, phone_hash, respostas, contact)
+    await _enviar_respostas(meta, phone, phone_hash, respostas, contact, meta_message_id)
 
     # 5. Atualiza tags/stage do contato
     await _atualizar_contact(phone_hash)
@@ -166,6 +186,7 @@ async def _enviar_respostas(
     phone_hash: str,
     respostas: list,
     contact: dict,
+    meta_message_id: str = "",
 ) -> None:
     """
     Itera sobre as respostas do engine e envia ao paciente.
@@ -175,10 +196,18 @@ async def _enviar_respostas(
       dict com "media_type"   → envio de documento ou imagem
       dict com "_meta_action" → ação especial (ex: escalação)
     """
+    first = True
     for msg in respostas:
         if not msg:
             continue
         try:
+            if first:
+                if meta_message_id:
+                    await meta.mark_as_read(meta_message_id)
+                await asyncio.sleep(_typing_delay(msg))
+                first = False
+            else:
+                await asyncio.sleep(1.0)
             if isinstance(msg, dict):
                 if msg.get("_meta_action") == "escalate":
                     await _handle_escalation(
