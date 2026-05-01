@@ -203,7 +203,10 @@ async def _enviar_respostas(
         try:
             if first:
                 if meta_message_id:
-                    await meta.mark_as_read(meta_message_id)
+                    try:
+                        await meta.mark_as_read(meta_message_id)
+                    except Exception:
+                        pass
                 await asyncio.sleep(_typing_delay(msg))
                 first = False
             else:
