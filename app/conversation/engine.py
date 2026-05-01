@@ -19,6 +19,7 @@ import logging
 import os
 import unicodedata
 import asyncio
+from time import perf_counter
 
 from app.conversation.state import (
     add_message,
@@ -31,6 +32,7 @@ from app.conversation.state import (
 from app.conversation.interpreter import interpretar_turno
 from app.conversation.planner import decidir_acao
 from app.conversation.responder import gerar_resposta, sanitize_patient_responses
+from app.metrics import record_turn_error, reset_error_count, write_turn_metric
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +52,15 @@ class ConversationEngine:
             )
         except asyncio.TimeoutError:
             logger.error("Timeout geral do turno para hash=%s apos %.1fs", phone_hash[-8:], timeout)
+            await record_turn_error(phone_hash, "timeout")
+            write_turn_metric({
+                "phone_hash": phone_hash,
+                "intent": None,
+                "action": "timeout",
+                "duration_ms": int(timeout * 1000),
+                "decision": None,
+                "error": "timeout",
+            })
             return [
                 "Estou com instabilidade para processar sua mensagem agora. "
                 "Pode tentar novamente em alguns instantes? 💚"
@@ -63,54 +74,87 @@ class ConversationEngine:
         message:    texto recebido do paciente
         phone:      número real (necessário para tools Dietbox/Rede)
         """
-        # 1. Carregar estado
-        state = await load_state(phone_hash, phone)
-        add_message(state, "user", message)
+        started = perf_counter()
+        turno = {}
+        plano = {}
+        try:
+            # 1. Carregar estado
+            state = await load_state(phone_hash, phone)
+            add_message(state, "user", message)
 
-        # 2. Interpretar turno (LLM)
-        turno = await interpretar_turno(message, state)
-        turno["_raw_message"] = message  # Disponível para heurísticas do planner
+            # 2. Interpretar turno (LLM)
+            turno = await interpretar_turno(message, state)
+            turno["_raw_message"] = message  # Disponível para heurísticas do planner
 
-        # 3. Aplicar extrações e correções ao estado
-        apply_turno_updates(state, turno)
-        if turno.get("correcao"):
-            c = turno["correcao"]
-            apply_correction(state, c["campo"], c["valor_novo"])
+            # 3. Aplicar extrações e correções ao estado
+            apply_turno_updates(state, turno)
+            if turno.get("correcao"):
+                c = turno["correcao"]
+                apply_correction(state, c["campo"], c["valor_novo"])
 
-        # 4. Atualizar goal para persistência entre turnos
-        self._atualizar_goal(state, turno)
+            # 4. Atualizar goal para persistência entre turnos
+            self._atualizar_goal(state, turno)
 
-        # 5. Decidir ação (LLM — planner)
-        plano = await decidir_acao(turno, state)
+            # 5. Decidir ação (LLM — planner)
+            plano = await decidir_acao(turno, state)
 
-        # 6. Aplicar mutações de estado declaradas pelo planner
-        self._aplicar_mutacoes(state, plano)
+            # 6. Aplicar mutações de estado declaradas pelo planner
+            self._aplicar_mutacoes(state, plano)
 
-        # 7. Executar tool (se houver)
-        resultado_tool = None
-        if plano.get("tool"):
-            resultado_tool = await self._executar_tool(plano, state, turno)
-            apply_tool_result(state, plano["tool"], resultado_tool or {})
-            state["last_action"] = plano["tool"]
-        else:
-            state["last_action"] = plano.get("action")
+            # 7. Executar tool (se houver)
+            resultado_tool = None
+            if plano.get("tool"):
+                resultado_tool = await self._executar_tool(plano, state, turno)
+                apply_tool_result(state, plano["tool"], resultado_tool or {})
+                state["last_action"] = plano["tool"]
+            else:
+                state["last_action"] = plano.get("action")
 
-        # 8. Gerar resposta
-        resposta = await gerar_resposta(state, plano, resultado_tool)
-        resposta = sanitize_patient_responses(resposta, state)
+            # 8. Gerar resposta
+            resposta = await gerar_resposta(state, plano, resultado_tool)
+            resposta = sanitize_patient_responses(resposta, state)
 
-        # 9. Adicionar respostas ao histórico
-        for msg in resposta:
-            if isinstance(msg, str):
-                add_message(state, "assistant", msg)
-            elif isinstance(msg, dict) and msg.get("_interactive") and msg.get("body"):
-                add_message(state, "assistant", msg["body"])
+            # 9. Adicionar respostas ao histórico
+            for msg in resposta:
+                if isinstance(msg, str):
+                    add_message(state, "assistant", msg)
+                elif isinstance(msg, dict) and msg.get("_interactive") and msg.get("body"):
+                    add_message(state, "assistant", msg["body"])
 
-        # 10. Persistir estado, inclusive concluido. O router usa esse snapshot
-        # final para gravar nome/stage/id_agenda no Contact antes de limpar Redis.
-        await save_state(phone_hash, state)
+            # 10. Persistir estado, inclusive concluido. O router usa esse snapshot
+            # final para gravar nome/stage/id_agenda no Contact antes de limpar Redis.
+            await save_state(phone_hash, state)
+            tool_error = bool(
+                isinstance(resultado_tool, dict)
+                and resultado_tool.get("sucesso") is False
+            )
+            if tool_error:
+                await record_turn_error(phone_hash, "tool_failure")
+            else:
+                await reset_error_count(phone_hash)
+            write_turn_metric({
+                "phone_hash": phone_hash,
+                "intent": turno.get("intent"),
+                "action": plano.get("action"),
+                "tool": plano.get("tool"),
+                "duration_ms": int((perf_counter() - started) * 1000),
+                "decision": (plano.get("meta") or {}).get("decision"),
+                "error": "tool_failure" if tool_error else None,
+            })
 
-        return resposta
+            return resposta
+        except Exception as e:
+            await record_turn_error(phone_hash, type(e).__name__)
+            write_turn_metric({
+                "phone_hash": phone_hash,
+                "intent": turno.get("intent"),
+                "action": plano.get("action"),
+                "tool": plano.get("tool"),
+                "duration_ms": int((perf_counter() - started) * 1000),
+                "decision": (plano.get("meta") or {}).get("decision"),
+                "error": type(e).__name__,
+            })
+            raise
 
     # ── Helpers internos ──────────────────────────────────────────────────────
 

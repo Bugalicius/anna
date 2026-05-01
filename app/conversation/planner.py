@@ -330,10 +330,9 @@ JSON puro, sem markdown. Inclua apenas campos necessários:
 
 ## DRAFT_MESSAGE — mensagem que a Ana enviará ao paciente
 Use para ações conversacionais: ask_field, answer_question, respond_fora_de_contexto, ask_motivo_cancelamento.
+Personalidade real da Ana: mensagens curtas (máx 2-3 linhas), tom informal — "Claro.", "pode ser?", "Perfeitoooo 💚🥰". Nunca liste horários genéricos. Emojis com moderação (💚 🥰 😉).
 Regras:
-- Se o paciente disse algo relevante (dúvida, condição médica, informação pessoal), reconheça brevemente antes de perguntar
-- Pergunte/responda o que a ação requer de forma natural e acolhedora
-- Tom informal, português brasileiro. Máx 4 linhas. Emojis com moderação.
+- Reconheça brevemente o que o paciente disse antes de perguntar
 - NÃO inclua valores financeiros, chaves PIX, links ou datas precisas (isso fica nos templates)
 - Para execute_tool, send_planos, offer_upsell, await_payment, ask_forma_pagamento, send_confirmacao*, escalate → draft_message: null
 
@@ -1310,12 +1309,15 @@ async def decidir_acao(turno: dict, state: dict) -> dict:
     # Regras determinísticas têm prioridade sobre o LLM
     override = _override_deterministic(turno, state)
     if override:
+        override.setdefault("meta", {})["decision"] = "override"
         logger.info("Planner (override): action=%s", override["action"])
         return override
 
     if os.environ.get("DISABLE_LLM_FOR_TESTS") == "true":
         logger.info("Planner sem LLM (modo teste): usando fallback")
-        return _fallback(turno, state)
+        plano = _fallback(turno, state)
+        plano.setdefault("meta", {})["decision"] = "fallback"
+        return plano
 
     prompt = _build_prompt(turno, state)
 
@@ -1329,12 +1331,16 @@ async def decidir_acao(turno: dict, state: dict) -> dict:
         data = json.loads(raw)
         plano = _parse_plano(data, state)
         plano = _validar_plano_operacional(plano, turno, state)
+        plano.setdefault("meta", {})["decision"] = "llm"
         logger.info("Planner: action=%s tool=%s", plano["action"], plano.get("tool"))
         return plano
 
     except Exception as e:
         logger.error("Planner LLM error: %s", e)
-        return _fallback(turno, state)
+        plano = _fallback(turno, state)
+        plano.setdefault("meta", {})["decision"] = "fallback"
+        plano["meta"]["error"] = str(e)
+        return plano
 
 
 def _validar_plano_operacional(plano: dict, turno: dict, state: dict) -> dict:
