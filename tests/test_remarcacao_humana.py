@@ -34,7 +34,7 @@ async def test_remarcacao_pede_preferencia_com_tom_humano_sem_menu_agendamento()
 
     assert plano["action"] == "ask_field"
     assert plano["ask_context"] == "preferencia_horario_remarcar"
-    assert "sem problema" in texto.lower() or "te ajudar" in texto.lower()
+    assert "qual dia" in texto.lower() or "período" in texto.lower()
     assert "para seguirmos com o agendamento" not in texto.lower()
     assert "pagamento" not in texto.lower()
 
@@ -517,9 +517,9 @@ async def test_remarcacao_retorno_pede_preferencia_com_grade_de_horarios():
     )
 
     texto = respostas[0]
-    assert "Manhã: 08h, 09h e 10h" in texto
-    assert "Tarde: 15h, 16h e 17h" in texto
-    assert "Noite: 18h e 19h (exceto sexta à noite)" in texto
+    assert "Qual dia ou período atende melhor sua rotina?" in texto
+    assert "Manhã: 08h, 09h e 10h" not in texto
+    assert "Tarde: 15h, 16h e 17h" not in texto
 
 
 @pytest.mark.asyncio
