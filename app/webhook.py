@@ -19,7 +19,7 @@ VERIFY_TOKEN = os.environ.get("WEBHOOK_VERIFY_TOKEN", "")
 _DEDUP_TTL = 14400  # 4 horas em segundos
 _DEBOUNCE_TTL = 60
 
-MSG_AUDIO_NAO_SUPORTADO = "Oi! Por enquanto só consigo ler mensagens de texto. Pode me escrever o que precisa? 😊"
+MSG_AUDIO_FALHOU = "Não consegui ouvir seu áudio 😔 Pode me escrever o que precisa? 💚"
 MSG_MIDIA_NAO_COMPROVANTE = "Recebo comprovantes de pagamento por aqui 😊 Posso te ajudar com mais alguma coisa?"
 MSG_LOCATION_NAO_SUPORTADO = "Recebo mensagens de texto por aqui 😊 Como posso te ajudar?"
 
@@ -369,18 +369,23 @@ async def process_message(message: dict, metadata: dict):
         return
 
     if msg_type == "audio":
-        await _send_text_direct(phone, MSG_AUDIO_NAO_SUPORTADO, meta_id)
-        return
-
-    if msg_type == "location":
+        from app.media_handler import processar_midia as _processar_midia
+        audio_id = message.get("audio", {}).get("id", "")
+        transcricao = ""
+        if audio_id:
+            _media = await _processar_midia(audio_id)
+            transcricao = _media.get("transcricao") or ""
+        if not transcricao:
+            await _send_text_direct(phone, MSG_AUDIO_FALHOU, meta_id)
+            return
+        text = transcricao
+    elif msg_type == "location":
         await _send_text_direct(phone, MSG_LOCATION_NAO_SUPORTADO, meta_id)
         return
-
-    if msg_type == "sticker":
+    elif msg_type == "sticker":
         await _send_text_direct(phone, MSG_MIDIA_NAO_COMPROVANTE, meta_id)
         return
-
-    if msg_type == "interactive":
+    elif msg_type == "interactive":
         interactive = message.get("interactive", {})
         itype = interactive.get("type", "")
         if itype == "button_reply":
