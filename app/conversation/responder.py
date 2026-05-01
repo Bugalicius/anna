@@ -145,10 +145,9 @@ MSG_CONFIRMACAO_ONLINE = (
 )
 
 MSG_CONFIRMACAO_REMARCACAO = (
-    "Prontinho, sua consulta foi remarcada com sucesso ✅\n\n"
-    "📅 *Nova data:* {data} às {hora}\n"
-    "📍 *Modalidade:* {modalidade}\n\n"
-    "Qualquer imprevisto, me chama por aqui 💚"
+    "Fiz a alteração da data e horário da consulta, tá bom?\n"
+    "{data} às {hora}\n"
+    "Qualquer coisa estou à disposição! 💚💚"
 )
 
 MSG_CANCELAMENTO_CONFIRMADO = (
@@ -430,7 +429,6 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
             return [MSG_CONFIRMACAO_REMARCACAO.format(
                 data=slot.get("data_fmt", ""),
                 hora=slot.get("hora", ""),
-                modalidade=cd.get("modalidade") or "presencial",
             )]
         return [{"_meta_action": "escalate", "motivo": "erro_remarcacao"}]
 
@@ -439,7 +437,6 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
         return [MSG_CONFIRMACAO_REMARCACAO.format(
             data=slot.get("data_fmt", ""),
             hora=slot.get("hora", ""),
-            modalidade=cd.get("modalidade") or "presencial",
         )]
 
     # ── Abandonar processo (desistir sem consulta agendada) ──────────────
@@ -557,8 +554,8 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
     if action == "execute_tool" and plano.get("tool") == "perda_retorno":
         return [
             "Entendo. Esse período fica fora do prazo de remarcação do retorno 😕\n\n"
-            "A remarcação como retorno precisa acontecer em até 7 dias corridos da data original da consulta. "
-            "Depois desse prazo, consigo te ajudar a marcar uma nova consulta com a Thaynara."
+            "A remarcação como retorno precisa acontecer em até 90 dias da data original da consulta. "
+            "Depois desse prazo, consigo te ajudar a marcar uma nova consulta com desconto."
         ]
 
     # ── Resposta a dúvida do KB ───────────────────────────────────────────────

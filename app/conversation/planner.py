@@ -591,6 +591,18 @@ def _identificador_remarcacao_invalido(valor: str | None) -> bool:
     return False
 
 
+def _preferencia_generica_de_rejeicao(pref: dict | None) -> bool:
+    if not isinstance(pref, dict):
+        return False
+    desc = _normalizar_texto_simples(pref.get("descricao") or "")
+    if pref.get("tipo") == "qualquer":
+        return True
+    return any(p in desc for p in (
+        "outra opcao", "outras opcoes", "outros horarios", "nenhum",
+        "nao serve", "nao atende", "esses nao", "mais opcoes",
+    ))
+
+
 def _pedido_explicito_nova_consulta(texto: str | None) -> bool:
     t = _normalizar_texto_simples(texto)
     if not t:
@@ -796,9 +808,9 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                 ask_context="perda_retorno",
                 draft_message=(
                     "Porque a remarcação como retorno só pode acontecer dentro do prazo do retorno: "
-                    "até 7 dias corridos a partir da data original da consulta.\n\n"
+                    "até 90 dias a partir da data original da consulta.\n\n"
                     "Depois desse prazo, o sistema não permite tratar como retorno. "
-                    "Aí eu consigo te ajudar a marcar uma nova consulta."
+                    "Aí eu consigo te ajudar a marcar uma nova consulta com desconto."
                 ),
             )
 
@@ -982,6 +994,12 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                 )
 
             if pref_turno:
+                if _preferencia_generica_de_rejeicao(pref_turno):
+                    return _plano(
+                        ASK_FIELD,
+                        ask_context="preferencia_horario_remarcar",
+                        draft_message="O que não atende? Dia da semana, horário ou período?",
+                    )
                 fim_janela_remarcar = state.get("fim_janela_remarcar")
                 desc_pref = (pref_turno or {}).get("descricao", "")
                 if _pref_alem_da_janela(desc_pref, fim_janela_remarcar):
@@ -1002,23 +1020,10 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                 )
 
             if not escolha_valida:
-                pool = state.get("slots_pool", [])
-                offered_dts = {s.get("datetime") for s in slots}
-                next_batch = [s for s in pool if s.get("datetime") not in offered_dts]
-
-                if not next_batch or rodada >= 1:
-                    # Pool esgotado ou já na segunda rodada → perda de retorno
-                    return _plano(EXECUTE_TOOL, tool="perda_retorno")
-
-                # Primeira rejeição com mais slots disponíveis → segunda rodada
-                proximos = next_batch[:3]
-                state["last_slots_offered"] = proximos  # Atualiza para o responder usar
-                state["rodada_negociacao"] = 1
                 return _plano(
-                    ASK_SLOT_CHOICE,
-                    draft_message=(
-                        "Tudo bem. Vou buscar mais opções dentro da janela de remarcação:"
-                    ),
+                    ASK_FIELD,
+                    ask_context="preferencia_horario_remarcar",
+                    draft_message="O que não atende? Dia da semana, horário ou período?",
                 )
 
         if intent == "remarcar" and not slots and not slot_escolhido:

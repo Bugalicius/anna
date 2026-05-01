@@ -61,16 +61,22 @@ async def detectar_tipo_remarcacao(telefone: str, identificador: str | None = No
             "identificador_usado": identificador,
         }
 
-    # Calcula janela de remarcação (sexta da semana seguinte)
+    # Calcula janela de remarcação como retorno: até 90 dias da consulta original.
     try:
         dt_consulta = date.fromisoformat(agenda["inicio"][:10])
-        dia_semana = dt_consulta.weekday()
-        dias = (7 - dia_semana) % 7 or 7
-        prox_segunda = dt_consulta + timedelta(days=dias)
-        fim_janela = (prox_segunda + timedelta(days=4)).isoformat()
+        fim_janela = (dt_consulta + timedelta(days=90)).isoformat()
     except Exception as e:
         logger.error("Erro ao calcular fim_janela: %s", e)
-        fim_janela = (date.today() + timedelta(days=7)).isoformat()
+        fim_janela = (date.today() + timedelta(days=90)).isoformat()
+
+    if date.today().isoformat() > fim_janela:
+        return {
+            "tipo": "perda_retorno",
+            "tipo_remarcacao": "perda_retorno",
+            "consulta_atual": agenda,
+            "fim_janela": fim_janela,
+            "paciente": paciente,
+        }
 
     return {
         "tipo_remarcacao": "retorno",

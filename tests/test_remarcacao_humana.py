@@ -224,10 +224,9 @@ async def test_remarcacao_pede_outros_horarios_amplia_busca():
 
     plano = await decidir_acao(turno, state)
 
-    assert plano["tool"] == "consultar_slots_remarcar"
-    assert plano["params"]["preferencia"]["tipo"] == "qualquer"
-    assert state["last_slots_offered"] == []
-    assert state["rodada_negociacao"] == 0
+    assert plano["action"] == "ask_field"
+    assert plano["ask_context"] == "preferencia_horario_remarcar"
+    assert "O que não atende" in plano["draft_message"]
 
 
 @pytest.mark.asyncio
@@ -264,8 +263,8 @@ async def test_remarcacao_pergunta_outros_horarios_nao_responde_politica():
 
     plano = await decidir_acao(turno, state)
 
-    assert plano["action"] == "execute_tool"
-    assert plano["tool"] == "consultar_slots_remarcar"
+    assert plano["action"] == "ask_field"
+    assert plano["ask_context"] == "preferencia_horario_remarcar"
 
 
 @pytest.mark.asyncio
@@ -287,7 +286,7 @@ async def test_confirmacao_remarcacao_usa_prontinho_e_data():
     )
     texto = " ".join(respostas)
 
-    assert "Prontinho" in texto
+    assert "Fiz a alteração da data e horário da consulta, tá bom?" in texto
     assert "30/04" in texto
     assert "18h" in texto
 
@@ -439,16 +438,10 @@ async def test_bloqueia_confirmacao_remarcacao_sem_sucesso_da_tool(monkeypatch):
         "topico_pergunta": None,
     }
 
-    class _FakeMessage:
-        content = [type("Block", (), {"text": '{"action":"send_confirmacao_remarcacao"}'})()]
-
-    class _FakeClient:
-        class messages:
-            @staticmethod
-            def create(**kwargs):
-                return _FakeMessage()
-
-    monkeypatch.setattr("app.conversation.planner.anthropic.Anthropic", lambda api_key="": _FakeClient())
+    monkeypatch.setattr(
+        "app.conversation.planner.llm_client.complete_text",
+        lambda **kwargs: '{"action":"send_confirmacao_remarcacao"}',
+    )
 
     plano = await decidir_acao(turno, state)
 
@@ -548,5 +541,32 @@ async def test_pergunta_sobre_perda_retorno_explica_janela_sem_politica():
 
     assert plano["action"] == "answer_question"
     assert plano["ask_context"] == "perda_retorno"
-    assert "7 dias corridos" in plano["draft_message"]
+    assert "90 dias" in plano["draft_message"]
     assert "PIX" not in plano["draft_message"]
+
+
+@pytest.mark.asyncio
+async def test_detectar_tipo_remarcacao_retorno_vencido_vira_perda(monkeypatch):
+    from app.tools.patients import detectar_tipo_remarcacao
+
+    monkeypatch.setattr(
+        "app.integrations.dietbox.buscar_paciente_por_telefone",
+        lambda telefone: {"id": 123, "nome": "Paciente"},
+    )
+    monkeypatch.setattr(
+        "app.integrations.dietbox.buscar_paciente_por_identificador",
+        lambda identificador: None,
+    )
+    monkeypatch.setattr(
+        "app.integrations.dietbox.consultar_agendamento_ativo",
+        lambda id_paciente: {"id": "agenda-1", "inicio": "2025-01-01T09:00:00"},
+    )
+    monkeypatch.setattr(
+        "app.integrations.dietbox.verificar_lancamento_financeiro",
+        lambda id_agenda: True,
+    )
+
+    result = await detectar_tipo_remarcacao("5531999990000")
+
+    assert result["tipo"] == "perda_retorno"
+    assert result["tipo_remarcacao"] == "perda_retorno"
