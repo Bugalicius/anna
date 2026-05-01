@@ -6,7 +6,6 @@ import hashlib as _hashlib
 import asyncio
 import json as _json
 from datetime import datetime
-from zoneinfo import ZoneInfo
 import redis.asyncio as aioredis
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
 from app.meta_api import verify_signature
@@ -22,10 +21,6 @@ _DEBOUNCE_TTL = 60
 
 MSG_AUDIO_NAO_SUPORTADO = "Oi! Por enquanto só consigo ler mensagens de texto. Pode me escrever o que precisa? 😊"
 MSG_MIDIA_NAO_COMPROVANTE = "Recebo comprovantes de pagamento por aqui 😊 Posso te ajudar com mais alguma coisa?"
-MSG_FORA_HORARIO = (
-    "Eiii! No momento estou fora do meu horário de atendimento. "
-    "Vou responder assim que possível. Agradeço sua compreensão e paciência! 💚"
-)
 MSG_LOCATION_NAO_SUPORTADO = "Recebo mensagens de texto por aqui 😊 Como posso te ajudar?"
 
 
@@ -247,11 +242,6 @@ def _is_internal_number_local(numero: str) -> bool:
     return recebido in {interno, _sem_nono_digito_brasil(interno)}
 
 
-def _em_horario_atendimento(now: datetime | None = None) -> bool:
-    agora = now or datetime.now(ZoneInfo("America/Sao_Paulo"))
-    return agora.weekday() < 5 and 8 <= agora.hour < 20
-
-
 async def _send_text_direct(phone: str, text: str) -> None:
     from app.meta_api import MetaAPIClient
 
@@ -262,24 +252,6 @@ async def _send_text_direct(phone: str, text: str) -> None:
         await log_bot_message(phone, text)
     except Exception as e:
         logger.debug("log_bot_message direto falhou: %s", e)
-
-
-async def _should_send_after_hours_once(phone_hash: str) -> bool:
-    if os.environ.get("DISABLE_AFTER_HOURS_NOTICE", "").lower() == "true":
-        return False
-    if _em_horario_atendimento():
-        return False
-    redis_url = os.environ.get("REDIS_URL", "redis://redis:6379/0")
-    today = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y%m%d")
-    key = f"after_hours:{phone_hash}:{today}"
-    try:
-        r = aioredis.Redis.from_url(redis_url, decode_responses=True)
-        created = await r.set(key, "1", nx=True, ex=86400)
-        await r.aclose()
-        return bool(created)
-    except Exception as e:
-        logger.warning("Redis after-hours indisponivel: %s", e)
-        return True
 
 
 def _should_debounce_message(message: dict) -> bool:
@@ -380,10 +352,6 @@ async def process_message(message: dict, metadata: dict):
 
     phone_hash = hashlib.sha256(phone.encode()).hexdigest()[:64]
     if await is_whatsapp_rate_limited(phone_hash):
-        return
-
-    if not _is_internal_number_local(phone) and await _should_send_after_hours_once(phone_hash):
-        await _send_text_direct(phone, MSG_FORA_HORARIO)
         return
 
     if msg_type == "audio":
