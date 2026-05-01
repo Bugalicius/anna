@@ -82,6 +82,18 @@ class ConversationEngine:
             state = await load_state(phone_hash, phone)
             add_message(state, "user", message)
 
+            # Pre-processamento de botões de confirmação de presença
+            if message == "confirmar_presenca":
+                state["flags"]["confirmacao_presenca"] = True
+                resposta = ["Confirmado então! Obrigadaaa 💚😉"]
+                add_message(state, "assistant", resposta[0])
+                await save_state(phone_hash, state)
+                return resposta
+
+            if message == "remarcar_consulta":
+                # Trata como se o paciente tivesse escrito "quero remarcar minha consulta"
+                message = "quero remarcar minha consulta"
+
             # 2. Interpretar turno (LLM)
             turno = await interpretar_turno(message, state)
             turno["_raw_message"] = message  # Disponível para heurísticas do planner

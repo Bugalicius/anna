@@ -86,6 +86,7 @@ def create_state(phone_hash: str, phone: str) -> dict:
         "last_slots_offered": [],
         "slots_pool": [],
         "rodada_negociacao": 0,
+        "remarcacoes_count": 0,        # incrementado a cada remarcar_dietbox bem-sucedido
         "tipo_remarcacao": None,       # "retorno" | "nova_consulta"
         "fim_janela_remarcar": None,   # ISO date string
         "link_pagamento": None,        # {"url", "parcelas", "parcela_valor"}
@@ -228,6 +229,7 @@ def apply_tool_result(state: dict, tool: str, result: dict) -> None:
         state["status"] = "concluido"
         state["last_slots_offered"] = []
         state["slots_pool"] = []
+        state["remarcacoes_count"] = state.get("remarcacoes_count", 0) + 1
 
     if "slots" in result:
         state["last_slots_offered"] = result["slots"][:3]

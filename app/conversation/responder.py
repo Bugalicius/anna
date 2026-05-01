@@ -451,6 +451,13 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
     if action == "execute_tool" and plano.get("tool") == "cancelar":
         if resultado_tool and resultado_tool.get("sucesso"):
             return [MSG_CANCELAMENTO_CONFIRMADO]
+        # Sem agendamento ativo — mensagem amigável em vez de expor erro técnico
+        erro = (resultado_tool or {}).get("erro", "")
+        if "não encontrado" in erro.lower() or "sem agendamento" in erro.lower() or "paciente não encontrado" in erro.lower():
+            return [
+                "Não encontrei sua consulta no sistema. "
+                "Pode me confirmar seu nome completo? 💚"
+            ]
         return [{"_meta_action": "escalate", "motivo": "erro_cancelamento"}]
 
     if action == "send_confirmacao_cancelamento":
@@ -541,6 +548,10 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
             (m["content"] for m in reversed(state.get("history", [])) if m["role"] == "user"),
             "",
         )
+        # Checar objeções conhecidas antes do FAQ genérico
+        objection_resp = kb.find_objection_response(last_user)
+        if objection_resp:
+            return [objection_resp]
         faq_answer = _answer_faq_from_message(last_user)
         if faq_answer:
             return [faq_answer]

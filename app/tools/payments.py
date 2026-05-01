@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 async def gerar_link(plano: str, modalidade: str, phone_hash: str) -> dict:
     """Gera link de pagamento via cartão (Rede portal)."""
     from app.integrations.payment_gateway import gerar_link_pagamento
+    from app.knowledge_base import kb
     from datetime import datetime, timedelta, timezone
 
     BRT = timezone(timedelta(hours=-3))
@@ -20,6 +21,15 @@ async def gerar_link(plano: str, modalidade: str, phone_hash: str) -> dict:
             lambda: gerar_link_pagamento(plano=plano, modalidade=modalidade, referencia=ref),
         )
         if resultado.sucesso and resultado.url:
+            # D.1 — Validar se o valor do link corresponde ao plano escolhido
+            valor_esperado = kb.get_valor(plano, modalidade)
+            if valor_esperado and resultado.parcela_valor and resultado.parcelas:
+                valor_total_link = round(resultado.parcela_valor * resultado.parcelas, 2)
+                if abs(valor_total_link - valor_esperado) > 1.0:
+                    logger.warning(
+                        "Valor do link diverge do plano: link=R$%.2f esperado=R$%.2f (plano=%s modal=%s)",
+                        valor_total_link, valor_esperado, plano, modalidade,
+                    )
             return {
                 "sucesso": True,
                 "link_url": resultado.url,
