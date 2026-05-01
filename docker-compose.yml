@@ -21,8 +21,6 @@ services:
       POSTGRES_USER: agente
       POSTGRES_PASSWORD: agente123
       POSTGRES_DB: agente_ana
-    ports:
-      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -33,8 +31,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     volumes:
       - redisdata:/data
     healthcheck:
