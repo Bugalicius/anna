@@ -90,6 +90,9 @@ async def route_message(phone: str, phone_hash: str, text: str, meta_message_id:
     # 5. Atualiza tags/stage do contato
     await _atualizar_contact(phone_hash)
 
+    # 6. Agenda remarketing situacional e verifica loop de remarcação
+    await _pos_turn_remarketing(phone_hash, contact)
+
 
 # ── Carregar contato ──────────────────────────────────────────────────────────
 
@@ -401,3 +404,84 @@ async def _atualizar_contact(phone_hash: str) -> None:
     # Limpa estado Redis depois que o snapshot final ja foi persistido no Contact.
     if _recusou or status == "concluido":
         await delete_state(phone_hash)
+
+
+# ── Remarketing situacional pós-turno ─────────────────────────────────────────
+
+
+async def _pos_turn_remarketing(phone_hash: str, contact: dict) -> None:
+    """
+    Agenda remarketing situacional com base no last_action do estado atual.
+    Evita re-agendamento usando flags no estado.
+    Verifica loop de remarcação (remarcacoes_count >= 3) e notifica Breno.
+    """
+    from app.conversation.state import load_state, save_state
+    from app.database import SessionLocal
+    from app.models import Contact as ContactModel
+    from app.remarketing import schedule_situacao_remarketing
+
+    try:
+        state = await load_state(phone_hash)
+        last_action = state.get("last_action")
+        flags = state.get("flags", {})
+        flags_updated = False
+
+        with SessionLocal() as db:
+            db_contact = db.query(ContactModel).filter_by(phone_hash=phone_hash).first()
+            if not db_contact:
+                return
+            contact_id = db_contact.id
+
+            # Após ver preços → sumiu_apos_ver_preco (24h)
+            if last_action == "ask_forma_pagamento" and not flags.get("rmkt_preco_scheduled"):
+                nome = (state["collected_data"].get("nome") or "").split()[0]
+                schedule_situacao_remarketing(db, contact_id, "sumiu_apos_ver_preco", 0)
+                flags["rmkt_preco_scheduled"] = True
+                flags_updated = True
+
+            # Após link de cartão ou aguardar pagamento → sumiu_apos_link_pagamento (4h)
+            elif last_action in ("await_payment", "gerar_link_cartao") and not flags.get("rmkt_link_scheduled"):
+                schedule_situacao_remarketing(db, contact_id, "sumiu_apos_link_pagamento", 0, delay_horas=4)
+                flags["rmkt_link_scheduled"] = True
+                flags_updated = True
+
+            # Após enviar planos → sumiu_apos_receber_info (48h)
+            elif last_action == "send_planos" and not flags.get("rmkt_info_scheduled"):
+                schedule_situacao_remarketing(db, contact_id, "sumiu_apos_receber_info", 0)
+                flags["rmkt_info_scheduled"] = True
+                flags_updated = True
+
+            # Após cancelar com sucesso → cancelou_sem_remarcar (7 dias)
+            elif last_action == "cancelar" and state.get("last_tool_success") and not flags.get("rmkt_cancel_scheduled"):
+                schedule_situacao_remarketing(db, contact_id, "cancelou_sem_remarcar", 0)
+                flags["rmkt_cancel_scheduled"] = True
+                flags_updated = True
+
+            # D.3 — Loop de remarcação: notifica Breno após 3ª remarcação
+            remarcacoes = state.get("remarcacoes_count", 0)
+            if remarcacoes >= 3 and not flags.get("loop_remarcacao_notificado"):
+                nome = state["collected_data"].get("nome") or "Paciente"
+                await _notificar_breno_loop_remarcacao(nome, remarcacoes)
+                flags["loop_remarcacao_notificado"] = True
+                flags_updated = True
+
+        if flags_updated:
+            state["flags"] = flags
+            await save_state(phone_hash, state)
+
+    except Exception as e:
+        logger.warning("_pos_turn_remarketing falhou: %s", e)
+
+
+async def _notificar_breno_loop_remarcacao(nome: str, n: int) -> None:
+    """Envia notificação ao número interno quando paciente remarca 3+ vezes."""
+    import os
+    from app.meta_api import MetaAPIClient
+    numero_interno = os.environ.get("NUMERO_INTERNO", "5531992059211")
+    try:
+        meta = MetaAPIClient()
+        ordinal = {3: "3ª", 4: "4ª", 5: "5ª"}.get(n, f"{n}ª")
+        msg = f"Ana: {nome} está tentando remarcar pela {ordinal} vez. Pode dar uma atenção especial? 💚"
+        await meta.send_text(numero_interno, msg)
+    except Exception as e:
+        logger.warning("Falha ao notificar Breno sobre loop remarcação: %s", e)

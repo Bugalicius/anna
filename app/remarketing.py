@@ -139,6 +139,77 @@ def schedule_time_remarketing(db: Session, contact_id: str, template: str,
     return entry
 
 
+def _add_rmkt_entry(db: Session, contact_id: str, template_name: str, delay_horas: float) -> None:
+    """Insere entrada bruta na fila de remarketing sem verificações extras."""
+    existing = db.query(RemarketingQueue).filter_by(
+        contact_id=contact_id, template_name=template_name, status="pending"
+    ).first()
+    if existing:
+        return
+    entry = RemarketingQueue(
+        contact_id=contact_id,
+        template_name=template_name,
+        scheduled_for=datetime.now(UTC) + timedelta(hours=delay_horas),
+        status="pending",
+        sequence_position=1,
+        trigger_type="behavior",
+        counts_toward_limit=False,
+    )
+    db.add(entry)
+    db.commit()
+
+
+def schedule_situacao_remarketing(
+    db: Session,
+    contact_id: str,
+    situacao: str,
+    index: int = 0,
+    delay_horas: float | None = None,
+) -> "RemarketingQueue | None":
+    """
+    Agenda mensagem de remarketing por situação comportamental.
+
+    template_name = "rmkt:{situacao}:{index}"
+    O dispatcher resolve o texto no KB ao enviar.
+    Não conta para o limite de MAX_REMARKETING (behavior-triggered).
+    """
+    from app.knowledge_base import kb
+    script = kb.remarketing.get(situacao)
+    if not script:
+        logger.warning("schedule_situacao_remarketing: situacao '%s' nao encontrada no KB", situacao)
+        return None
+
+    # Usa delay do KB se não informado explicitamente
+    if delay_horas is None:
+        delay_horas = script.get("delay_horas") or (script.get("delay_dias", 1) * 24)
+
+    scheduled = datetime.now(UTC) + timedelta(hours=delay_horas)
+    template_name = f"rmkt:{situacao}:{index}"
+
+    # Evita duplicar entrada pendente para o mesmo template
+    existing = (
+        db.query(RemarketingQueue)
+        .filter_by(contact_id=contact_id, template_name=template_name, status="pending")
+        .first()
+    )
+    if existing:
+        return existing
+
+    entry = RemarketingQueue(
+        contact_id=contact_id,
+        template_name=template_name,
+        scheduled_for=scheduled,
+        status="pending",
+        sequence_position=1,
+        trigger_type="behavior",
+        counts_toward_limit=False,
+    )
+    db.add(entry)
+    db.commit()
+    logger.info("Situacao remarketing agendado: %s para contact %s em %.0fh", situacao, contact_id[:8], delay_horas)
+    return entry
+
+
 
 def cancel_pending_remarketing(db: Session, contact_id: str):
     """Cancela todas as entradas pendentes de remarketing para o contato."""
@@ -210,7 +281,8 @@ async def _dispatch_due_messages() -> None:
                     logger.info("Remarketing skip — conversa ativa para %s", contact.phone_hash[-4:])
                     continue  # pula este ciclo, tenta no proximo (1 min)
 
-                success = await _enviar_remarketing(meta, contact.phone_e164, entry)
+                contact_name = contact.collected_name or contact.push_name or ""
+                success = await _enviar_remarketing(meta, contact.phone_e164, entry, contact_name)
                 if success:
                     entry.status = "sent"
                     entry.sent_at = now
@@ -221,9 +293,9 @@ async def _dispatch_due_messages() -> None:
                     db.commit()
                     await asyncio.sleep(2)  # intervalo mínimo entre disparos
                 else:
-                    # Para position 1 (janela fechada): marca failed
+                    # Para position 1 e behavior (janela fechada): marca failed
                     # Para position 2/3 (templates nao aprovados): mantém pending
-                    if entry.sequence_position == 1:
+                    if entry.sequence_position == 1 or entry.trigger_type == "behavior":
                         entry.status = "failed"
                         db.commit()
                     # positions 2/3 sem template aprovado: nao muda status — retry no proximo ciclo
@@ -235,17 +307,42 @@ async def _enviar_remarketing(
     meta: "MetaAPIClient",
     to: str,
     entry: "RemarketingQueue",
+    contact_name: str = "",
 ) -> bool:
     """
     Envia mensagem de remarketing usando o canal correto.
 
+    - template_name "rmkt:{situacao}:{index}": texto livre do KB (behavior-triggered).
     - Position 1 (24h): tenta send_text primeiro (D-05).
-      Se a Meta rejeitar por janela fechada (erro 131026), loga e retorna False.
     - Position 2/3 (7d/30d): usa send_template se aprovados (D-06).
-      Se templates nao aprovados, retorna False (entry permanece pending).
 
     Returns: True se enviado com sucesso, False se falhou ou nao disponivel.
     """
+    # ── Behavior-triggered (situacao KB) ─────────────────────────────────────
+    if entry.template_name and entry.template_name.startswith("rmkt:"):
+        from app.knowledge_base import kb
+        parts = entry.template_name.split(":")
+        situacao = parts[1] if len(parts) > 1 else ""
+        index = int(parts[2]) if len(parts) > 2 else 0
+        data = parts[3] if len(parts) > 3 else ""
+        hora = parts[4] if len(parts) > 4 else ""
+        nome = (contact_name or "").split()[0] if contact_name else ""
+        texto = kb.get_remarketing_script(situacao, index, nome=nome, data=data, hora=hora)
+        if not texto:
+            logger.warning("rmkt KB: script nao encontrado para %s", entry.template_name)
+            return False
+        try:
+            await meta.send_text(to=to, text=texto)
+            return True
+        except Exception as e:
+            error_str = str(e)
+            if "131026" in error_str or "re-engage" in error_str.lower():
+                logger.warning("Janela 24h fechada para %s — rmkt behavior nao enviado", to[-4:])
+            else:
+                logger.error("Falha send_text rmkt behavior para %s: %s", to[-4:], e)
+            return False
+
+    # ── Sequence-based (posicao 1/2/3) ───────────────────────────────────────
     position = entry.sequence_position
 
     if position == 1:
@@ -346,7 +443,8 @@ async def _dispatch_from_db(
             logger.info("Remarketing skip — conversa ativa para %s", contact.phone_hash[-4:])
             continue  # pula este ciclo, tenta no proximo (1 min)
 
-        success = await _enviar_remarketing(meta, contact.phone_e164, entry)
+        contact_name = contact.collected_name or contact.push_name or ""
+        success = await _enviar_remarketing(meta, contact.phone_e164, entry, contact_name)
         if success:
             entry.status = "sent"
             entry.sent_at = now
@@ -357,9 +455,9 @@ async def _dispatch_from_db(
             db.commit()
             await asyncio.sleep(2)  # intervalo minimo entre disparos
         else:
-            # Para position 1 (janela fechada): marca failed
+            # Para position 1 e behavior (janela fechada): marca failed
             # Para position 2/3 (templates nao aprovados): mantém pending
-            if entry.sequence_position == 1:
+            if entry.sequence_position == 1 or entry.trigger_type == "behavior":
                 entry.status = "failed"
                 db.commit()
             # positions 2/3 sem template aprovado: nao muda status — retry no proximo ciclo
@@ -459,7 +557,10 @@ _BOTOES_CONFIRMACAO = [
 
 async def _disparar_confirmacoes_sexta(consultas: list[dict]) -> None:
     """Envia mensagem com botões interativos (confirmar / remarcar) para cada consulta."""
+    import hashlib
+    from app.database import SessionLocal
     from app.meta_api import MetaAPIClient
+    from app.models import Contact
 
     meta = MetaAPIClient(
         phone_number_id=os.environ.get("WHATSAPP_PHONE_NUMBER_ID", ""),
@@ -478,6 +579,22 @@ async def _disparar_confirmacoes_sexta(consultas: list[dict]) -> None:
             logger.info(
                 "Confirmação semanal (botões) enviada → %s [%s]", telefone[-4:], consulta["tipo"],
             )
+            # Agendar follow-up para não-resposta (C.4)
+            try:
+                phone_hash = hashlib.sha256(telefone.encode()).hexdigest()[:64]
+                dt = consulta["datetime"]
+                data_fmt = dt.strftime("%d/%m") if hasattr(dt, "strftime") else str(dt)[:10]
+                hora_fmt = dt.strftime("%Hh") if hasattr(dt, "strftime") else ""
+                nome = consulta["primeiro_nome"]
+                with SessionLocal() as db:
+                    contact = db.query(Contact).filter_by(phone_hash=phone_hash).first()
+                    if contact:
+                        # +24h: só o nome com "?"
+                        schedule_situacao_remarketing(db, contact.id, "nao_respondeu_confirmacao_presenca", 0, delay_horas=24)
+                        # +48h: mensagem com data e hora
+                        _add_rmkt_entry(db, contact.id, f"rmkt:nao_respondeu_confirmacao_presenca:1:{data_fmt}:{hora_fmt}", 48)
+            except Exception as e_rmkt:
+                logger.warning("Falha ao agendar follow-up confirmação para %s: %s", telefone[-4:], e_rmkt)
         except Exception as e:
             error_str = str(e)
             if "131026" in error_str or "re-engage" in error_str.lower():
@@ -563,16 +680,15 @@ def create_scheduler() -> AsyncIOScheduler:
         _check_escalation_reminders, "interval", minutes=5,
         id="escalation_reminders", replace_existing=True,
     )
-    # ── Confirmação de presença — DESATIVADA até o lançamento ─────────────────
-    # Descomentar quando pronto para ativar:
-    # scheduler.add_job(
-    #     _confirmacao_semanal,
-    #     CronTrigger(day_of_week="fri", hour=13, minute=0, timezone="America/Sao_Paulo"),
-    #     id="confirmacao_semanal", replace_existing=True,
-    # )
-    # scheduler.add_job(
-    #     _lembrete_vespera,
-    #     CronTrigger(hour=18, minute=0, timezone="America/Sao_Paulo"),
-    #     id="lembrete_vespera", replace_existing=True,
-    # )
+    # ── Confirmação de presença ───────────────────────────────────────────────
+    scheduler.add_job(
+        _confirmacao_semanal,
+        CronTrigger(day_of_week="fri", hour=13, minute=0, timezone="America/Sao_Paulo"),
+        id="confirmacao_semanal", replace_existing=True,
+    )
+    scheduler.add_job(
+        _lembrete_vespera,
+        CronTrigger(hour=18, minute=0, timezone="America/Sao_Paulo"),
+        id="lembrete_vespera", replace_existing=True,
+    )
     return scheduler

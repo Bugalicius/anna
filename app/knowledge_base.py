@@ -343,7 +343,8 @@ class KnowledgeBase:
         # Dados gerados na Fase 1
         self.faq_minerado: list[dict] = _load_json("faq.json")
         self.objections: list[dict] = _load_json("objections.json")
-        self.remarketing: list[dict] = _load_json("remarketing.json")
+        _rmkt_raw = _load_json("remarketing.json")
+        self.remarketing: dict = _rmkt_raw if isinstance(_rmkt_raw, dict) else {}
         self.tone_guide: str = _load_text("tone_guide.md")
         self.system_prompt_base: str = _load_text("system_prompt.md")
 
@@ -379,6 +380,43 @@ class KnowledgeBase:
                 f"ou R${parc_o:.0f} online (ou R${p['presencial']:.0f}/R${p['online']:.0f} no PIX)"
             )
         return "\n".join(linhas)
+
+    def find_objection_response(self, message: str) -> str | None:
+        """
+        Verifica se a mensagem do paciente contém trigger de alguma objeção conhecida.
+        Retorna a primeira resposta da objeção correspondente, ou None se não encontrar.
+        """
+        import unicodedata
+        def _norm(t: str) -> str:
+            t = unicodedata.normalize("NFKD", t)
+            return "".join(ch for ch in t if not unicodedata.combining(ch)).lower()
+
+        msg_norm = _norm(message)
+        for obj in self.objections:
+            if not isinstance(obj, dict):
+                continue
+            for trigger in obj.get("triggers", []):
+                if _norm(trigger) in msg_norm:
+                    respostas = obj.get("respostas", [])
+                    return respostas[0] if respostas else None
+        return None
+
+    def get_remarketing_script(self, situacao: str, index: int = 0, **kwargs) -> str | None:
+        """
+        Retorna mensagem de remarketing para a situação e índice fornecidos,
+        substituindo placeholders {nome}, {data}, {hora} com kwargs.
+        """
+        script = self.remarketing.get(situacao)
+        if not script:
+            return None
+        mensagens = script.get("mensagens", [])
+        if not mensagens:
+            return None
+        msg = mensagens[index % len(mensagens)]
+        try:
+            return msg.format(**kwargs)
+        except KeyError:
+            return msg
 
     def faq_combinado(self) -> list[dict[str, str]]:
         """FAQ estático + perguntas mineradas com frequência > 1 + FAQ aprendido do Breno (D-11)."""
