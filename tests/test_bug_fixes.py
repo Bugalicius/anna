@@ -96,10 +96,13 @@ async def test_preferencia_horario_ignora_draft_generico_do_planner():
 
     respostas = await gerar_resposta(state, plano, resultado_tool=None)
 
-    assert "Segunda a Sexta-feira" in respostas[0]
-    assert "Manhã: 08h, 09h e 10h" in respostas[0]
-    assert "Noite: 18h e 19h (exceto sexta à noite)" in respostas[0]
-    assert "manhã, tarde ou flexível" not in respostas[0]
+    r = respostas[0]
+    # Agora retorna botões interativos em vez de lista de horários
+    assert isinstance(r, dict) and r.get("_interactive") == "button"
+    assert "turno" in r["body"].lower()
+    assert any(b["id"] == "manha" for b in r["buttons"])
+    assert any(b["id"] == "tarde" for b in r["buttons"])
+    assert any(b["id"] == "noite" for b in r["buttons"])
 
 
 def _state_com_consulta_existente() -> dict:
