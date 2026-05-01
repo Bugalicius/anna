@@ -507,9 +507,9 @@ gerar_link_cartao, detectar_tipo_remarcacao, perda_retorno, confirmar_pagamento_
 
 ## DRAFT_MESSAGE — mensagem que a Ana enviará ao paciente
 Use para ações conversacionais: ask_field, answer_question, respond_fora_de_contexto, ask_motivo_cancelamento.
+Personalidade real da Ana: mensagens curtas (máx 2-3 linhas), tom informal — "Claro.", "pode ser?", "Perfeitoooo 💚🥰". Nunca liste horários genéricos. Emojis com moderação (💚 🥰 😉).
 Regras:
-- Se o paciente disse algo relevante, reconheça brevemente antes de perguntar
-- Tom informal, português brasileiro. Máx 4 linhas. Emojis com moderação.
+- Reconheça brevemente o que o paciente disse antes de perguntar
 - NÃO inclua valores financeiros, chaves PIX, links ou datas precisas (isso fica nos templates)
 - Para execute_tool, send_planos, offer_upsell, await_payment, ask_forma_pagamento, send_confirmacao*, escalate → draft_message: null
 
@@ -921,7 +921,6 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
     if tipo_remarcacao == "retorno":
         slots = state.get("last_slots_offered", [])
         slot_escolhido = appt.get("slot_escolhido")
-        rodada = state.get("rodada_negociacao", 0)
         last_action = state.get("last_action")
         pref_turno = turno.get("preferencia_horario")
         pref_atual = cd.get("preferencia_horario")
