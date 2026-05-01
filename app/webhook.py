@@ -472,7 +472,6 @@ async def process_message(message: dict, metadata: dict):
         db.add(msg)
         db.commit()
 
-    # Detectar mensagem do Breno (número interno) antes de rotear como paciente
     from app.escalation import is_numero_interno, processar_resposta_breno
     from app.meta_api import MetaAPIClient
     import os as _os
@@ -482,10 +481,21 @@ async def process_message(message: dict, metadata: dict):
         access_token=_os.environ.get("WHATSAPP_TOKEN", ""),
     )
 
-    if is_numero_interno(phone):
-        # Mensagem do Breno — processar como resposta de escalação
-        logger.info("Mensagem do número interno detectada — processando como resposta do Breno")
-        await processar_resposta_breno(meta_client=_meta, texto_resposta=text)
+    # Remetente autorizado (Thaynara ou Breno) — tenta comando primeiro
+    from app.command_processor import is_authorized_sender, process_command, is_command_response_pending, handle_patient_command_response
+    if is_authorized_sender(phone):
+        logger.info("Remetente autorizado %s — processando como comando", phone[-4:])
+        handled = await process_command(phone, text, _meta)
+        # Se Breno não reconheceu como comando, cai no relay de escalação
+        if not handled and is_numero_interno(phone):
+            logger.info("Comando não reconhecido — processando como resposta de escalação do Breno")
+            await processar_resposta_breno(meta_client=_meta, texto_resposta=text)
+        return
+
+    # Paciente respondendo a comando pendente (troca de horário, etc.)
+    if await is_command_response_pending(phone_hash):
+        logger.info("Resposta de paciente a comando pendente — phone_hash %s", phone_hash[-4:])
+        await handle_patient_command_response(phone_hash, phone, text, _meta)
         return
 
     # Rotear e responder (fora do session para evitar lock longo)
