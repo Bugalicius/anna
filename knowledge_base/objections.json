@@ -1,0 +1,58 @@
+[
+  {
+    "id": "preco_caro",
+    "triggers": ["caro", "salgado", "muito", "valor alto", "não tenho condição", "nao tenho condicao", "custa muito", "muito caro"],
+    "respostas": [
+      "Entendo! O investimento realmente é significativo. Mas pensa que você terá acompanhamento real com ajustes constantes — não é só uma consulta avulsa 💚\nQual plano te interessou mais?",
+      "Tem sim a consulta avulsa — online por R$220 no PIX ou presencial por R$260. É uma ótima forma de conhecer o trabalho da Thaynara antes de fechar um plano 😊 Qual modalidade prefere?",
+      "Posso verificar as condições de parcelamento no cartão pra facilitar. Qual bandeira você tem?"
+    ]
+  },
+  {
+    "id": "quer_desconto",
+    "triggers": ["desconto", "promoção", "promocao", "valor especial", "tem como baixar", "tem promoção", "tem desconto", "mais barato"],
+    "respostas": [
+      "No momento não temos promoção ativa, mas no plano em dupla (você e mais alguém) tem 10% de desconto 😊 Tem alguém que poderia vir junto?",
+      "O desconto que temos é para consulta em dupla — 10% pra cada um. Fora isso, os valores são tabelados 💚"
+    ]
+  },
+  {
+    "id": "vou_pensar",
+    "triggers": ["vou pensar", "deixa eu ver", "depois", "vou decidir", "não sei", "nao sei", "preciso pensar", "deixa eu pensar"],
+    "respostas": [
+      "Claro, sem pressa! 💚 Se tiver alguma dúvida enquanto pensa, pode me chamar. Os horários estão sujeitos a disponibilidade, então quando decidir me avisa logo 😊",
+      "Tudo bem! Só lembrando que as vagas são limitadas e costumam fechar rápido. Quando decidir, é só me chamar 💚"
+    ]
+  },
+  {
+    "id": "horario_ruim",
+    "triggers": ["não consigo", "nao consigo", "não posso", "nao posso", "impossível", "impossivel", "não tenho como", "nao tenho como", "muito cedo", "muito tarde", "não dá", "nao da"],
+    "respostas": [
+      "O que não atende — dia da semana, horário ou período do dia?",
+      "Entendo! Tem algum dia ou turno de preferência? Assim consigo verificar o que tenho disponível 💚",
+      "Sem problema! Quer que eu olhe na parte da tarde ou jogo pra outra semana?"
+    ]
+  },
+  {
+    "id": "nao_conhece_a_thaynara",
+    "triggers": ["quem é", "quem e", "não conheço", "nao conheco", "como funciona", "pode me contar", "conta mais", "fala sobre"],
+    "respostas": [
+      "A Thaynara é nutricionista com CRN9 31020, especialista no método Nutri Transforma — acompanhamento real com ajustes constantes, não só uma dieta genérica 💚\nQuer marcar uma consulta para conhecer melhor o trabalho dela?"
+    ]
+  },
+  {
+    "id": "modalidade_duvida",
+    "triggers": ["online", "presencial", "diferença", "qual melhor", "qual é melhor", "qual a diferença"],
+    "respostas": [
+      "Presencial é na Aura Clinic & Beauty (Vespasiano). Online é pelo Google Meet, de onde você estiver 😊 Os valores são os mesmos. Qual faz mais sentido pra sua rotina?"
+    ]
+  },
+  {
+    "id": "prazo_retorno",
+    "triggers": ["retorno", "prazo", "ainda vale", "expirou", "venceu", "perdeu"],
+    "respostas": [
+      "O retorno tem validade de 90 dias após a consulta inicial. Vou verificar se ainda está dentro do prazo 💚",
+      "Infelizmente o prazo de retorno expirou 😔 Mas posso te oferecer uma nova consulta com condição especial. Quer que eu verifique?"
+    ]
+  }
+]
