@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 async def escalar(meta_client, telefone: str, nome: str | None, historico: list[dict]) -> None:
     """Escala dúvida clínica para o número interno da nutricionista."""
-    from app.escalation import escalar_para_humano, build_contexto_escalacao
+    from app.escalation import escalar_para_humano
 
     resumo = "\n".join(
         f"{'Paciente' if m['role'] == 'user' else 'Ana'}: {m['content'][:120]}"

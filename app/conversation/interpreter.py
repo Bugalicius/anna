@@ -205,7 +205,6 @@ async def interpretar_turno(message: str, state: dict) -> dict:
         for m in history_clean
     ) or "(sem histórico)"
 
-    client = None  # cliente provider abstraído via llm_client
     msg_lower = message.lower().strip()
 
     try:
