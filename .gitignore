@@ -16,6 +16,7 @@ tests/relatorio*.md
 TEST_RESULTS_*.txt
 C*test_cache_simple.py
 logs/
+.app_version
 
 # Python
 __pycache__/

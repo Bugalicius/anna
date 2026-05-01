@@ -15,4 +15,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN playwright install chromium
 
 COPY . .
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+RUN python -c "from pathlib import Path; head=Path('.git/HEAD'); version='unknown'; ref=''; \
+ref=head.read_text().strip() if head.exists() else ''; \
+target=Path('.git') / ref.split(' ', 1)[1] if ref.startswith('ref: ') else None; \
+version=(target.read_text().strip()[:7] if target and target.exists() else (ref[:7] if ref and not ref.startswith('ref: ') else version)); \
+Path('.app_version').write_text(version)"
+CMD ["sh", "-c", "export APP_VERSION=${APP_VERSION:-$(cat /app/.app_version 2>/dev/null || echo unknown)}; exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]

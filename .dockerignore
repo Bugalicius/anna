@@ -1,0 +1,13 @@
+.env
+.pytest_cache
+__pycache__
+*.pyc
+*.db
+*.zip
+conversas_export.json
+logs/
+docs/reports/
+tests/*.log
+tests/relatorio*.md
+legacy_tests/
+TEST_RESULTS_*.txt

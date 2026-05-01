@@ -8,6 +8,7 @@ Para producao, use `docker-compose.prod.yml`:
 docker compose -f docker-compose.prod.yml up --build -d
 docker compose -f docker-compose.prod.yml ps
 docker compose -f docker-compose.prod.yml logs app --tail=100
+curl -s https://anna.vps-kinghost.net/health
 ```
 
 Diferenças do compose de producao:
@@ -16,5 +17,8 @@ Diferenças do compose de producao:
 - nao expoe Postgres nem Redis no host;
 - mantem somente volumes de dados, certificados, `knowledge_base` e `docs`;
 - usa `restart: unless-stopped`.
+- grava o SHA curto do Git em `/app/.app_version` durante o build; o endpoint
+  `/health` usa esse valor quando `APP_VERSION`, `GIT_SHA` ou `RELEASE_SHA`
+  nao estiverem definidos.
 
 Antes de trocar a VPS para este compose, confirme se o `.env` esta completo e se o fluxo atual de certificados/nginx e volumes bate com o servidor.

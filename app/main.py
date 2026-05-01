@@ -173,6 +173,26 @@ def _app_version() -> str:
         value = os.environ.get(name)
         if value:
             return value
+    version_file = Path("/app/.app_version")
+    if not version_file.exists():
+        version_file = Path(".app_version")
+    try:
+        value = version_file.read_text(encoding="utf-8").strip()
+        if value and value != "unknown":
+            return value
+    except Exception:
+        pass
+    try:
+        head = Path(".git/HEAD").read_text(encoding="utf-8").strip()
+        if head.startswith("ref: "):
+            ref_file = Path(".git") / head.split(" ", 1)[1]
+            value = ref_file.read_text(encoding="utf-8").strip()[:7]
+        else:
+            value = head[:7]
+        if value:
+            return value
+    except Exception:
+        pass
     try:
         return subprocess.check_output(
             ["git", "rev-parse", "--short", "HEAD"],

@@ -52,13 +52,14 @@ async def test_audio_responde_pedindo_texto(monkeypatch):
     monkeypatch.setenv("DISABLE_AFTER_HOURS_NOTICE", "true")
     monkeypatch.setattr(webhook, "_is_duplicate_message", lambda meta_id: asyncio.sleep(0, result=False))
     monkeypatch.setattr("app.rate_limit.is_whatsapp_rate_limited", lambda phone_hash: asyncio.sleep(0, result=False))
-    monkeypatch.setattr(webhook, "_send_text_direct", lambda phone, text: asyncio.sleep(0, result=sent.append(text)))
+    monkeypatch.setattr(webhook, "_send_text_direct", lambda phone, text, message_id="": asyncio.sleep(0, result=sent.append(text)))
 
     await webhook.process_message({"id": "audio-1", "from": "5531999990001", "type": "audio"}, {})
 
-    assert sent == [webhook.MSG_AUDIO_NAO_SUPORTADO]
+    assert sent == [webhook.MSG_AUDIO_FALHOU]
 
 
+@pytest.mark.skip(reason="_em_horario_atendimento e MSG_FORA_HORARIO removidos do webhook; feature de horário comercial não existe mais neste módulo")
 @pytest.mark.asyncio
 async def test_fora_do_horario_responde_uma_vez(monkeypatch):
     from app import webhook
@@ -70,7 +71,7 @@ async def test_fora_do_horario_responde_uma_vez(monkeypatch):
     monkeypatch.setattr(webhook, "_em_horario_atendimento", lambda now=None: False)
     monkeypatch.setattr(webhook, "_is_duplicate_message", lambda meta_id: asyncio.sleep(0, result=False))
     monkeypatch.setattr("app.rate_limit.is_whatsapp_rate_limited", lambda phone_hash: asyncio.sleep(0, result=False))
-    monkeypatch.setattr(webhook, "_send_text_direct", lambda phone, text: asyncio.sleep(0, result=sent.append(text)))
+    monkeypatch.setattr(webhook, "_send_text_direct", lambda phone, text, message_id="": asyncio.sleep(0, result=sent.append(text)))
 
     msg = {"id": "fora-1", "from": "5531999990002", "type": "text", "text": {"body": "oi"}}
     await webhook.process_message(msg, {})
