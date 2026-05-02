@@ -292,3 +292,21 @@ async def test_interpreter_texto_horario_visivel_extrai_hora_e_dia():
     assert turno["preferencia_horario"]["tipo"] == "hora_especifica"
     assert turno["preferencia_horario"]["hora"] == "17h"
     assert turno["preferencia_horario"]["dia_semana"] == 0
+
+
+@pytest.mark.asyncio
+async def test_interpreter_resposta_nome_completo_sem_llm_quando_ana_pediu_nome():
+    from app.conversation.interpreter import interpretar_turno
+
+    state = _state_base()
+    state["collected_data"]["nome"] = None
+    state["history"].append(
+        {"role": "assistant", "content": "Antes de continuar, pode me informar seu nome e sobrenome?"}
+    )
+
+    with patch("app.conversation.interpreter.llm_client.complete_text") as mock_complete:
+        turno = await interpretar_turno("Anna Assistente", state)
+
+    assert turno["nome"] == "Anna Assistente"
+    assert turno["intent"] == "agendar"
+    mock_complete.assert_not_called()

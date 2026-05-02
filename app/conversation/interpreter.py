@@ -428,6 +428,9 @@ def _heuristic_is_confident(turno: dict, state: dict) -> bool:
     if any(turno.get(k) is not None for k in ("forma_pagamento", "modalidade", "plano", "objetivo")):
         return True
 
+    if turno.get("nome") is not None:
+        return True
+
     if turno.get("confirmou_pagamento"):
         return True
 
@@ -481,6 +484,10 @@ def _heuristic_turno(text: str, state: dict) -> dict:
     slots = state.get("last_slots_offered", [])
     goal = state.get("goal")
     turno = _empty_turno()
+    last_assistant = next(
+        (m.get("content", "") for m in reversed(state.get("history", [])) if m.get("role") == "assistant"),
+        "",
+    )
 
     if re.match(r"^\s*[1-3]\s*$", raw) and slots:
         turno["intent"] = "agendar" if goal != "remarcar" else "remarcar"
@@ -530,6 +537,13 @@ def _heuristic_turno(text: str, state: dict) -> dict:
         turno["confirmou_pagamento"] = True
     elif goal == "agendar_consulta" or any(w in t for w in ("agendar", "marcar", "consulta", "quero", "oi")):
         turno["intent"] = "agendar"
+
+    pediu_nome = bool(re.search(r"nome\s+e\s+sobrenome|nome\s+completo", last_assistant.lower()))
+    if pediu_nome:
+        nome = _extract_nome(raw)
+        if nome and len([p for p in nome.strip().split() if len(p) >= 2]) >= 2:
+            turno["intent"] = "agendar"
+            turno["nome"] = nome
 
     turno["valor_comprovante"] = _extract_receipt_amount(raw)
     turno["email"] = _extract_email(raw)
