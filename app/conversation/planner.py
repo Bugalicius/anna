@@ -533,6 +533,26 @@ def _normalizar_texto_simples(texto: str | None) -> str:
     return "".join(ch for ch in sem_acento if not unicodedata.combining(ch)).lower()
 
 
+def _parece_nome(texto: str | None) -> bool:
+    """Heurística: texto parece ser um nome próprio (2-5 palavras, sem keywords de intent)."""
+    if not texto:
+        return False
+    t = texto.strip()
+    if len(t) > 60:
+        return False
+    palavras = [p for p in t.split() if len(p) >= 2]
+    if len(palavras) < 2 or len(palavras) > 5:
+        return False
+    t_norm = _normalizar_texto_simples(t)
+    keywords = (
+        "agendar", "marcar", "remarcar", "cancelar", "consulta", "horario",
+        "plano", "pagamento", "sim", "nao", "quero", "gostaria", "pode",
+        "oi", "ola", "bom dia", "boa tarde", "boa noite", "obrigad", "valeu",
+        "presencial", "online", "primeira", "paciente", "nutri",
+    )
+    return not any(k in t_norm for k in keywords)
+
+
 def _precisa_humano_no_cancelamento(texto: str | None) -> bool:
     """
     Algumas respostas ao pedido de motivo não são apenas "motivo":
@@ -1125,6 +1145,16 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                       update_flags={"upsell_oferecido": True})
 
     # ── Regra 2.5: início de conversa nunca cai em saudação genérica repetida ─
+    # Auto-extração de nome: quando o LLM não reconhece o nome (ex: sobrenome incomum
+    # ou palavra como "Atendente"), mas a mensagem parece um nome próprio, usa diretamente.
+    if (
+        not cd.get("nome")
+        and not turno.get("nome")
+        and _parece_nome(raw_msg)
+    ):
+        cd["nome"] = raw_msg.strip()
+        turno["nome"] = raw_msg.strip()
+
     if intent in ("agendar", "fora_de_contexto", "tirar_duvida") and not _nome_completo(cd.get("nome")):
         return _plano(ASK_FIELD, ask_context="nome")
     if intent in ("agendar", "fora_de_contexto", "tirar_duvida") and not cd.get("status_paciente"):
