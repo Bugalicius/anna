@@ -632,6 +632,25 @@ def _pergunta_sobre_reputacao_profissional(texto: str | None) -> bool:
     return fala_da_profissional and reputacao
 
 
+def _pergunta_sobre_horario_funcionamento(texto: str | None) -> bool:
+    t = _normalizar_texto_simples(texto)
+    if not t:
+        return False
+    pergunta = "?" in (texto or "") or any(p in t for p in (
+        "qual", "quais", "que horas", "horario", "horarios", "funcionamento",
+        "atende", "atendimento", "abre", "fecha", "sabado", "domingo",
+    ))
+    fala_horario_funcionamento = any(p in t for p in (
+        "horario de funcionamento", "horarios de funcionamento",
+        "que horas funciona", "qual horario funciona", "quais horarios funciona",
+        "qual horario de atendimento", "quais horarios de atendimento",
+        "que horas atende", "atende que horas", "horario que atende",
+        "atende sabado", "atende aos sabados", "funciona sabado",
+        "abre sabado", "domingo atende", "atende domingo",
+    ))
+    return pergunta and fala_horario_funcionamento
+
+
 def _restricao_atendimento(texto: str | None) -> bool:
     t = _normalizar_texto_simples(texto)
     if not t:
@@ -787,6 +806,9 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
                 "e horários disponíveis para consulta."
             ),
         )
+
+    if _pergunta_sobre_horario_funcionamento(raw_msg):
+        return _plano(ANSWER_QUESTION, ask_context="horarios")
 
     if intent == "duvida_clinica" or turno.get("topico_pergunta") == "clinica":
         return _plano(ESCALATE)

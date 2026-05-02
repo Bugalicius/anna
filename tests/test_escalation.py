@@ -320,6 +320,32 @@ def test_numero_interno_reconhece_normalizacao_meta_sem_nono_digito():
     assert is_numero_interno("553192059211")
 
 
+def test_numero_interno_usa_breno_phone_quando_numero_interno_ausente(monkeypatch):
+    """BRENO_PHONE deve ser fallback real do número interno."""
+    import importlib
+    import os
+    import app.escalation as escalation
+
+    original_numero_interno = os.environ.get("NUMERO_INTERNO")
+    original_breno_phone = os.environ.get("BRENO_PHONE")
+    monkeypatch.delenv("NUMERO_INTERNO", raising=False)
+    monkeypatch.setenv("BRENO_PHONE", "553188887777")
+    reloaded = importlib.reload(escalation)
+
+    try:
+        assert reloaded._NUMERO_INTERNO == "553188887777"
+    finally:
+        if original_numero_interno is None:
+            monkeypatch.delenv("NUMERO_INTERNO", raising=False)
+        else:
+            monkeypatch.setenv("NUMERO_INTERNO", original_numero_interno)
+        if original_breno_phone is None:
+            monkeypatch.delenv("BRENO_PHONE", raising=False)
+        else:
+            monkeypatch.setenv("BRENO_PHONE", original_breno_phone)
+        importlib.reload(escalation)
+
+
 # ── Test 8: FAQ aprendido salvo ───────────────────────────────────────────────
 
 @pytest.mark.asyncio

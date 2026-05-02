@@ -9,6 +9,10 @@ scripts/mining_progress.json
 docs/reports/
 arquivos_modificados.zip
 conversas_export.json
+*.csv
+scripts/checkpoint*.json
+scripts/importacao_resultado.json
+scripts/chatwoot_cleanup_extra_notes_*.json
 tests/*.log
 tests/relatorio_*.md
 tests/relatorio*.md

@@ -429,6 +429,34 @@ async def test_pagar_na_hora_explica_politica():
     assert "antecipado" in plano["draft_message"].lower() or "reserva" in plano["draft_message"].lower()
 
 
+@pytest.mark.asyncio
+async def test_horario_funcionamento_responde_sem_escalar():
+    """Pergunta operacional sobre funcionamento não pode virar escalação."""
+    from app.conversation.planner import decidir_acao
+    from app.conversation.responder import gerar_resposta
+    from app.conversation.state import create_state
+
+    state = create_state("hash", "553186687010")
+    state["history"] = [
+        {"role": "user", "content": "Oi"},
+        {"role": "assistant", "content": "Oi oi! Como posso te ajudar hoje? 💚"},
+        {"role": "user", "content": "Qual horário de funcionamento?"},
+    ]
+    turno = _turno_fora_contexto("Qual horário de funcionamento?")
+    turno["intent"] = "duvida_clinica"  # simula alucinação do interpretador/LLM
+    turno["tem_pergunta"] = True
+    turno["topico_pergunta"] = "clinica"
+
+    plano = await decidir_acao(turno, state)
+    respostas = await gerar_resposta(state, plano, None)
+    texto = " ".join(r for r in respostas if isinstance(r, str)).lower()
+
+    assert plano["action"] == "answer_question"
+    assert plano["ask_context"] == "horarios"
+    assert "segunda a quinta" in texto
+    assert "sábado" in texto or "sabados" in texto
+
+
 # ── Teste 7: Saudação após cancelamento travado → reseta goal ────────────
 
 

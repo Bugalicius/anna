@@ -27,7 +27,10 @@ logger = logging.getLogger(__name__)
 
 # ── Constantes internas — NUNCA expor ao paciente ─────────────────────────────
 
-_NUMERO_INTERNO = os.environ.get("NUMERO_INTERNO", "5531992059211")
+_NUMERO_INTERNO = os.environ.get(
+    "NUMERO_INTERNO",
+    os.environ.get("BRENO_PHONE", "5531992059211"),
+)
 _NUMERO_THAYNARA = "5531991394759"
 
 # ── Mensagens ao paciente ─────────────────────────────────────────────────────

@@ -77,10 +77,35 @@ async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
     for entry in payload.get("entry", []):
         for change in entry.get("changes", []):
             value = change.get("value", {})
+            for status in value.get("statuses", []):
+                _log_meta_status(status)
             for message in value.get("messages", []):
                 background_tasks.add_task(process_message_debounced, message, value.get("metadata", {}))
 
     return {"status": "ok"}
+
+
+def _log_meta_status(status: dict) -> None:
+    """Registra callbacks de entrega/falha da Meta para rastrear mensagens aceitas."""
+    message_id = status.get("id")
+    delivery_status = status.get("status")
+    recipient_id = status.get("recipient_id")
+    errors = status.get("errors") or []
+    if errors:
+        logger.warning(
+            "Meta delivery status id=%s status=%s recipient=%s errors=%s",
+            message_id,
+            delivery_status,
+            recipient_id,
+            errors,
+        )
+        return
+    logger.info(
+        "Meta delivery status id=%s status=%s recipient=%s",
+        message_id,
+        delivery_status,
+        recipient_id,
+    )
 
 
 @router.get("/webhooks/whatsapp/{phone_number}")
@@ -238,7 +263,9 @@ def _sem_nono_digito_brasil(numero: str) -> str:
 
 def _is_internal_number_local(numero: str) -> bool:
     recebido = _digits_only(numero)
-    interno = _digits_only(os.environ.get("NUMERO_INTERNO", "5531992059211"))
+    interno = _digits_only(
+        os.environ.get("NUMERO_INTERNO", os.environ.get("BRENO_PHONE", "5531992059211"))
+    )
     return recebido in {interno, _sem_nono_digito_brasil(interno)}
 
 

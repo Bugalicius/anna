@@ -13,6 +13,7 @@ import logging
 import os
 import random
 import re
+import unicodedata
 
 from app import llm_client
 from app.knowledge_base import kb
@@ -743,11 +744,17 @@ def _answer_from_kb(topico: str, cd: dict) -> str:
         )
     if topico == "planos":
         return "Aqui estão os planos:\n\n" + kb.resumo_planos_texto()
+    if topico == "horarios":
+        return kb.get_politica("horarios")
     return "Posso te ajudar com agendamentos e informações sobre as consultas 💚"
 
 
 def _normalize_question(text: str) -> str:
     text = text.lower().strip()
+    text = "".join(
+        ch for ch in unicodedata.normalize("NFD", text)
+        if unicodedata.category(ch) != "Mn"
+    )
     text = re.sub(r"[?!.,:;*_\-]+", " ", text)
     text = re.sub(r"\s+", " ", text)
     return text
@@ -758,6 +765,21 @@ def _answer_faq_from_message(message: str) -> str | None:
     pergunta = _normalize_question(message)
     if not pergunta:
         return None
+
+    if any(p in pergunta for p in (
+        "horario de funcionamento",
+        "horarios de funcionamento",
+        "que horas funciona",
+        "qual horario funciona",
+        "qual horario de atendimento",
+        "quais horarios de atendimento",
+        "que horas atende",
+        "atende que horas",
+        "atende sabado",
+        "funciona sabado",
+        "atende domingo",
+    )):
+        return kb.get_politica("horarios")
 
     for item in kb.faq_combinado():
         faq_q = _normalize_question(item.get("pergunta", ""))
