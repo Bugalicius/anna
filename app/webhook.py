@@ -79,6 +79,7 @@ async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
             value = change.get("value", {})
             for status in value.get("statuses", []):
                 _log_meta_status(status)
+                background_tasks.add_task(_handle_meta_status, status)
             for message in value.get("messages", []):
                 background_tasks.add_task(process_message_debounced, message, value.get("metadata", {}))
 
@@ -106,6 +107,14 @@ def _log_meta_status(status: dict) -> None:
         delivery_status,
         recipient_id,
     )
+
+
+async def _handle_meta_status(status: dict) -> None:
+    try:
+        from app.escalation import handle_meta_delivery_status
+        await handle_meta_delivery_status(status)
+    except Exception:
+        logger.exception("Falha ao processar status Meta")
 
 
 @router.get("/webhooks/whatsapp/{phone_number}")

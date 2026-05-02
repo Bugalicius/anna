@@ -389,6 +389,27 @@ async def test_processar_resposta_breno_sem_escalacao_pendente():
     meta.send_text.assert_not_awaited()
 
 
+@pytest.mark.asyncio
+async def test_abrir_janela_reenvia_contexto_sem_repassar_ao_paciente():
+    """Resposta operacional do Breno abre janela e reenvia o contexto pendente."""
+    from app.escalation import processar_resposta_breno, _NUMERO_INTERNO
+
+    meta = _make_meta_client()
+    esc_mock = _make_pending_esc()
+    esc_mock.contexto = "Contexto completo da escalação"
+
+    patcher, db_mock = _patch_db(esc_mock)
+    with patcher, patch("app.escalation._track_escalation_outbound", new_callable=AsyncMock):
+        resultado = await processar_resposta_breno(
+            meta_client=meta,
+            texto_resposta="abrir janela",
+        )
+
+    assert resultado is True
+    assert esc_mock.status == "aguardando"
+    meta.send_text.assert_awaited_once_with(_NUMERO_INTERNO, "Contexto completo da escalação")
+
+
 # ── Test: webhook detecta mensagem do Breno ───────────────────────────────────
 
 def test_numero_interno_nao_roteado_como_paciente():

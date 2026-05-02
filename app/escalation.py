@@ -19,7 +19,10 @@ from __future__ import annotations
 
 import logging
 import os
+import json
 from datetime import datetime, timedelta, timezone
+
+import redis.asyncio as aioredis
 
 BRT = timezone(timedelta(hours=-3))
 
@@ -32,6 +35,10 @@ _NUMERO_INTERNO = os.environ.get(
     os.environ.get("BRENO_PHONE", "5531992059211"),
 )
 _NUMERO_THAYNARA = "5531991394759"
+_ESCALATION_TEMPLATE_NAME = os.environ.get("ESCALATION_TEMPLATE_NAME", "").strip()
+_ESCALATION_TEMPLATE_LANGUAGE = os.environ.get("ESCALATION_TEMPLATE_LANGUAGE", "pt_BR").strip()
+_REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+_OUTBOUND_TTL_SECONDS = 2 * 24 * 60 * 60
 
 # ── Mensagens ao paciente ─────────────────────────────────────────────────────
 
@@ -72,6 +79,37 @@ def is_numero_interno(numero: str) -> bool:
     recebido = _digits_only(numero)
     interno = _digits_only(_NUMERO_INTERNO)
     return recebido in {interno, _sem_nono_digito_brasil(interno)}
+
+
+async def _track_escalation_outbound(message_id: str | None, escalation_id: str) -> None:
+    if not message_id:
+        return
+    try:
+        r = aioredis.Redis.from_url(_REDIS_URL, decode_responses=True)
+        await r.set(
+            f"escalation:outbound:{message_id}",
+            json.dumps({"escalation_id": escalation_id}),
+            ex=_OUTBOUND_TTL_SECONDS,
+        )
+        await r.aclose()
+    except Exception as e:
+        logger.warning("Falha ao rastrear outbound de escalação: %s", e)
+
+
+async def _lookup_escalation_outbound(message_id: str | None) -> str:
+    if not message_id:
+        return ""
+    try:
+        r = aioredis.Redis.from_url(_REDIS_URL, decode_responses=True)
+        raw = await r.get(f"escalation:outbound:{message_id}")
+        await r.aclose()
+        if not raw:
+            return ""
+        data = json.loads(raw)
+        return str(data.get("escalation_id") or "")
+    except Exception as e:
+        logger.warning("Falha ao buscar outbound de escalação: %s", e)
+        return ""
 
 def _em_horario_comercial(agora: datetime | None = None) -> bool:
     """Retorna True se agora está dentro do horário de atendimento (seg–sex, 08h–19h BRT)."""
@@ -202,6 +240,7 @@ async def criar_escalacao_relay(
     try:
         response = await meta_client.send_text(_NUMERO_INTERNO, contexto)
         message_id = (response.get("messages") or [{}])[0].get("id")
+        await _track_escalation_outbound(message_id, esc_id)
         logger.info(
             "Escalação enviada ao Breno id=%s meta_message_id=%s destino=%s",
             esc_id,
@@ -216,6 +255,69 @@ async def criar_escalacao_relay(
         esc_id, telefone_paciente[-4:],
     )
     return esc_id
+
+
+async def _send_escalation_template(meta_client, esc_id: str) -> bool:
+    if not _ESCALATION_TEMPLATE_NAME:
+        logger.error(
+            "Escalação id=%s falhou fora da janela 24h e ESCALATION_TEMPLATE_NAME não está configurado",
+            esc_id,
+        )
+        return False
+    try:
+        response = await meta_client.send_template(
+            to=_NUMERO_INTERNO,
+            template_name=_ESCALATION_TEMPLATE_NAME,
+            language=_ESCALATION_TEMPLATE_LANGUAGE,
+        )
+        message_id = (response.get("messages") or [{}])[0].get("id")
+        await _track_escalation_outbound(message_id, esc_id)
+        logger.warning(
+            "Template de abertura de janela enviado ao Breno para escalação id=%s template=%s meta_message_id=%s",
+            esc_id,
+            _ESCALATION_TEMPLATE_NAME,
+            message_id,
+        )
+        return True
+    except Exception as e:
+        logger.exception("Falha ao enviar template de escalação ao Breno id=%s: %s", esc_id, e)
+        return False
+
+
+async def handle_meta_delivery_status(status: dict) -> None:
+    """Reage a falhas assíncronas da Meta para mensagens de escalação."""
+    if status.get("status") != "failed":
+        return
+    message_id = status.get("id")
+    esc_id = await _lookup_escalation_outbound(message_id)
+    if not esc_id:
+        return
+
+    errors = status.get("errors") or []
+    codes = {str(err.get("code")) for err in errors if isinstance(err, dict)}
+    if "131047" not in codes:
+        return
+
+    from app.database import SessionLocal
+    from app.models import PendingEscalation
+    from app.meta_api import MetaAPIClient
+
+    with SessionLocal() as db:
+        esc = db.query(PendingEscalation).filter_by(id=esc_id).first()
+        if not esc or esc.status != "aguardando":
+            return
+
+    sent = await _send_escalation_template(MetaAPIClient(), esc_id)
+    if sent:
+        return
+
+    with SessionLocal() as db:
+        esc = db.query(PendingEscalation).filter_by(id=esc_id).first()
+        if esc and esc.status == "aguardando":
+            esc.status = "falha_envio"
+            esc.responded_at = datetime.now(BRT)
+            esc.resposta_breno = "Falha Meta 131047: janela de 24h com Breno fechada e template não configurado/aprovado."
+            db.commit()
 
 
 async def processar_resposta_breno(
@@ -233,8 +335,27 @@ async def processar_resposta_breno(
 
     texto_limpo = (texto_resposta or "").strip().lower()
     if texto_limpo in {"abrir janela", "abrir", "/abrir", "ping"}:
-        logger.info("Mensagem operacional do Breno recebida para abrir janela; sem relay ao paciente")
-        return False
+        with SessionLocal() as db:
+            esc = (
+                db.query(PendingEscalation)
+                .filter_by(status="aguardando")
+                .order_by(PendingEscalation.created_at.desc())
+                .first()
+            )
+            if not esc:
+                logger.info("Mensagem operacional do Breno recebida, mas sem escalação pendente")
+                return False
+            esc_id = esc.id
+            contexto = esc.contexto
+        response = await meta_client.send_text(_NUMERO_INTERNO, contexto)
+        message_id = (response.get("messages") or [{}])[0].get("id")
+        await _track_escalation_outbound(message_id, esc_id)
+        logger.info(
+            "Janela do Breno aberta; contexto de escalação reenviado id=%s meta_message_id=%s",
+            esc_id,
+            message_id,
+        )
+        return True
 
     with SessionLocal() as db:
         esc = (

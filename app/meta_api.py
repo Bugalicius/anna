@@ -3,11 +3,13 @@ from __future__ import annotations
 import hashlib
 import hmac
 import httpx
+import logging
 import os
 
 from app.config import get_meta_access_token, get_meta_phone_number_id
 
 META_API_BASE = "https://graph.facebook.com/v19.0"
+logger = logging.getLogger(__name__)
 
 
 def verify_signature(body: bytes, signature: str, app_secret: str) -> bool:
@@ -184,5 +186,15 @@ class MetaAPIClient:
         url = f"{META_API_BASE}/{self._phone_id}/messages"
         async with httpx.AsyncClient(headers=self._headers, timeout=10) as client:
             resp = await client.post(url, json=payload)
-            resp.raise_for_status()
+            try:
+                resp.raise_for_status()
+            except httpx.HTTPStatusError:
+                logger.error(
+                    "Meta API error status=%s type=%s to=%s body=%s",
+                    resp.status_code,
+                    payload.get("type") or payload.get("status"),
+                    str(payload.get("to") or "")[-4:],
+                    resp.text[:1000],
+                )
+                raise
             return resp.json()

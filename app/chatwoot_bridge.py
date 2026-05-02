@@ -108,6 +108,11 @@ async def relay_meta_webhook_to_chatwoot(body: bytes, headers: dict[str, str]) -
     forward_headers = {
         "content-type": headers.get("content-type", "application/json"),
     }
+    relay_host = os.environ.get("CHATWOOT_RELAY_HOST", "").strip()
+    relay_proto = os.environ.get("CHATWOOT_RELAY_PROTO", "https").strip() or "https"
+    if relay_host:
+        forward_headers["host"] = relay_host
+        forward_headers["x-forwarded-proto"] = relay_proto
     signature = headers.get("x-hub-signature-256")
     if signature:
         forward_headers["x-hub-signature-256"] = signature
