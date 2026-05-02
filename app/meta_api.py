@@ -182,6 +182,18 @@ class MetaAPIClient:
         except Exception:
             pass  # Falha silenciosa — não bloqueia o envio da resposta
 
+    async def send_typing_indicator(self, to: str) -> None:
+        """Exibe 'Digitando...' para o usuário antes de enviar a resposta."""
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to,
+            "status": "typing_on",
+        }
+        try:
+            await self._post(payload)
+        except Exception:
+            pass  # Falha silenciosa — não bloqueia o envio
+
     async def _post(self, payload: dict) -> dict:
         url = f"{META_API_BASE}/{self._phone_id}/messages"
         async with httpx.AsyncClient(headers=self._headers, timeout=10) as client:

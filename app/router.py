@@ -207,10 +207,14 @@ async def _enviar_respostas(
                         await meta.mark_as_read(meta_message_id)
                     except Exception:
                         pass
-                await asyncio.sleep(_typing_delay(msg))
                 first = False
             else:
                 await asyncio.sleep(1.0)
+            try:
+                await meta.send_typing_indicator(phone)
+            except Exception:
+                pass
+            await asyncio.sleep(_typing_delay(msg))
             if isinstance(msg, dict):
                 if msg.get("_meta_action") == "escalate":
                     await _handle_escalation(
