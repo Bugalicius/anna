@@ -582,6 +582,20 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
     if action in ("apply_upgrade", "slot_confirmed", "pagamento_confirmado"):
         return []
 
+    # ── Resposta livre: tenta KB/FAQ antes do LLM ────────────────────────────
+    if action == "answer_free":
+        last_user = next(
+            (m["content"] for m in reversed(state.get("history", [])) if m["role"] == "user"),
+            "",
+        )
+        objection_resp = kb.find_objection_response(last_user)
+        if objection_resp:
+            return [objection_resp]
+        faq_answer = _answer_faq_from_message(last_user)
+        if faq_answer:
+            return [faq_answer]
+        return [await _resposta_livre(state)]
+
     # ── Fallback: resposta livre via LLM ─────────────────────────────────────
     return [await _resposta_livre(state)]
 
@@ -923,7 +937,8 @@ REGRAS OBRIGATÓRIAS:
 - NUNCA invente datas, horários, links de pagamento ou chaves PIX.
 - NUNCA envie política de cancelamento/remarcação por conta própria.
 - NUNCA diga "sua consulta foi confirmada/remarcada/cancelada".
-- Se não souber o que responder, pergunte como pode ajudar.
+- NUNCA diga "vou verificar", "vou checar", "deixa eu ver", "vou confirmar", "já vejo", "vou perguntar para a Thaynara" ou qualquer frase que prometa uma ação futura que você não executará.
+- Se não souber o que responder, pergunte como pode ajudar com agendamentos ou informações sobre as consultas.
 - Tom informal, acolhedor, máx 3 linhas. Emojis com moderação.
 - Você só pode: tirar dúvidas gerais, pedir que o paciente repita, ou redirecionar para o fluxo de agendamento.
 """
@@ -950,14 +965,18 @@ async def _resposta_livre(state: dict) -> str:
             max_tokens=256,
             cache_system=True,
         )
-        # Guardrail pós-geração: bloquear respostas que parecem confirmações
+        # Guardrail pós-geração: bloquear confirmações e respostas evasivas
         _BLOCKED_PATTERNS = (
             "consulta foi confirmada", "consulta confirmada com sucesso",
             "remarcada com sucesso", "cancelada com sucesso",
             "✅ Consulta", "✅ *Consulta",
+            "vou verificar", "vou checar", "deixa eu ver",
+            "estou verificando", "te aviso assim que",
+            "vou perguntar para a thaynara", "vou perguntar pra a thaynara",
         )
-        if any(p in text for p in _BLOCKED_PATTERNS):
-            logger.warning("Resposta livre bloqueada (alucinação): %s", text[:100])
+        text_lower = text.lower()
+        if any(p in text_lower for p in _BLOCKED_PATTERNS):
+            logger.warning("Resposta livre bloqueada (evasiva/alucinação): %s", text[:100])
             return "Posso te ajudar com agendamentos e informações sobre as consultas. Como posso te ajudar? 😊"
         return text
     except Exception as e:

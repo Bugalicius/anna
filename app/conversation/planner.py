@@ -873,6 +873,15 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
     ):
         return _plano(ANSWER_QUESTION, ask_context=turno.get("topico_pergunta"))
 
+    # Dúvidas pré-agendamento sem tópico clínico: responde do KB sem escalar nem travar
+    if (
+        intent == "tirar_duvida"
+        and turno.get("tem_pergunta")
+        and goal in ("desconhecido", "duvida")
+        and turno.get("topico_pergunta") != "clinica"
+    ):
+        return _plano(ANSWER_QUESTION, ask_context=turno.get("topico_pergunta"))
+
     if intent == "fora_de_contexto" and goal in ("desconhecido", "duvida"):
         return _plano(FORA_DE_CONTEXTO)
 
