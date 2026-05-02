@@ -158,6 +158,7 @@ def test_merge_debounced_messages_combina_textos_em_ordem():
     ])
 
     assert message["id"].startswith("batch:")
+    assert message["_read_message_id"] == "chatwoot:2"
     assert message["from"] == "5531999990000"
     assert message["text"]["body"] == "oi\nquero remarcar"
     assert metadata == {"phone_number_id": "123"}

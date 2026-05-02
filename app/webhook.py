@@ -374,6 +374,7 @@ def _merge_debounced_messages(items: list[dict]) -> tuple[dict, dict]:
     )
     first = dict(messages[0])
     first["id"] = "batch:" + _hashlib.sha256("|".join(ids).encode()).hexdigest()[:24]
+    first["_read_message_id"] = ids[-1] if ids else ""
     first["type"] = "text"
     first["text"] = {"body": text}
     return first, metadata
@@ -598,7 +599,8 @@ async def process_message(message: dict, metadata: dict):
 
     # Rotear e responder (fora do session para evitar lock longo)
     try:
-        await route_message(phone=phone, phone_hash=phone_hash, text=text, meta_message_id=meta_id)
+        read_message_id = message.get("_read_message_id") or meta_id
+        await route_message(phone=phone, phone_hash=phone_hash, text=text, meta_message_id=read_message_id)
     except Exception:
         logger.exception("Falha ao rotear mensagem %s", meta_id)
         with SessionLocal() as db:

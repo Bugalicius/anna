@@ -179,3 +179,10 @@ def test_media_store_paths_exist():
         if not (root / entry["path"]).exists()
     ]
     assert missing == []
+
+
+@pytest.mark.asyncio
+async def test_mark_as_read_ignora_ids_invalidos(client):
+    with patch.object(client, "_post") as mock_post:
+        await client.mark_as_read("batch:abc123")
+    mock_post.assert_not_called()

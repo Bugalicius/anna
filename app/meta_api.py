@@ -172,6 +172,8 @@ class MetaAPIClient:
 
     async def mark_as_read(self, message_id: str) -> None:
         """Marca mensagem do paciente como lida (double-check azul no WhatsApp)."""
+        if not message_id or not str(message_id).startswith("wamid."):
+            return
         payload = {
             "messaging_product": "whatsapp",
             "status": "read",
@@ -181,6 +183,16 @@ class MetaAPIClient:
             await self._post(payload)
         except Exception:
             pass  # Falha silenciosa — não bloqueia o envio da resposta
+
+    async def send_typing_indicator(self, to: str) -> None:
+        """
+        Compatibilidade com chamadas antigas de indicador de digitação.
+
+        A API Cloud atual deste projeto aceita apenas status=read no endpoint
+        /messages; portanto não enviamos typing_on para evitar 400.
+        """
+        _ = to
+        return
 
     async def _post(self, payload: dict) -> dict:
         url = f"{META_API_BASE}/{self._phone_id}/messages"
