@@ -396,10 +396,18 @@ async def process_message_debounced(message: dict, metadata: dict):
     token = str(message.get("id") or _hashlib.sha256(repr(message).encode()).hexdigest())
     queue_key = f"debounce:queue:{phone}"
     token_key = f"debounce:token:{phone}"
+    text_body = str(message.get("text", {}).get("body") or "").strip().lower()
+    payload_sig = _hashlib.sha256(text_body.encode()).hexdigest()[:24] if text_body else ""
+    recent_key = f"debounce:recent:{phone}:{payload_sig}" if payload_sig else ""
     delay = float(os.environ.get("MESSAGE_DEBOUNCE_SECONDS", "4.0"))
 
     try:
         r = aioredis.Redis.from_url(redis_url, decode_responses=True)
+        if recent_key:
+            first_seen = await r.set(recent_key, "1", nx=True, ex=max(int(delay) + 4, 6))
+            if first_seen is None:
+                await r.aclose()
+                return
         await r.rpush(queue_key, _json.dumps({"message": message, "metadata": metadata}, ensure_ascii=False))
         await r.expire(queue_key, _DEBOUNCE_TTL)
         await r.set(token_key, token, ex=_DEBOUNCE_TTL)
