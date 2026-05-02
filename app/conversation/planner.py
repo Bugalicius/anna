@@ -651,6 +651,28 @@ def _pergunta_sobre_horario_funcionamento(texto: str | None) -> bool:
     return pergunta and fala_horario_funcionamento
 
 
+def _pergunta_sobre_atendimento_profissional(texto: str | None) -> bool:
+    t = _normalizar_texto_simples(texto)
+    if not t:
+        return False
+    fala_profissional = any(p in t for p in (
+        "thaynara", "nutri", "nutricionista", "consulta", "atendimento",
+        "acompanhamento", "metodo", "nutritransforma",
+    ))
+    quer_entender_como_funciona = any(p in t for p in (
+        "como e o atendimento", "como eh o atendimento",
+        "como e atendimento", "como funciona o atendimento",
+        "como funciona atendimento", "como e a consulta",
+        "como funciona a consulta", "como e o acompanhamento",
+        "como funciona o acompanhamento", "como e o metodo",
+        "como funciona o metodo", "explica o atendimento",
+        "explicar o atendimento", "me fala do atendimento",
+        "me fala sobre o atendimento", "como e o trabalho",
+        "como funciona o trabalho",
+    ))
+    return fala_profissional and quer_entender_como_funciona
+
+
 def _restricao_atendimento(texto: str | None) -> bool:
     t = _normalizar_texto_simples(texto)
     if not t:
@@ -809,6 +831,9 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
 
     if _pergunta_sobre_horario_funcionamento(raw_msg):
         return _plano(ANSWER_QUESTION, ask_context="horarios")
+
+    if _pergunta_sobre_atendimento_profissional(raw_msg):
+        return _plano(ANSWER_QUESTION, ask_context="atendimento_profissional")
 
     if intent == "duvida_clinica" or turno.get("topico_pergunta") == "clinica":
         return _plano(ESCALATE)

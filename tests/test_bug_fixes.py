@@ -457,6 +457,35 @@ async def test_horario_funcionamento_responde_sem_escalar():
     assert "sábado" in texto or "sabados" in texto
 
 
+@pytest.mark.asyncio
+async def test_como_e_atendimento_thaynara_responde_sem_escalar():
+    """Pergunta sobre o atendimento da profissional não é dúvida clínica."""
+    from app.conversation.planner import decidir_acao
+    from app.conversation.responder import gerar_resposta
+    from app.conversation.state import create_state
+
+    state = create_state("hash", "553186687010")
+    state["history"] = [
+        {"role": "user", "content": "Oi"},
+        {"role": "assistant", "content": "Oi oi! Como posso te ajudar hoje? 💚"},
+        {"role": "user", "content": "Como é o atendimento da Thaynara?"},
+    ]
+    turno = _turno_fora_contexto("Como é o atendimento da Thaynara?")
+    turno["intent"] = "duvida_clinica"
+    turno["tem_pergunta"] = True
+    turno["topico_pergunta"] = "clinica"
+
+    plano = await decidir_acao(turno, state)
+    respostas = await gerar_resposta(state, plano, None)
+    texto = " ".join(r for r in respostas if isinstance(r, str)).lower()
+
+    assert plano["action"] == "answer_question"
+    assert plano["ask_context"] == "atendimento_profissional"
+    assert "nutritransforma" in texto
+    assert "presencial" in texto
+    assert "online" in texto
+
+
 # ── Teste 7: Saudação após cancelamento travado → reseta goal ────────────
 
 

@@ -737,6 +737,14 @@ def _answer_from_kb(topico: str, cd: dict) -> str:
             "• *Presencial*: consulta na Aura Clinic, em Vespasiano\n"
             "• *Online*: videochamada pelo WhatsApp no horário agendado"
         )
+    if topico == "atendimento_profissional":
+        return (
+            "O atendimento da Thaynara é personalizado e focado em acompanhamento real 😊\n\n"
+            "Ela trabalha com o método *#NutriTransforma*: plano alimentar ajustado à sua rotina, "
+            "acompanhamento da evolução e ajustes constantes, sem dietas extremas.\n\n"
+            "A consulta pode ser *presencial* na Aura Clinic, em Vespasiano, ou *online* por videochamada "
+            "pelo WhatsApp."
+        )
     if topico == "politica":
         return (
             f"Pagamento: {kb.get_politica('pagamento')}\n\n"
@@ -780,6 +788,22 @@ def _answer_faq_from_message(message: str) -> str | None:
         "atende domingo",
     )):
         return kb.get_politica("horarios")
+
+    if any(p in pergunta for p in (
+        "como e o atendimento",
+        "como e atendimento",
+        "como funciona o atendimento",
+        "como funciona atendimento",
+        "como e a consulta",
+        "como funciona a consulta",
+        "como e o acompanhamento",
+        "como funciona o acompanhamento",
+        "como e o metodo",
+        "como funciona o metodo",
+        "me fala do atendimento",
+        "me fala sobre o atendimento",
+    )):
+        return _answer_from_kb("atendimento_profissional", {})
 
     for item in kb.faq_combinado():
         faq_q = _normalize_question(item.get("pergunta", ""))
