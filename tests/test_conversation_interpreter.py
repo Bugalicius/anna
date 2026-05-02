@@ -310,3 +310,18 @@ async def test_interpreter_resposta_nome_completo_sem_llm_quando_ana_pediu_nome(
     assert turno["nome"] == "Anna Assistente"
     assert turno["intent"] == "agendar"
     mock_complete.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_interpreter_agendamento_linear_nao_chama_llm_para_continuar_fluxo():
+    from app.conversation.interpreter import interpretar_turno
+
+    state = _state_base()
+    state["collected_data"]["plano"] = None
+    state["flags"]["planos_enviados"] = True
+
+    with patch("app.conversation.interpreter.llm_client.complete_text") as mock_complete:
+        turno = await interpretar_turno("quero agendar", state)
+
+    assert turno["intent"] == "agendar"
+    mock_complete.assert_not_called()

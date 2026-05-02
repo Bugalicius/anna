@@ -174,6 +174,7 @@ async def interpretar_turno(message: str, state: dict) -> dict:
         return _heuristic_turno(message, state)
 
     turno_heuristico = _heuristic_turno(message, state)
+    turno_heuristico["_raw_message"] = message
     if _heuristic_is_confident(turno_heuristico, state):
         logger.info(
             "Interpreter sem LLM: intent=%s escolha_slot=%s pref=%s",
@@ -435,6 +436,19 @@ def _heuristic_is_confident(turno: dict, state: dict) -> bool:
         return True
 
     goal = state.get("goal")
+    raw_lower = str(turno.get("_raw_message") or "").lower()
+    precisa_interpretacao = any(
+        w in raw_lower
+        for w in ("mudar", "trocar", "alterar", "opção", "opcao", "plano", "consulta")
+    )
+    if (
+        goal == "agendar_consulta"
+        and turno.get("intent") == "agendar"
+        and not turno.get("tem_pergunta")
+        and not precisa_interpretacao
+    ):
+        return True
+
     if goal == "remarcar":
         return (
             turno.get("intent") in ("remarcar", "cancelar")
