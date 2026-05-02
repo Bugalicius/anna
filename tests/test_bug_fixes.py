@@ -786,3 +786,45 @@ async def test_menor_de_16_recebe_recusa_de_atendimento():
 
     assert plano["action"] == "answer_question"
     assert "menores de 16" in plano["draft_message"]
+
+
+@pytest.mark.asyncio
+async def test_planner_nao_repete_ask_nome_quando_nome_ja_foi_coletado():
+    from app.conversation.planner import decidir_acao
+
+    state = _state_agendamento_sem_consulta()
+    state["status"] = "coletando"
+    state["collected_data"]["nome"] = "Anna Atendente"
+    state["collected_data"]["status_paciente"] = "novo"
+    state["collected_data"]["objetivo"] = None
+    state["collected_data"]["plano"] = None
+    state["collected_data"]["modalidade"] = None
+    state["collected_data"]["preferencia_horario"] = None
+    state["collected_data"]["forma_pagamento"] = None
+    state["appointment"]["slot_escolhido"] = None
+
+    turno = {
+        "intent": "agendar",
+        "nome": "Anna Atendente",
+        "status_paciente": "novo",
+        "objetivo": None,
+        "plano": None,
+        "modalidade": None,
+        "forma_pagamento": None,
+        "escolha_slot": None,
+        "aceita_upgrade": None,
+        "confirmou_pagamento": False,
+        "valor_comprovante": None,
+        "correcao": None,
+        "tem_pergunta": False,
+        "topico_pergunta": None,
+        "preferencia_horario": None,
+        "_raw_message": "Anna Atendente",
+    }
+
+    llm_json = '{"action":"ask_field","ask_context":"nome"}'
+    with patch("app.conversation.planner.llm_client.complete_text", return_value=llm_json):
+        plano = await decidir_acao(turno, state)
+
+    assert plano["action"] == "ask_field"
+    assert plano["ask_context"] == "objetivo"

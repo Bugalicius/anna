@@ -1377,6 +1377,7 @@ async def decidir_acao(turno: dict, state: dict) -> dict:
         data = json.loads(raw)
         plano = _parse_plano(data, state)
         plano = _validar_plano_operacional(plano, turno, state)
+        plano = _sanitize_redundant_ask_field(plano, state)
         plano.setdefault("meta", {})["decision"] = "llm"
         logger.info("Planner: action=%s tool=%s", plano["action"], plano.get("tool"))
         return plano
@@ -1543,6 +1544,49 @@ def _plano(action: str, **kwargs) -> dict:
         "meta": kwargs.get("meta", {}),
         "draft_message": kwargs.get("draft_message"),
     }
+
+
+def _next_required_ask_context(state: dict) -> str | None:
+    """Retorna o próximo campo obrigatório do fluxo de agendamento."""
+    cd = state.get("collected_data", {})
+    appt = state.get("appointment", {})
+    flags = state.get("flags", {})
+
+    if not _nome_completo(cd.get("nome")):
+        return "nome"
+    if not cd.get("status_paciente"):
+        return "status_paciente"
+    if not cd.get("objetivo") and not cd.get("plano"):
+        return "objetivo"
+    if not cd.get("plano"):
+        return "plano"
+    if not cd.get("modalidade"):
+        return "modalidade"
+    if not cd.get("preferencia_horario") and not appt.get("slot_escolhido"):
+        return "preferencia_horario"
+
+    faltantes_cadastro = _campos_cadastro_faltantes(cd, flags)
+    if faltantes_cadastro:
+        return "cadastro" if len(faltantes_cadastro) > 1 else faltantes_cadastro[0]
+
+    return None
+
+
+def _sanitize_redundant_ask_field(plano: dict, state: dict) -> dict:
+    """Evita loops quando o LLM pede campo já preenchido."""
+    if plano.get("action") != ASK_FIELD:
+        return plano
+
+    ask_context = plano.get("ask_context")
+    if ask_context not in {"nome", "status_paciente"}:
+        return plano
+
+    next_context = _next_required_ask_context(state)
+    if next_context == ask_context:
+        return plano
+    if next_context:
+        return _plano(ASK_FIELD, ask_context=next_context)
+    return _plano(FORA_DE_CONTEXTO)
 
 
 def _fallback(turno: dict, state: dict) -> dict:
