@@ -1121,6 +1121,17 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
     if intent in ("agendar", "fora_de_contexto", "tirar_duvida") and not cd.get("status_paciente"):
         return _plano(ASK_FIELD, ask_context="status_paciente")
 
+    # ── Regra 2.6: plano não escolhido mas planos já enviados ──────────────
+    # Evita loop quando usuário diz "agendar" mas não interage com a lista interativa.
+    # Oferece planos de forma mais direta.
+    if (
+        cd.get("objetivo")
+        and not cd.get("plano")
+        and flags.get("planos_enviados")
+        and intent in ("agendar", "fora_de_contexto")
+    ):
+        return _plano(ASK_FIELD, ask_context="plano")
+
     slots = state.get("last_slots_offered", [])
 
     # ── Regra 3: ask preferencia_horario antes de consultar slots ──────────
@@ -1379,7 +1390,7 @@ async def decidir_acao(turno: dict, state: dict) -> dict:
         plano = _validar_plano_operacional(plano, turno, state)
         plano = _sanitize_redundant_ask_field(plano, state)
         plano.setdefault("meta", {})["decision"] = "llm"
-        logger.info("Planner: action=%s tool=%s", plano["action"], plano.get("tool"))
+        logger.info("Planner: action=%s tool=%s ask_context=%s", plano["action"], plano.get("tool"), plano.get("ask_context"))
         return plano
 
     except Exception as e:
@@ -1578,6 +1589,15 @@ def _sanitize_redundant_ask_field(plano: dict, state: dict) -> dict:
         return plano
 
     ask_context = plano.get("ask_context")
+
+    # Se ask_context é None, tenta determinar o próximo campo obrigatório
+    if not ask_context:
+        next_context = _next_required_ask_context(state)
+        if next_context:
+            logger.info("Planner ask_field sem ask_context; usando next_required=%s", next_context)
+            return _plano(ASK_FIELD, ask_context=next_context)
+        return _plano(FORA_DE_CONTEXTO)
+
     if ask_context not in {"nome", "status_paciente"}:
         return plano
 
