@@ -1,5 +1,5 @@
 """
-Interpreter — interpreta o turno do usuário com Claude Haiku.
+Interpreter — interpreta o turno do usuário com Gemini.
 
 Função pública:
   interpretar_turno(message, state) -> dict
@@ -162,7 +162,7 @@ def _extract_birthdate(message: str) -> str | None:
 
 async def interpretar_turno(message: str, state: dict) -> dict:
     """
-    Interpreta a mensagem atual do paciente com Claude Haiku.
+    Interpreta a mensagem atual do paciente com Gemini.
 
     Usa o estado atual como contexto para dar ao LLM informação sobre
     o que já foi coletado, quais slots foram oferecidos, etc.
@@ -217,7 +217,7 @@ async def interpretar_turno(message: str, state: dict) -> dict:
             history=history_txt,
             message=message,
         )
-        raw = llm_client.complete_text(
+        raw = await llm_client.complete_text_async(
             system=_SYSTEM_PROMPT,
             user=context,
             max_tokens=450,
@@ -700,7 +700,10 @@ def _extract_nome(raw: str) -> str | None:
         return None
     if re.search(r"\d|@|pix|cart", trecho, re.I):
         return None
-    palavras_bloqueadas = {"oi", "olá", "ola", "quero", "consulta", "agendar", "marcar"}
+    palavras_bloqueadas = {
+        "oi", "olá", "ola", "quero", "preciso", "gostaria", "ok", "sim",
+        "não", "nao", "tudo", "bem", "consulta", "agendar", "marcar",
+    }
     if trecho.lower() in palavras_bloqueadas:
         return None
     return trecho

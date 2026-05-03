@@ -158,8 +158,16 @@ def apply_turno_updates(state: dict, turno: dict) -> None:
     """
     Aplica campos não-nulos extraídos pelo interpreter ao collected_data.
     Nunca sobrescreve um valor existente com None.
+    Valida nome para evitar contaminação com palavras genéricas ou de agendamento.
     """
+    import re
     cd = state["collected_data"]
+    _BLOQUEIO_NOME = re.compile(
+        r"^(?:consulta|agendar|marcar|retorno|plano|pagamento|horário|horario"
+        r"|manhã|manha|tarde|noite|presencial|online|pix|cartão|cartao"
+        r"|oi|olá|ola|sim|não|nao|ok|tudo|bem|quero|preciso|gostaria)$",
+        re.IGNORECASE,
+    )
     for campo in (
         "nome", "status_paciente", "objetivo", "plano", "modalidade",
         "forma_pagamento", "preferencia_horario", "data_nascimento", "email",
@@ -167,6 +175,12 @@ def apply_turno_updates(state: dict, turno: dict) -> None:
     ):
         valor = turno.get(campo)
         if valor is not None:
+            if campo == "nome" and isinstance(valor, str):
+                if _BLOQUEIO_NOME.match(valor.strip()):
+                    logger.warning("Nome genérico bloqueado pelo state: '%s'", valor[:40])
+                    continue
+                if len(valor.strip()) < 3:
+                    continue
             cd[campo] = valor
             if campo == "telefone_contato":
                 state["flags"]["aguardando_escolha_telefone"] = False

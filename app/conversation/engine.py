@@ -79,7 +79,7 @@ class ConversationEngine:
     """
 
     async def handle_message(self, phone_hash: str, message: str, phone: str = "") -> list:
-        timeout = float(os.environ.get("TURN_TIMEOUT_SECONDS", "25"))
+        timeout = float(os.environ.get("TURN_TIMEOUT_SECONDS", "90"))
         try:
             return await asyncio.wait_for(
                 self._handle_message_impl(phone_hash, message, phone=phone),
@@ -141,7 +141,25 @@ class ConversationEngine:
             turno["_raw_message"] = message  # Disponível para heurísticas do planner
 
             # 3. Aplicar extrações e correções ao estado
+            # Bug 2: preservar nome já preenchido (só muda com correção explícita)
+            nome_anterior = state["collected_data"].get("nome")
             apply_turno_updates(state, turno)
+            if nome_anterior and state["collected_data"].get("nome") != nome_anterior:
+                tem_correcao_nome = (
+                    turno.get("correcao", {}).get("campo") == "nome"
+                )
+                if not tem_correcao_nome:
+                    state["collected_data"]["nome"] = nome_anterior
+            # Bug 3: bloquear palavras genéricas salvas como nome
+            _NOME_GENERICO = {
+                "consulta", "agendar", "marcar", "oi", "olá", "ola",
+                "sim", "não", "nao", "ok", "tudo", "bem",
+                "quero", "preciso", "gostaria",
+            }
+            nome_atual = state["collected_data"].get("nome")
+            if nome_atual and nome_atual.strip().lower() in _NOME_GENERICO:
+                logger.warning("Nome genérico bloqueado: '%s'", nome_atual)
+                state["collected_data"]["nome"] = None
             if turno.get("correcao"):
                 c = turno["correcao"]
                 apply_correction(state, c["campo"], c["valor_novo"])
