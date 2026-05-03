@@ -105,6 +105,29 @@ def transcribe_audio(audio_bytes: bytes, mime_type: str) -> str:
         return ""
 
 
+async def transcribe_audio_async(audio_bytes: bytes, mime_type: str) -> str:
+    """Transcreve áudio sem bloquear o event loop."""
+    if not os.environ.get("GEMINI_API_KEY", ""):
+        logger.warning("GEMINI_API_KEY não configurado — transcrição indisponível")
+        return ""
+
+    try:
+        texto = await llm_client.complete_with_image_async(
+            user_text=(
+                "Transcreva o áudio exatamente como foi falado, em português do Brasil. "
+                "Retorne apenas o texto transcrito, sem comentários adicionais."
+            ),
+            image_bytes=audio_bytes,
+            mime_type=mime_type,
+            max_tokens=1000,
+        )
+        logger.info("Áudio transcrito via Gemini: %d chars", len(texto))
+        return texto
+    except Exception as e:
+        logger.error("Erro ao transcrever áudio: %s", e)
+        return ""
+
+
 def classify_media(mime_type: str) -> str:
     """Retorna 'imagem', 'pdf', 'audio' ou 'desconhecido'."""
     if mime_type in MIME_IMAGENS:
@@ -138,7 +161,7 @@ async def processar_midia(media_id: str) -> dict:
     transcricao = None
 
     if tipo == "audio":
-        transcricao = transcribe_audio(content, mime_type)
+        transcricao = await transcribe_audio_async(content, mime_type)
 
     return {
         "tipo": tipo,
@@ -153,11 +176,8 @@ def analisar_comprovante_pagamento(content: bytes, mime_type: str) -> dict:
     if mime_type not in MIME_IMAGENS:
         return {"eh_comprovante": False, "valor": None, "texto_extraido": "", "favorecido": None}
 
-    # llm_client cuida do provider; só validamos a chave do provider ativo abaixo no try
-    provider = os.environ.get("LLM_PROVIDER", "gemini").lower().strip()
-    key_var = "GEMINI_API_KEY" if provider == "gemini" else "ANTHROPIC_API_KEY"
-    if not os.environ.get(key_var, ""):
-        logger.warning("%s não configurado — leitura de comprovante indisponível", key_var)
+    if not os.environ.get("GEMINI_API_KEY", ""):
+        logger.warning("GEMINI_API_KEY não configurado — leitura de comprovante indisponível")
         return {"eh_comprovante": False, "valor": None, "texto_extraido": "", "favorecido": None}
 
     try:
@@ -167,6 +187,55 @@ def analisar_comprovante_pagamento(content: bytes, mime_type: str) -> dict:
             "Se não parecer comprovante bancário/PIX, use eh_comprovante=false."
         )
         raw = llm_client.complete_with_image(
+            user_text=prompt,
+            image_bytes=content,
+            mime_type=mime_type,
+            max_tokens=300,
+        )
+        logger.debug("Raw LLM response para análise de comprovante: %s", raw[:300])
+        raw = llm_client.strip_json_fences(raw)
+        data = json.loads(raw)
+        valor = data.get("valor")
+        logger.debug("Valor bruto extraído do LLM: %s (tipo: %s)", valor, type(valor).__name__)
+
+        try:
+            valor = float(valor) if valor is not None else None
+        except (TypeError, ValueError):
+            valor_str = str(valor).strip() if valor is not None else ""
+            logger.debug("Tentando parse BRL de: %s", valor_str)
+            valor = _parse_brl_value(valor_str)
+            if valor is not None:
+                logger.info("Valor BRL parseado com sucesso: %s → %.2f", valor_str, valor)
+            else:
+                logger.warning("Falha ao parsear valor BRL: %s", valor_str)
+
+        return {
+            "eh_comprovante": bool(data.get("eh_comprovante")),
+            "valor": valor,
+            "texto_extraido": str(data.get("texto_extraido", ""))[:1500],
+            "favorecido": data.get("favorecido"),
+        }
+    except Exception as e:
+        logger.error("Erro ao analisar comprovante: %s (raw até agora: %s)", e, locals().get("raw", "N/A")[:200])
+        return {"eh_comprovante": False, "valor": None, "texto_extraido": "", "favorecido": None}
+
+
+async def analisar_comprovante_pagamento_async(content: bytes, mime_type: str) -> dict:
+    """Lê comprovante sem bloquear o event loop."""
+    if mime_type not in MIME_IMAGENS:
+        return {"eh_comprovante": False, "valor": None, "texto_extraido": "", "favorecido": None}
+
+    if not os.environ.get("GEMINI_API_KEY", ""):
+        logger.warning("GEMINI_API_KEY não configurado — leitura de comprovante indisponível")
+        return {"eh_comprovante": False, "valor": None, "texto_extraido": "", "favorecido": None}
+
+    try:
+        prompt = (
+            "Analise a imagem e responda SOMENTE JSON válido com os campos "
+            '{"eh_comprovante":true|false,"valor":number|null,"favorecido":string|null,"texto_extraido":string}. '
+            "Se não parecer comprovante bancário/PIX, use eh_comprovante=false."
+        )
+        raw = await llm_client.complete_with_image_async(
             user_text=prompt,
             image_bytes=content,
             mime_type=mime_type,
