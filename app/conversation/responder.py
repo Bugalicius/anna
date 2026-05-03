@@ -872,16 +872,16 @@ def _build_forma_pagamento_interactive(cd: dict, nome: str) -> dict:
 
 
 def _build_turno_buttons() -> dict:
-    """Retorna mensagem interativa perguntando turno preferido (manhã/tarde/noite)."""
-    return {
-        "_interactive": "button",
-        "body": "Em qual turno você prefere?",
-        "buttons": [
-            {"id": "manha", "title": "Manhã"},
-            {"id": "tarde", "title": "Tarde"},
-            {"id": "noite", "title": "Noite"},
-        ],
-    }
+    """Retorna mensagem com horários disponíveis e botões de turno."""
+    return (
+        "Para seguirmos com o agendamento, me informe qual horário atende melhor à sua rotina:\n\n"
+        "*Segunda a Sexta-feira:*\n"
+        "Manhã: 08h, 09h e 10h\n"
+        "Tarde: 15h, 16h e 17h\n"
+        "Noite: 18h e 19h (exceto sexta à noite)\n\n"
+        "Importante: só realizamos o agendamento do dia e horário da consulta mediante a confirmação do pagamento. "
+        "Quanto antes o sinal for enviado, maior a chance de garantir o horário de sua preferência. 💚"
+    )
 
 
 def _build_objetivo_list(nome: str) -> dict:
