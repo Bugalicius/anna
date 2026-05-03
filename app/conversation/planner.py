@@ -1,5 +1,5 @@
 """
-Planner LLM-driven — decide a próxima ação com Claude Haiku.
+Planner LLM-driven — decide a próxima ação com Gemini.
 
 Substitui o planner baseado em if/else por raciocínio do LLM.
 O modelo recebe o estado completo + turno interpretado e decide sozinho
@@ -903,6 +903,8 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
         return _plano(ANSWER_QUESTION, ask_context=turno.get("topico_pergunta"))
 
     if intent == "fora_de_contexto" and goal in ("desconhecido", "duvida"):
+        if not cd.get("nome"):
+            return _plano(ASK_FIELD, ask_context="nome")
         return _plano(FORA_DE_CONTEXTO)
 
     if (turno.get("plano") == "formulario" or cd.get("plano") == "formulario"):
@@ -913,6 +915,19 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
             new_status="aguardando_pagamento",
             update_data={"plano": "formulario"},
         )
+
+    if (
+        goal == "agendar_consulta"
+        and intent == "agendar"
+        and turno.get("plano") in ("unica", "com_retorno", "ouro", "premium")
+        and cd.get("status_paciente") == "retorno"
+        and not tipo_remarcacao
+        and not appt.get("consulta_atual")
+        and not appt.get("id_agenda")
+    ):
+        state["tipo_remarcacao"] = "nova_consulta"
+        state["collected_data"]["status_paciente"] = "novo"
+        tipo_remarcacao = "nova_consulta"
 
     if (
         cd.get("status_paciente") == "retorno"
@@ -1386,7 +1401,7 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
 
 async def decidir_acao(turno: dict, state: dict) -> dict:
     """
-    Chama Claude Haiku para decidir a próxima ação.
+    Chama Gemini para decidir a próxima ação.
 
     Recebe o estado completo + turno interpretado.
     Retorna um plano com action, tool, params, mutations (update_data, etc.).
@@ -1407,7 +1422,7 @@ async def decidir_acao(turno: dict, state: dict) -> dict:
     prompt = _build_prompt(turno, state)
 
     try:
-        raw = llm_client.complete_text(
+        raw = await llm_client.complete_text_async(
             system="",
             user=prompt,
             max_tokens=700,

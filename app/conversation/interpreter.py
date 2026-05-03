@@ -498,6 +498,12 @@ def _heuristic_turno(text: str, state: dict) -> dict:
             turno["escolha_slot"] = escolha
             return turno
 
+    # Heurística: extrair nome quando a mensagem parece nome próprio e não há LLM
+    if not cd.get("nome") and _parece_nome_heuristic(raw):
+        turno["nome"] = raw.strip()
+        if not goal or goal == "desconhecido":
+            turno["intent"] = "fora_de_contexto"
+
     clinical = (
         "diabetes", "refluxo", "pressão", "pressao", "medicamento",
         "remédio", "remedio", "doença", "doenca", "sintoma", "posso comer",
@@ -692,6 +698,19 @@ def _extract_status_paciente(t: str) -> str | None:
     if any(w in t for w in ("retorno", "já sou", "ja sou", "já é", "ja e", "paciente")):
         return "retorno"
     return None
+
+
+def _parece_nome_heuristic(texto: str) -> bool:
+    """Heurística sem LLM: texto parece ser um nome próprio."""
+    t = texto.strip()
+    if len(t) < 3 or len(t) > 60:
+        return False
+    palavras = [p for p in t.split() if len(p) >= 2]
+    if len(palavras) < 2 or len(palavras) > 5:
+        return False
+    if re.search(r"\d|@|pix|cart|consulta|agendar|marcar|oi|olá|ola|sim|não|nao|ok|tudo|bem|quero|preciso|gostaria", t, re.I):
+        return False
+    return True
 
 
 def _extract_nome(raw: str) -> str | None:
