@@ -157,7 +157,7 @@ async def receive_chatwoot_webhook(request: Request, background_tasks: Backgroun
         set_human_handoff,
     )
 
-    if _is_incoming_chatwoot_message(payload):
+    if _is_incoming_chatwoot_message(payload) and _should_process_chatwoot_incoming():
         phone = extract_phone_from_chatwoot_payload(payload)
         if phone:
             message = _chatwoot_payload_to_meta_message(payload, phone)
@@ -172,6 +172,13 @@ async def receive_chatwoot_webhook(request: Request, background_tasks: Backgroun
                 payload.get("event"),
                 extract_conversation_id_from_chatwoot_payload(payload),
             )
+    elif _is_incoming_chatwoot_message(payload):
+        logger.info(
+            "Chatwoot incoming ignorado; Meta webhook e a fonte primaria "
+            "(event=%s id=%s)",
+            payload.get("event"),
+            payload.get("id") or payload.get("message", {}).get("id"),
+        )
 
     action = chatwoot_event_sets_handoff(payload)
     phone = extract_phone_from_chatwoot_payload(payload)
@@ -203,6 +210,18 @@ def _is_incoming_chatwoot_message(payload: dict) -> bool:
         and payload.get("message_type") == "incoming"
         and not payload.get("private", False)
     )
+
+
+def _should_process_chatwoot_incoming() -> bool:
+    """
+    Por padrão, o app processa pacientes pela Meta Cloud API.
+
+    O webhook do Chatwoot também recebe uma cópia porque encaminhamos os eventos
+    da Meta para lá; se processarmos esse eco, a mesma mensagem dispara o motor
+    duas vezes. Ative CHATWOOT_PROCESS_INCOMING=true apenas em instalações onde o
+    Chatwoot seja a fonte primária das mensagens.
+    """
+    return os.environ.get("CHATWOOT_PROCESS_INCOMING", "false").lower() in {"1", "true", "yes", "on"}
 
 
 def _chatwoot_payload_to_meta_message(payload: dict, phone: str) -> dict:
@@ -435,7 +454,7 @@ async def process_message(message: dict, metadata: dict):
     """Processa uma mensagem em background. Deduplicação + roteamento."""
     from app.database import SessionLocal
     from app.input_safety import sanitize_inbound_text
-    from app.media_handler import analisar_comprovante_pagamento, processar_midia
+    from app.media_handler import analisar_comprovante_pagamento_async, processar_midia
     from app.models import Message, Contact, Conversation
     from app.rate_limit import is_whatsapp_rate_limited
     from app.router import route_message
@@ -491,7 +510,7 @@ async def process_message(message: dict, metadata: dict):
         eh_comprovante = False
         if media_id:
             media = await processar_midia(media_id)
-            analise = analisar_comprovante_pagamento(media.get("bytes", b""), media.get("mime_type", ""))
+            analise = await analisar_comprovante_pagamento_async(media.get("bytes", b""), media.get("mime_type", ""))
             if analise.get("eh_comprovante"):
                 eh_comprovante = True
                 valor = analise.get("valor")
@@ -508,7 +527,7 @@ async def process_message(message: dict, metadata: dict):
             try:
                 content = await _download_chatwoot_attachment(chatwoot_url)
                 mime_type = media_payload.get("mime_type", "")
-                analise = analisar_comprovante_pagamento(content, mime_type)
+                analise = await analisar_comprovante_pagamento_async(content, mime_type)
                 if analise.get("eh_comprovante"):
                     eh_comprovante = True
                     valor = analise.get("valor")
