@@ -284,7 +284,7 @@ async def gerar_resposta(state: dict, plano: dict, resultado_tool: dict | None) 
         history = state.get("history", [])
         ask_context = plano.get("ask_context", "")
         # Campos com UI interativa/operacional — sempre usar template (ignorar draft)
-        if ask_context in ("objetivo", "plano", "modalidade", "preferencia_horario"):
+        if ask_context in ("objetivo", "plano", "modalidade", "preferencia_horario", "status_paciente"):
             return _ask_field(ask_context, nome, state)
         # Usa draft do planner para turnos além da primeira mensagem
         if draft and len(history) > 1:
@@ -959,7 +959,7 @@ async def _resposta_livre(state: dict) -> str:
     user_prompt = "\n".join(history_lines) if history_lines else "Paciente: oi\nAna:"
 
     try:
-        text = llm_client.complete_text(
+        text = await llm_client.complete_text_async(
             system=_RESPOSTA_LIVRE_GUARDRAIL,
             user=user_prompt,
             max_tokens=256,
