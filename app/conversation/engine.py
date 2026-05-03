@@ -146,10 +146,9 @@ class ConversationEngine:
             apply_turno_updates(state, turno)
             if nome_anterior and state["collected_data"].get("nome") != nome_anterior:
                 correcao = turno.get("correcao") or {}
-                tem_correcao_nome = (
-                    correcao.get("campo") == "nome"
-                )
-                if not tem_correcao_nome:
+                tem_correcao_nome = correcao.get("campo") == "nome"
+                nome_antigo_completo = len(str(nome_anterior).strip().split()) >= 2
+                if not tem_correcao_nome and nome_antigo_completo:
                     state["collected_data"]["nome"] = nome_anterior
             # Bug 3: bloquear palavras genéricas salvas como nome
             _NOME_GENERICO = {
