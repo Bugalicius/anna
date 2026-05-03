@@ -145,8 +145,9 @@ class ConversationEngine:
             nome_anterior = state["collected_data"].get("nome")
             apply_turno_updates(state, turno)
             if nome_anterior and state["collected_data"].get("nome") != nome_anterior:
+                correcao = turno.get("correcao") or {}
                 tem_correcao_nome = (
-                    turno.get("correcao", {}).get("campo") == "nome"
+                    correcao.get("campo") == "nome"
                 )
                 if not tem_correcao_nome:
                     state["collected_data"]["nome"] = nome_anterior
