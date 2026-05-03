@@ -172,6 +172,8 @@ class MetaAPIClient:
 
     async def mark_as_read(self, message_id: str) -> None:
         """Marca mensagem do paciente como lida (double-check azul no WhatsApp)."""
+        if not str(message_id or "").startswith("wamid."):
+            return None
         payload = {
             "messaging_product": "whatsapp",
             "status": "read",
@@ -184,15 +186,7 @@ class MetaAPIClient:
 
     async def send_typing_indicator(self, to: str) -> None:
         """Exibe 'Digitando...' para o usuário antes de enviar a resposta."""
-        payload = {
-            "messaging_product": "whatsapp",
-            "to": to,
-            "status": "typing_on",
-        }
-        try:
-            await self._post(payload)
-        except Exception:
-            pass  # Falha silenciosa — não bloqueia o envio
+        return None
 
     async def _post(self, payload: dict) -> dict:
         url = f"{META_API_BASE}/{self._phone_id}/messages"

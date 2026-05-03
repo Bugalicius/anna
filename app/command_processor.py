@@ -94,10 +94,10 @@ Exemplos:
 - "Reagenda Carlos para terça às 14h" → {"tipo":"reagenda","nome":"Carlos","hora_atual":null,"nova_hora":null,"data":"terça","hora":"14h"}"""
 
 
-def _parse_command(text: str) -> dict:
+async def _parse_command(text: str) -> dict:
     from app import llm_client
     try:
-        raw = llm_client.complete_text(system=_PARSE_SYSTEM, user=text, max_tokens=200)
+        raw = await llm_client.complete_text_async(system=_PARSE_SYSTEM, user=text, max_tokens=200)
         raw = llm_client.strip_json_fences(raw)
         return json.loads(raw)
     except Exception as e:
@@ -323,7 +323,7 @@ async def process_command(phone: str, text: str, meta_client) -> bool:
     Retorna True se o comando foi reconhecido e tratado.
     Retorna False se não reconhecido (caller pode fazer fallback).
     """
-    parsed = _parse_command(text)
+    parsed = await _parse_command(text)
     tipo = parsed.get("tipo", "desconhecido")
 
     if tipo == "desconhecido":
