@@ -140,6 +140,7 @@ def _carregar_contato(phone_hash: str) -> dict | None:
                 "id": str(contact.id),
                 "stage": stage,
                 "nome": contact.collected_name or contact.push_name,
+                "collected_name": contact.collected_name,  # distingue push_name de nome real
                 "first_name": contact.first_name,
                 "primeiro_contato": stage in ("new", "cold_lead", None),
             }
@@ -164,7 +165,9 @@ async def _reconhecer_paciente_retorno(
     """
     from app.conversation.state import load_state, save_state
 
-    nome = contact.get("nome") or contact.get("first_name")
+    # Só pré-popula quando o contato forneceu o nome em conversa anterior
+    # (collected_name). Push_name do WhatsApp não indica paciente de retorno.
+    nome = contact.get("collected_name")
     if not nome or contact.get("primeiro_contato"):
         return
 
