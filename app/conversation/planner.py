@@ -1159,6 +1159,29 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
         return _plano(OFFER_UPSELL, ask_context=plano_atual,
                       update_flags={"upsell_oferecido": True})
 
+    # ── Regra 2.7: pós-upsell + aceita upgrade → aplicar + pedir modalidade ─
+    if (
+        state.get("last_action") == "offer_upsell"
+        and turno.get("aceita_upgrade") is True
+        and cd.get("plano") in ("unica", "com_retorno", "ouro")
+        and not cd.get("modalidade")
+    ):
+        upgrade_map = {"unica": "ouro", "com_retorno": "ouro", "ouro": "premium"}
+        novo_plano = upgrade_map[cd["plano"]]
+        return _plano(ASK_FIELD, ask_context="modalidade",
+                      update_data={"plano": novo_plano},
+                      update_flags={"upsell_oferecido": True})
+
+    # ── Regra 2.8: pós-upsell + mantém plano → pedir modalidade ───────────
+    # Evita que o LLM peça objetivo novamente quando o paciente rejeitou o upgrade.
+    if (
+        state.get("last_action") == "offer_upsell"
+        and cd.get("plano") in ("unica", "com_retorno", "ouro", "premium")
+        and not cd.get("modalidade")
+        and turno.get("aceita_upgrade") is not True
+    ):
+        return _plano(ASK_FIELD, ask_context="modalidade")
+
     # ── Regra 2.5: início de conversa nunca cai em saudação genérica repetida ─
     # Auto-extração de nome: quando o LLM não reconhece o nome (ex: sobrenome incomum
     # ou palavra como "Atendente"), mas a mensagem parece um nome próprio, usa diretamente.

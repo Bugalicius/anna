@@ -671,18 +671,54 @@ def _ask_field(campo: str, nome: str, state: dict) -> list:
     return [f"Pode me informar {campo}? 😊"]
 
 
-def _build_upsell_msg(plano: str, modalidade: str) -> str:
+def _build_upsell_msg(plano: str, modalidade: str) -> dict:
     if plano == "unica":
-        return MSG_UPSELL["unica"].format(
-            valor_ouro=kb.get_valor("ouro", "presencial"),
-            valor_ouro_online=kb.get_valor("ouro", "online"),
+        body = (
+            "Ótima escolha! Mas posso te dar uma dica? 💚\n\n"
+            f"O *Plano Ouro* sai por R${kb.get_valor('ouro', 'presencial'):.0f} presencial "
+            f"(ou R${kb.get_valor('ouro', 'online'):.0f} online) "
+            "e já inclui 3 consultas + 130 dias de acompanhamento — "
+            "o custo por consulta fica bem menor e o suporte é muito mais completo."
         )
+        return {
+            "_interactive": "button",
+            "body": body,
+            "buttons": [
+                {"id": "manter_unica", "title": "Consulta Única"},
+                {"id": "upgrade_ouro", "title": "Plano Ouro"},
+            ],
+        }
     if plano == "com_retorno":
         diff = kb.get_valor("ouro", modalidade) - kb.get_valor("com_retorno", modalidade)
-        return MSG_UPSELL["com_retorno"].format(diff=diff)
+        body = (
+            "Ótima escolha! Posso te dar uma dica? 💚\n\n"
+            f"Por apenas +R${diff:.0f} você sobe pro *Plano Ouro*: 3 consultas, "
+            "130 dias de acompanhamento e a Lilly inclusa. "
+            "É bem mais suporte pelo investimento."
+        )
+        return {
+            "_interactive": "button",
+            "body": body,
+            "buttons": [
+                {"id": "manter_com_retorno", "title": "Manter c/ Retorno"},
+                {"id": "upgrade_ouro", "title": "Plano Ouro"},
+            ],
+        }
     if plano == "ouro":
-        return MSG_UPSELL["ouro"].format(valor_premium=kb.get_valor("premium", "presencial"))
-    return ""
+        body = (
+            "Ótima escolha! Posso te dar uma dica? 💚\n\n"
+            f"O *Plano Premium* dobra as consultas (6 no total), 270 dias de acompanhamento, "
+            f"encontros coletivos e a Lilly — fica por R${kb.get_valor('premium', 'presencial'):.0f} presencial."
+        )
+        return {
+            "_interactive": "button",
+            "body": body,
+            "buttons": [
+                {"id": "manter_ouro", "title": "Plano Ouro"},
+                {"id": "upgrade_premium", "title": "Plano Premium"},
+            ],
+        }
+    return {}
 
 
 def _build_forma_pagamento(cd: dict, nome: str) -> str:
@@ -872,16 +908,25 @@ def _build_forma_pagamento_interactive(cd: dict, nome: str) -> dict:
 
 
 def _build_turno_buttons() -> dict:
-    """Retorna mensagem com horários disponíveis e botões de turno."""
-    return (
-        "Para seguirmos com o agendamento, me informe qual horário atende melhor à sua rotina:\n\n"
+    """Retorna mensagem interativa com botões de turno (manhã / tarde / noite)."""
+    body = (
+        "Para seguirmos com o agendamento, me informe qual turno atende melhor à sua rotina:\n\n"
         "*Segunda a Sexta-feira:*\n"
         "Manhã: 08h, 09h e 10h\n"
         "Tarde: 15h, 16h e 17h\n"
         "Noite: 18h e 19h (exceto sexta à noite)\n\n"
-        "Importante: só realizamos o agendamento do dia e horário da consulta mediante a confirmação do pagamento. "
-        "Quanto antes o sinal for enviado, maior a chance de garantir o horário de sua preferência. 💚"
+        "Importante: o agendamento é confirmado após o pagamento. "
+        "Quanto antes o sinal for enviado, maior a chance de garantir o horário. 💚"
     )
+    return {
+        "_interactive": "button",
+        "body": body,
+        "buttons": [
+            {"id": "manha", "title": "Manhã"},
+            {"id": "tarde", "title": "Tarde"},
+            {"id": "noite", "title": "Noite"},
+        ],
+    }
 
 
 def _build_objetivo_list(nome: str) -> dict:

@@ -508,6 +508,33 @@ def _heuristic_turno(text: str, state: dict) -> dict:
         turno["intent"] = "agendar"
         return turno
 
+    # Botões interativos de upsell — retorno imediato sem LLM
+    if t == "manter_unica":
+        turno["intent"] = "agendar"
+        turno["plano"] = "unica"
+        turno["aceita_upgrade"] = False
+        return turno
+    if t == "manter_com_retorno":
+        turno["intent"] = "agendar"
+        turno["plano"] = "com_retorno"
+        turno["aceita_upgrade"] = False
+        return turno
+    if t == "manter_ouro":
+        turno["intent"] = "agendar"
+        turno["plano"] = "ouro"
+        turno["aceita_upgrade"] = False
+        return turno
+    if t == "upgrade_ouro":
+        turno["intent"] = "agendar"
+        turno["plano"] = "ouro"
+        turno["aceita_upgrade"] = True
+        return turno
+    if t == "upgrade_premium":
+        turno["intent"] = "agendar"
+        turno["plano"] = "premium"
+        turno["aceita_upgrade"] = True
+        return turno
+
     # Heurística: extrair nome quando a mensagem parece nome próprio e não há LLM
     if not cd.get("nome") and _parece_nome_heuristic(raw):
         turno["nome"] = raw.strip()
