@@ -571,7 +571,7 @@ async def test_resposta_livre_permite_resposta_normal():
         ],
     }
 
-    with patch("app.conversation.responder.llm_client.complete_text", return_value="A Aura Clinic fica na Rua Melo Franco, 204 em Vespasiano 😊"):
+    with patch("app.conversation.responder.llm_client.complete_text_async", return_value="A Aura Clinic fica na Rua Melo Franco, 204 em Vespasiano 😊"):
         resultado = await _resposta_livre(state)
 
     assert "Aura Clinic" in resultado
@@ -725,6 +725,49 @@ async def test_nova_consulta_sai_do_loop_de_remarcacao_nao_localizada():
     assert state["collected_data"]["status_paciente"] == "novo"
     assert plano["action"] == "ask_field"
     assert plano["ask_context"] == "objetivo"
+
+
+@pytest.mark.asyncio
+async def test_paciente_retorno_ao_escolher_plano_nao_dispara_dietbox():
+    """Escolha explícita de plano no menu deve seguir agendamento, sem detectar remarcação."""
+    from app.conversation.planner import decidir_acao
+
+    state = _state_agendamento_sem_consulta()
+    state["goal"] = "agendar_consulta"
+    state["tipo_remarcacao"] = None
+    state["collected_data"]["status_paciente"] = "retorno"
+    state["collected_data"]["plano"] = "com_retorno"
+    state["collected_data"]["modalidade"] = None
+    state["flags"]["upsell_oferecido"] = False
+    state["appointment"]["consulta_atual"] = None
+    state["appointment"]["id_agenda"] = None
+
+    turno = {
+        "intent": "agendar",
+        "nome": None,
+        "status_paciente": None,
+        "objetivo": None,
+        "plano": "com_retorno",
+        "modalidade": None,
+        "forma_pagamento": None,
+        "escolha_slot": None,
+        "aceita_upgrade": None,
+        "confirmou_pagamento": False,
+        "valor_comprovante": None,
+        "correcao": None,
+        "tem_pergunta": False,
+        "topico_pergunta": None,
+        "preferencia_horario": None,
+        "_raw_message": "com_retorno",
+    }
+
+    plano = await decidir_acao(turno, state)
+
+    assert plano["tool"] != "detectar_tipo_remarcacao"
+    assert plano["action"] == "offer_upsell"
+    assert plano["ask_context"] == "com_retorno"
+    assert state["tipo_remarcacao"] == "nova_consulta"
+    assert state["collected_data"]["status_paciente"] == "novo"
 
 
 def test_engine_agendar_nova_consulta_reseta_goal_remarcar():

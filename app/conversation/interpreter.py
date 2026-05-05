@@ -378,7 +378,7 @@ def _parse_turno(data: dict) -> dict:
         "intent": intent,
         "nome": _str_or_none(data.get("nome")),
         "status_paciente": _one_of(data.get("status_paciente"), ("novo", "retorno")),
-        "objetivo": _str_or_none(data.get("objetivo")),
+        "objetivo": _str_or_none_objetivo(data.get("objetivo")),
         "plano": _one_of(data.get("plano"), _PLANOS),
         "modalidade": _one_of(data.get("modalidade"), _MODALIDADES),
         "forma_pagamento": _one_of(data.get("forma_pagamento"), _FORMAS_PAG),
@@ -415,6 +415,25 @@ def _one_of(v, valid) -> str | None:
     return s if s in valid else None
 
 
+_BUTTON_IDS = {
+    "primeira_consulta", "ja_paciente", "manter_unica", "manter_com_retorno",
+    "manter_ouro", "upgrade_ouro", "upgrade_premium", "slot_1", "slot_2", "slot_3",
+    "pix", "cartao",
+}
+
+
+def _str_or_none_objetivo(v) -> str | None:
+    """Aceita objetivo livre mas bloqueia IDs de botão que o LLM confunde com objetivo."""
+    if v is None or v == "":
+        return None
+    s = str(v).strip()
+    if not s:
+        return None
+    if s.lower() in _BUTTON_IDS:
+        return None
+    return s
+
+
 def _fallback(text: str) -> dict:
     """Interpretação heurística mínima quando o LLM falha."""
     return _heuristic_turno(text, {"collected_data": {}, "last_slots_offered": [], "history": []})
@@ -425,7 +444,10 @@ def _heuristic_is_confident(turno: dict, state: dict) -> bool:
     if turno.get("escolha_slot") is not None:
         return True
 
-    if any(turno.get(k) is not None for k in ("forma_pagamento", "modalidade", "plano", "objetivo")):
+    if any(turno.get(k) is not None for k in ("forma_pagamento", "modalidade", "plano", "objetivo", "status_paciente", "nome")):
+        return True
+
+    if turno.get("correcao"):
         return True
 
     if turno.get("confirmou_pagamento"):
@@ -611,7 +633,7 @@ def _heuristic_turno(text: str, state: dict) -> dict:
         turno["plano"] = plano
         if cd.get("plano") and cd.get("plano") != plano:
             turno["correcao"] = {"campo": "plano", "valor_novo": plano}
-    if any(w in t for w in ("trocar o plano", "trocar plano", "mudar o plano", "outro plano")) and not plano:
+    if any(w in t for w in ("trocar o plano", "trocar plano", "mudar o plano", "mudar a opção", "mudar a opcao", "trocar a opção", "trocar a opcao", "outro plano")) and not plano:
         turno["intent"] = "agendar"
         turno["correcao"] = {"campo": "plano", "valor_novo": None}
 

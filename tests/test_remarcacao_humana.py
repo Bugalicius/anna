@@ -438,9 +438,12 @@ async def test_bloqueia_confirmacao_remarcacao_sem_sucesso_da_tool(monkeypatch):
         "topico_pergunta": None,
     }
 
+    async def _mock_llm(**kwargs):
+        return '{"action":"send_confirmacao_remarcacao"}'
+
     monkeypatch.setattr(
-        "app.conversation.planner.llm_client.complete_text",
-        lambda **kwargs: '{"action":"send_confirmacao_remarcacao"}',
+        "app.conversation.planner.llm_client.complete_text_async",
+        _mock_llm,
     )
 
     plano = await decidir_acao(turno, state)
