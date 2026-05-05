@@ -1174,6 +1174,17 @@ def _override_deterministic(turno: dict, state: dict) -> dict | None:
         return _plano(ASK_FIELD, ask_context="nome")
     if intent in ("agendar", "fora_de_contexto", "tirar_duvida") and not cd.get("status_paciente"):
         return _plano(ASK_FIELD, ask_context="status_paciente")
+    # Regra 2.6: ask objetivo deterministicamente — LLM confunde e pede nome/status de novo
+    if (
+        intent in ("agendar", "fora_de_contexto", "tirar_duvida")
+        and _nome_completo(cd.get("nome"))
+        and cd.get("status_paciente")
+        and not cd.get("objetivo")
+        and not cd.get("plano")
+        and not flags.get("planos_enviados")
+        and goal in ("agendar_consulta", "desconhecido")
+    ):
+        return _plano(ASK_FIELD, ask_context="objetivo")
 
     slots = state.get("last_slots_offered", [])
 

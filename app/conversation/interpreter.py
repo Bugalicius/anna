@@ -498,6 +498,16 @@ def _heuristic_turno(text: str, state: dict) -> dict:
             turno["escolha_slot"] = escolha
             return turno
 
+    # Botões interativos de status_paciente — retorno imediato sem LLM
+    if t in ("primeira_consulta", "primeira consulta"):
+        turno["status_paciente"] = "novo"
+        turno["intent"] = "agendar"
+        return turno
+    if t in ("ja_paciente", "já sou paciente", "ja sou paciente"):
+        turno["status_paciente"] = "retorno"
+        turno["intent"] = "agendar"
+        return turno
+
     # Heurística: extrair nome quando a mensagem parece nome próprio e não há LLM
     if not cd.get("nome") and _parece_nome_heuristic(raw):
         turno["nome"] = raw.strip()
