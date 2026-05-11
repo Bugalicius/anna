@@ -39,13 +39,13 @@ class ConsultarSlotsOutput(BaseModel):
 
 class RemarcarDietboxInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    id_agenda: int
+    id_agenda: int | str
     novo_slot: Slot
 
 
 class CancelarDietboxInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    id_agenda: int
+    id_agenda: int | str
 
 
 def _slot_from_raw(slot: dict[str, Any]) -> Slot | None:
@@ -83,9 +83,16 @@ async def consultar_slots(input: ConsultarSlotsInput) -> ToolResult:
             preferencia=input.preferencia,
         )
         excluidos = set(input.excluir_slots)
-        selecionados = [s for s in selecionados if str(s.get("datetime", "")) not in excluidos]
+        candidatos: list[dict[str, Any]] = []
+        vistos: set[str] = set()
+        for slot in [*selecionados, *pool]:
+            dt = str(slot.get("datetime", ""))
+            if not dt or dt in excluidos or dt in vistos:
+                continue
+            candidatos.append(slot)
+            vistos.add(dt)
         filtrados, avisos_regras = validar_distribuicao_slots(
-            selecionados,
+            candidatos,
             max_resultados=input.max_resultados,
         )
 
@@ -106,7 +113,7 @@ async def consultar_slots(input: ConsultarSlotsInput) -> ToolResult:
         return ToolResult(sucesso=False, erro=str(exc))
 
 
-async def remarcar_dietbox(id_agenda: int, novo_slot: Slot) -> ToolResult:
+async def remarcar_dietbox(id_agenda: int | str, novo_slot: Slot) -> ToolResult:
     """PUT no Dietbox e sinaliza ja_remarcada=true em caso de sucesso."""
     from app.integrations.dietbox import alterar_agendamento
 
@@ -136,7 +143,7 @@ async def remarcar_dietbox(id_agenda: int, novo_slot: Slot) -> ToolResult:
         return ToolResult(sucesso=False, erro=str(exc))
 
 
-async def cancelar_dietbox(id_agenda: int) -> ToolResult:
+async def cancelar_dietbox(id_agenda: int | str) -> ToolResult:
     """
     Cancela consulta via PUT desmarcada=true.
     Nunca usa DELETE.
@@ -195,4 +202,3 @@ async def cancelar_dietbox(id_agenda: int) -> ToolResult:
     except Exception as exc:
         logger.exception("Erro ao cancelar no Dietbox: %s", exc)
         return ToolResult(sucesso=False, erro=str(exc))
-

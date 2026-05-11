@@ -6,6 +6,8 @@ from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict
+
 from app.conversation_v2.config_loader import config
 from app.conversation_v2.tools import ToolResult
 
@@ -13,6 +15,23 @@ logger = logging.getLogger(__name__)
 BRT = timezone(timedelta(hours=-3))
 
 _ESCALACOES_PENDENTES: dict[str, dict[str, Any]] = {}
+
+
+class NotificarBrenoInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    mensagem: str
+
+
+class NotificarThaynaraInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    mensagem: str
+    anexo_imagem: bytes | None = None
+    mime_type: str = "image/jpeg"
+
+
+class EscalarBrenoSilenciosoInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    contexto: dict[str, Any]
 
 
 async def notificar_breno(mensagem: str) -> ToolResult:
@@ -29,7 +48,11 @@ async def notificar_breno(mensagem: str) -> ToolResult:
         return ToolResult(sucesso=False, erro=str(exc))
 
 
-async def notificar_thaynara(mensagem: str, anexo_imagem: bytes | None = None) -> ToolResult:
+async def notificar_thaynara(
+    mensagem: str,
+    anexo_imagem: bytes | None = None,
+    mime_type: str = "image/jpeg",
+) -> ToolResult:
     """Envia mensagem para Thaynara e anexo opcional."""
     from app.meta_api import MetaAPIClient
 
@@ -40,7 +63,7 @@ async def notificar_thaynara(mensagem: str, anexo_imagem: bytes | None = None) -
             await client.encaminhar_midia(
                 to=numero,
                 image_bytes=anexo_imagem,
-                mime_type="image/jpeg",
+                mime_type=mime_type,
                 caption=mensagem,
             )
         else:
@@ -77,4 +100,3 @@ async def escalar_breno_silencioso(contexto: dict[str, Any]) -> ToolResult:
         sucesso=True,
         dados={"escalacao_id": escala_id, "registro": registro, "notificado": True},
     )
-

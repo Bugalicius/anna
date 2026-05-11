@@ -22,10 +22,7 @@ async def test_consultar_slots_aplica_filtro_distribuicao(monkeypatch) -> None:
         "app.integrations.dietbox.consultar_slots_disponiveis",
         lambda modalidade, dias_a_frente: fake_pool,
     )
-    monkeypatch.setattr(
-        "app.tools.scheduling._selecionar_slots",
-        lambda slots, preferencia: (slots, None),
-    )
+    monkeypatch.setattr("app.tools.scheduling._selecionar_slots", lambda slots, preferencia: (slots[:3], None))
 
     result = await consultar_slots(
         ConsultarSlotsInput(modalidade="presencial", preferencia={}, max_resultados=3)
@@ -36,6 +33,7 @@ async def test_consultar_slots_aplica_filtro_distribuicao(monkeypatch) -> None:
     assert len(slots) == 3
     horas = [s["hora"] for s in slots]
     assert "9h" not in horas
+    assert "2026-05-13T08:00:00" in [s["datetime"] for s in slots]
 
 
 @pytest.mark.asyncio
@@ -81,7 +79,8 @@ async def test_cancelar_dietbox_faz_put_sem_delete(monkeypatch) -> None:
     monkeypatch.setattr("requests.put", _put)
     monkeypatch.setattr("requests.delete", lambda *args, **kwargs: chamadas.__setitem__("delete", chamadas["delete"] + 1))
 
-    result = await cancelar_dietbox(id_agenda=999)
+    result = await cancelar_dietbox(id_agenda="agenda-uuid-999")
     assert result.sucesso is True
     assert chamadas["put"] == 1
     assert chamadas["delete"] == 0
+    assert result.dados["id_agenda"] == "agenda-uuid-999"

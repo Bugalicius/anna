@@ -4,9 +4,8 @@ Registry — registro central de tools disponíveis para o orchestrator.
 from __future__ import annotations
 
 import inspect
-from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from app.conversation_v2.tools import ToolResult
 from app.conversation_v2.tools import commands, media, notifications, patients, payments, scheduling
@@ -31,44 +30,20 @@ TOOL_INPUT_MODELS: dict[str, type[BaseModel]] = {
     "consultar_slots": scheduling.ConsultarSlotsInput,
     "remarcar_dietbox": scheduling.RemarcarDietboxInput,
     "cancelar_dietbox": scheduling.CancelarDietboxInput,
+    "detectar_tipo_remarcacao": patients.DetectarTipoRemarcacaoInput,
     "gerar_link_pagamento": payments.GerarLinkPagamentoInput,
     "analisar_comprovante": payments.AnalisarComprovanteInput,
     "encaminhar_comprovante_thaynara": payments.EncaminharComprovanteInput,
     "transcrever_audio": media.TranscreverAudioInput,
     "classificar_imagem": media.ClassificarImagemInput,
+    "notificar_breno": notifications.NotificarBrenoInput,
+    "notificar_thaynara": notifications.NotificarThaynaraInput,
+    "escalar_breno_silencioso": notifications.EscalarBrenoSilenciosoInput,
     "interpretar_comando": commands.InterpretarComandoInput,
 }
 
 
-class _DetectarTipoRemarcacaoInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    telefone: str
-    identificador: str | None = None
-
-
-class _NotificarBrenoInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    mensagem: str
-
-
-class _NotificarThaynaraInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    mensagem: str
-    anexo_imagem: bytes | None = None
-
-
-class _EscalarBrenoInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    contexto: dict[str, Any]
-
-
-TOOL_INPUT_MODELS["detectar_tipo_remarcacao"] = _DetectarTipoRemarcacaoInput
-TOOL_INPUT_MODELS["notificar_breno"] = _NotificarBrenoInput
-TOOL_INPUT_MODELS["notificar_thaynara"] = _NotificarThaynaraInput
-TOOL_INPUT_MODELS["escalar_breno_silencioso"] = _EscalarBrenoInput
-
-
-async def call_tool(name: str, input: dict[str, Any]) -> ToolResult:
+async def call_tool(name: str, input: dict) -> ToolResult:
     """Chama tool pelo nome com validação Pydantic de entrada."""
     func = TOOLS.get(name)
     if func is None:

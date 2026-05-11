@@ -50,9 +50,14 @@ async def test_encaminhar_comprovante_thaynara(monkeypatch) -> None:
     class FakeMeta:
         async def encaminhar_midia(self, to: str, image_bytes: bytes, mime_type: str, caption: str) -> None:
             chamadas["ok"] += 1
+            chamadas["mime_type"] = mime_type
 
     monkeypatch.setattr("app.meta_api.MetaAPIClient", FakeMeta)
-    result = await encaminhar_comprovante_thaynara(imagem_bytes=b"x", resumo_formatado="resumo")
+    result = await encaminhar_comprovante_thaynara(
+        imagem_bytes=b"x",
+        resumo_formatado="resumo",
+        mime_type="image/png",
+    )
     assert result.sucesso is True
     assert chamadas["ok"] == 1
-
+    assert chamadas["mime_type"] == "image/png"

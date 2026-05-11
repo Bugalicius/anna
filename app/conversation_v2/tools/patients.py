@@ -4,7 +4,24 @@ import asyncio
 from datetime import date, timedelta
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict
+
 from app.conversation_v2.tools import ToolResult
+
+
+class DetectarTipoRemarcacaoInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    telefone: str
+    identificador: str | None = None
+
+
+class DetectarTipoRemarcacaoOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tipo_remarcacao: str
+    consulta_atual: dict[str, Any] | None = None
+    paciente: dict[str, Any] | None = None
+    ja_remarcada: bool | None = None
+    fim_janela: str | None = None
 
 
 def _is_ja_remarcada(consulta_atual: dict[str, Any]) -> bool:
@@ -35,13 +52,14 @@ async def detectar_tipo_remarcacao(
         )
 
     if not paciente:
+        output = DetectarTipoRemarcacaoOutput(
+            tipo_remarcacao="nao_localizado",
+            consulta_atual=None,
+            ja_remarcada=None,
+        )
         return ToolResult(
             sucesso=True,
-            dados={
-                "tipo_remarcacao": "nao_localizado",
-                "consulta_atual": None,
-                "ja_remarcada": None,
-            },
+            dados=output.model_dump(),
         )
 
     consulta_atual = await loop.run_in_executor(
@@ -49,14 +67,15 @@ async def detectar_tipo_remarcacao(
         lambda: consultar_agendamento_ativo(id_paciente=int(paciente["id"])),
     )
     if not consulta_atual:
+        output = DetectarTipoRemarcacaoOutput(
+            tipo_remarcacao="sem_agendamento_confirmado",
+            consulta_atual=None,
+            paciente=paciente,
+            ja_remarcada=None,
+        )
         return ToolResult(
             sucesso=True,
-            dados={
-                "tipo_remarcacao": "sem_agendamento_confirmado",
-                "consulta_atual": None,
-                "paciente": paciente,
-                "ja_remarcada": None,
-            },
+            dados=output.model_dump(),
         )
 
     consulta_atual = dict(consulta_atual)
@@ -67,14 +86,14 @@ async def detectar_tipo_remarcacao(
     except Exception:
         fim_janela = (date.today() + timedelta(days=90)).isoformat()
 
+    output = DetectarTipoRemarcacaoOutput(
+        tipo_remarcacao="retorno",
+        consulta_atual=consulta_atual,
+        paciente=paciente,
+        ja_remarcada=consulta_atual["ja_remarcada"],
+        fim_janela=fim_janela,
+    )
     return ToolResult(
         sucesso=True,
-        dados={
-            "tipo_remarcacao": "retorno",
-            "consulta_atual": consulta_atual,
-            "paciente": paciente,
-            "ja_remarcada": consulta_atual["ja_remarcada"],
-            "fim_janela": fim_janela,
-        },
+        dados=output.model_dump(),
     )
-

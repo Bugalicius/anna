@@ -120,7 +120,11 @@ async def analisar_comprovante(
         return ToolResult(sucesso=False, erro=str(exc))
 
 
-async def encaminhar_comprovante_thaynara(imagem_bytes: bytes, resumo_formatado: str) -> ToolResult:
+async def encaminhar_comprovante_thaynara(
+    imagem_bytes: bytes,
+    resumo_formatado: str,
+    mime_type: str = "image/jpeg",
+) -> ToolResult:
     """Envia comprovante + resumo para Thaynara."""
     from app.meta_api import MetaAPIClient
 
@@ -130,7 +134,7 @@ async def encaminhar_comprovante_thaynara(imagem_bytes: bytes, resumo_formatado:
         await client.encaminhar_midia(
             to=numero,
             image_bytes=imagem_bytes,
-            mime_type="image/jpeg",
+            mime_type=mime_type,
             caption=resumo_formatado,
         )
         return ToolResult(sucesso=True, dados={"destino": numero, "encaminhado": True})

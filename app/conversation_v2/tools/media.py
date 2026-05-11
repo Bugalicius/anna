@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from pydantic import BaseModel, ConfigDict
 
@@ -34,7 +35,24 @@ async def transcrever_audio(audio_bytes: bytes, mime_type: str) -> ToolResult:
         return ToolResult(sucesso=False, erro=str(exc))
 
 
-async def classificar_imagem(imagem_bytes: bytes, contexto: str) -> ToolResult:
+def _normalizar_categoria(raw: str) -> str:
+    texto = (raw or "").strip().lower()
+    texto = re.sub(r"```(?:json)?|```", "", texto).strip()
+    texto = texto.strip('"\'`.,;: ')
+    permitidas = {"comprovante_pagamento", "figurinha", "foto_pessoal", "documento", "outro"}
+    if texto in permitidas:
+        return texto
+    for categoria in permitidas:
+        if categoria in texto:
+            return categoria
+    return "outro"
+
+
+async def classificar_imagem(
+    imagem_bytes: bytes,
+    contexto: str,
+    mime_type: str = "image/jpeg",
+) -> ToolResult:
     """Classifica: comprovante_pagamento, figurinha, foto_pessoal, documento, outro."""
     from app import llm_client
 
@@ -47,15 +65,11 @@ async def classificar_imagem(imagem_bytes: bytes, contexto: str) -> ToolResult:
         raw = await llm_client.complete_with_image_async(
             user_text=prompt,
             image_bytes=imagem_bytes,
-            mime_type="image/jpeg",
+            mime_type=mime_type,
             max_tokens=20,
         )
-        categoria = (raw or "").strip().lower()
-        permitidas = {"comprovante_pagamento", "figurinha", "foto_pessoal", "documento", "outro"}
-        if categoria not in permitidas:
-            categoria = "outro"
+        categoria = _normalizar_categoria(raw)
         return ToolResult(sucesso=True, dados={"categoria": categoria})
     except Exception as exc:
         logger.exception("Erro ao classificar imagem: %s", exc)
         return ToolResult(sucesso=False, erro=str(exc))
-
