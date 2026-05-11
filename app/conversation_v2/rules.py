@@ -11,6 +11,7 @@ API principal:
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from typing import Any
 
 from app.conversation_v2.models import AcaoAutorizada, RuleResult
@@ -50,6 +51,96 @@ def _ok(regra: str) -> RuleResult:
 
 def _bloquear(regra: str, motivo: str, severidade: str = "BLOCKING") -> RuleResult:
     return RuleResult(passou=False, regra=regra, motivo=motivo, severidade=severidade)
+
+
+def _hora_para_turno(hora_label: str) -> str | None:
+    hora = str(hora_label or "").replace("h", "").replace("H", "").strip()
+    try:
+        h = int(hora)
+    except ValueError:
+        return None
+    if h in (8, 9, 10):
+        return "manha"
+    if h in (15, 16, 17):
+        return "tarde"
+    if h in (18, 19):
+        return "noite"
+    return None
+
+
+def validar_distribuicao_slots(
+    slots: list[dict[str, Any]],
+    *,
+    max_por_dia: int = 2,
+    max_resultados: int = 3,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """
+    Filtra slots para respeitar regras de distribuição:
+      - no máximo 2 por dia
+      - em turnos diferentes no mesmo dia
+      - sem horários consecutivos no mesmo dia
+      - nunca sábado/domingo e nunca sexta à noite
+    Retorna (slots_filtrados, avisos).
+    """
+    if not slots:
+        return [], []
+
+    avisos: list[str] = []
+    selecionados: list[dict[str, Any]] = []
+    por_dia: dict[str, list[dict[str, Any]]] = {}
+
+    def _hora_num(slot: dict[str, Any]) -> int | None:
+        hora = str(slot.get("hora", "")).replace("h", "").strip()
+        try:
+            return int(hora)
+        except ValueError:
+            return None
+
+    for slot in slots:
+        dt_raw = str(slot.get("datetime", ""))
+        try:
+            dt = datetime.fromisoformat(dt_raw)
+        except ValueError:
+            avisos.append(f"slot_invalido:{dt_raw}")
+            continue
+
+        dia = dt.date().isoformat()
+        weekday = dt.weekday()  # 0=seg ... 6=dom
+        hora = _hora_num(slot)
+        if hora is None:
+            avisos.append(f"hora_invalida:{dt_raw}")
+            continue
+        if weekday in (5, 6):
+            avisos.append(f"fora_grade_fim_semana:{dt_raw}")
+            continue
+        if weekday == 4 and hora >= 18:
+            avisos.append(f"fora_grade_sexta_noite:{dt_raw}")
+            continue
+
+        dia_lista = por_dia.setdefault(dia, [])
+        if len(dia_lista) >= max_por_dia:
+            continue
+
+        turno = _hora_para_turno(slot.get("hora", ""))
+        turno_ja = {_hora_para_turno(s.get("hora", "")) for s in dia_lista}
+        if turno and turno in turno_ja:
+            continue
+
+        consecutivo = False
+        for existente in dia_lista:
+            h_exist = _hora_num(existente)
+            if h_exist is not None and abs(hora - h_exist) < 2:
+                consecutivo = True
+                break
+        if consecutivo:
+            continue
+
+        dia_lista.append(slot)
+        selecionados.append(slot)
+        if len(selecionados) >= max_resultados:
+            break
+
+    return selecionados, avisos
 
 
 # ─────────────────────────────────────────────────────────────────────────────
