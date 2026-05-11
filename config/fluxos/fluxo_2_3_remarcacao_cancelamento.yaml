@@ -1,0 +1,727 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# FLUXO 2 — REMARCAÇÃO
+# ═══════════════════════════════════════════════════════════════════════════
+
+fluxo_id: "remarcacao"
+fluxo_nome: "Remarcação de consulta"
+estado_inicial: "remarcacao_identificacao"
+estado_final: "remarcacao_concluida"
+
+# ───────────────────────────────────────────────────────────────────────────
+# CONTEXTO DE ENTRADA
+# ───────────────────────────────────────────────────────────────────────────
+# Este fluxo é acionado quando:
+#   1. Paciente pede remarcação explicitamente ("quero remarcar", "preciso mudar horário")
+#   2. Paciente clica botão "Preciso remarcar 📅" no lembrete de confirmação
+#   3. Vem do Fluxo 1 quando paciente é retorno e tem consulta ativa
+#   4. Vem do Fluxo 3 (Cancelamento) quando paciente aceita remarcar em vez de cancelar
+
+# ───────────────────────────────────────────────────────────────────────────
+# CAMPOS COLETADOS
+# ───────────────────────────────────────────────────────────────────────────
+campos_coletados:
+  obrigatorios:
+    - consulta_atual_id  # buscada no Dietbox
+    - preferencia_horario_nova
+    - slot_escolhido_novo
+  opcionais:
+    - nome_completo  # só se não achar paciente pelo telefone
+
+# ───────────────────────────────────────────────────────────────────────────
+# ESTADOS
+# ───────────────────────────────────────────────────────────────────────────
+estados:
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 1 — IDENTIFICAÇÃO
+  # ════════════════════════════════════════════════════════════════════════
+  remarcacao_identificacao:
+    descricao: "Paciente pediu remarcação — busca consulta no Dietbox"
+    
+    on_enter:
+      acao: "tool_detectar_tipo_remarcacao"
+      input:
+        telefone: "{state.phone}"
+      apos_busca: "decidir_proximo_estado"
+    
+    situacoes:
+      
+      encontrou_consulta_ativa_retorno:
+        trigger: "tool.tipo_remarcacao=retorno AND tool.consulta_atual.ja_remarcada=false"
+        # Paciente tem consulta agendada com pagamento confirmado E ainda não foi remarcada
+        proximo_estado: "remarcacao_oferecendo_seguranca"
+        salva_no_estado:
+          appointment.consulta_atual: "{tool.consulta_atual}"
+          tipo_remarcacao: "retorno"
+      
+      consulta_ja_foi_remarcada:
+        trigger: "tool.tipo_remarcacao=retorno AND tool.consulta_atual.ja_remarcada=true"
+        # Paciente já remarcou essa consulta uma vez — não pode remarcar de novo
+        resposta: |
+          Entendo, mas essa consulta já foi remarcada uma vez 😔 
+          Infelizmente não consigo remarcar novamente.
+          
+          Sua consulta segue marcada pra {dia_semana}, {data} às {hora}.
+        proximo_estado: "remarcacao_concluida"
+      
+      nao_encontrou_paciente:
+        trigger: "tool.tipo_remarcacao=nao_localizado"
+        # Não achou paciente pelo telefone
+        proximo_estado: "remarcacao_pedindo_nome_completo"
+      
+      paciente_sem_consulta_ativa:
+        trigger: "tool.tipo_remarcacao=sem_agendamento_confirmado"
+        # Paciente existe mas não tem consulta ativa (cancelou anteriormente, ou nova consulta)
+        resposta: |
+          Não encontrei uma consulta ativa pra você 😊
+          Quer agendar uma nova consulta com a Thaynara?
+        botoes_interativos:
+          - id: "sim_nova_consulta"
+            label: "Sim, agendar nova"
+          - id: "nao_obrigado"
+            label: "Não, obrigado"
+        proximo_estado: "remarcacao_aguardando_decisao_nova_consulta"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 2 — PEDINDO NOME COMPLETO (FALLBACK)
+  # ════════════════════════════════════════════════════════════════════════
+  remarcacao_pedindo_nome_completo:
+    descricao: "Não achou paciente pelo telefone, pede nome completo"
+    
+    on_enter:
+      mensagem: |
+        Oi! 💚 Pra eu localizar seu cadastro certinho, pode me mandar seu nome completo?
+    
+    intents_aceitas:
+      - informar_nome
+    
+    situacoes:
+      
+      nome_completo_recebido:
+        trigger: "intent=informar_nome AND nome_tem_sobrenome=true"
+        acao: "tool_detectar_tipo_remarcacao_por_nome"
+        input:
+          identificador: "{nome_completo}"
+        # Se achar → segue pra remarcacao_oferecendo_seguranca
+        # Se não achar → segue pra "paciente nao localizado"
+      
+      apenas_primeiro_nome:
+        trigger: "intent=informar_nome AND nome_tem_sobrenome=false"
+        resposta: |
+          Pra eu localizar seu cadastro, preciso do nome E sobrenome 😊
+        proximo_estado: "remarcacao_pedindo_nome_completo"
+        max_tentativas: 3
+        ao_atingir_max: "remarcacao_paciente_nao_localizado"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 2B — PACIENTE NÃO LOCALIZADO
+  # ════════════════════════════════════════════════════════════════════════
+  remarcacao_paciente_nao_localizado:
+    descricao: "Mesmo com nome completo não achou — pode ser primeira consulta"
+    
+    on_enter:
+      mensagem: |
+        Não encontrei seu cadastro 😊 
+        Quer agendar uma consulta nova com a Thaynara?
+      botoes_interativos:
+        - id: "sim_nova_consulta"
+          label: "Sim, agendar"
+        - id: "nao_obrigado"
+          label: "Não"
+    
+    situacoes:
+      
+      aceitou_nova_consulta:
+        trigger: "botao_id=sim_nova_consulta OR texto_contem=[sim, quero, agendar]"
+        action: "redirecionar_fluxo_agendamento"
+        # Vai pro Fluxo 1 — Agendamento
+      
+      recusou:
+        trigger: "botao_id=nao_obrigado OR intent=desistir"
+        resposta: |
+          Tudo bem! Quando quiser agendar, é só me chamar 💚
+        proximo_estado: "remarcacao_concluida"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 3 — OFERECENDO SEGURANÇA (TOM "SEGURAR PRIMEIRO")
+  # ════════════════════════════════════════════════════════════════════════
+  remarcacao_oferecendo_seguranca:
+    descricao: "Encontrou consulta — oferece segurar o horário antes de remarcar"
+    
+    on_enter:
+      mensagem_template: |
+        Tudo bem, {primeiro_nome}! Podemos remarcar sim, sem problema.
+
+        Só queria te orientar que no momento a agenda da Thaynara está bem cheia. Se você conseguir fazer um esforço para manter o horário agendado, seria ótimo para não prejudicar seu acompanhamento.
+
+        Sua consulta atual é {dia_semana}, {data} às {hora}.
+
+        Caso realmente não consiga, conseguimos realizar o agendamento dentro dos próximos 7 dias, que é o prazo máximo para a remarcação. Quais são os melhores horários e dias para você?
+    
+    intents_aceitas:
+      - informar_preferencia_horario
+      - confirmar_manter_horario
+      - duvida_operacional
+      - desistir
+    
+    situacoes:
+      
+      decidiu_manter_horario_original:
+        trigger: "texto_contem=[vou manter, vou tentar, fico mesmo, mantenho, deixa como está, fica como está]"
+        resposta: |
+          Que ótimo! 💚 Sua consulta segue marcada pra {dia_semana}, {data} às {hora}.
+          Qualquer coisa estou à disposição 💚
+        proximo_estado: "remarcacao_concluida"
+      
+      informou_preferencia_nova:
+        trigger: "intent=informar_preferencia_horario"
+        action: "consultar_slots_para_remarcacao"
+        salva_no_estado:
+          collected_data.preferencia_horario:
+            "{preferencia_extraida}"
+      
+      pediu_sexta_noite:
+        trigger: "tem_dia=sexta AND tem_turno=noite"
+        resposta: |
+          Sexta à noite a Thaynara não atende 😔
+          Posso te oferecer sexta de tarde ou na noite de seg a qui. Qual prefere?
+        proximo_estado: "remarcacao_oferecendo_seguranca"
+      
+      pediu_fim_de_semana:
+        trigger: "tem_dia=[sábado, domingo]"
+        resposta: |
+          Sábado e domingo a Thaynara não atende 😔
+          O atendimento é de segunda a sexta. Tem algum dia que funciona pra você?
+        proximo_estado: "remarcacao_oferecendo_seguranca"
+      
+      pediu_horario_fora_janela_7_dias:
+        trigger: "data_pedida > sexta_feira_semana_seguinte_data_original"
+        resposta_template: |
+          Pra remarcação tenho disponibilidade até {data_limite}. 
+          Tem algum dia ou horário antes disso que funciona pra você?
+        proximo_estado: "remarcacao_oferecendo_seguranca"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 4 — OFERECENDO SLOTS
+  # ════════════════════════════════════════════════════════════════════════
+  remarcacao_oferecendo_slots:
+    descricao: "Apresenta slots reais respeitando janela de remarcação"
+    
+    on_enter:
+      acao: "tool_consultar_slots_dietbox"
+      input:
+        modalidade: "{collected_data.modalidade}"
+        preferencia: "{collected_data.preferencia_horario}"
+        janela_max: "sexta_feira_semana_seguinte_data_original"
+        excluir_slots_rejeitados: "{state.slots_rejeitados}"
+    
+    situacoes:
+      
+      encontrou_horario_pedido:
+        trigger: "tool.match_exato=true"
+        resposta_template: |
+          Encontrei {preferencia_descricao} e estou enviando dois outros horários mais próximos caso o solicitado esteja distante:
+
+          📅 {slot_1_descricao}
+          📅 {slot_2_descricao}
+          📅 {slot_3_descricao}
+
+          Qual prefere?
+        botoes_interativos:
+          - id: "slot_1"
+            label: "{slot_1_label_curto}"
+          - id: "slot_2"
+            label: "{slot_2_label_curto}"
+          - id: "slot_3"
+            label: "{slot_3_label_curto}"
+        salva_no_estado:
+          last_slots_offered: "{slots_apresentados}"
+        proximo_estado: "remarcacao_aguardando_escolha_slot"
+      
+      nao_encontrou_pedido_tem_alternativas:
+        trigger: "tool.match_exato=false AND tool.slots_count > 0"
+        resposta_template: |
+          Não tenho exatamente {preferencia_descricao} dentro do prazo de remarcação, mas tenho:
+
+          📅 {slot_1_descricao}
+          📅 {slot_2_descricao}
+          📅 {slot_3_descricao}
+
+          Alguma dessas serve?
+        botoes_interativos:
+          - id: "slot_1"
+            label: "{slot_1_label_curto}"
+          - id: "slot_2"
+            label: "{slot_2_label_curto}"
+          - id: "slot_3"
+            label: "{slot_3_label_curto}"
+        salva_no_estado:
+          last_slots_offered: "{slots_apresentados}"
+        proximo_estado: "remarcacao_aguardando_escolha_slot"
+      
+      sem_disponibilidade:
+        trigger: "tool.slots_count=0"
+        resposta: |
+          No momento não tenho horários disponíveis dentro do prazo de remarcação 😔
+          Deixa eu verificar com a equipe e já te respondo, tá? 💚
+        action: "escalar_breno_silencioso"
+        proximo_estado: "remarcacao_aguardando_breno"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 5 — AGUARDANDO ESCOLHA DE SLOT
+  # ════════════════════════════════════════════════════════════════════════
+  remarcacao_aguardando_escolha_slot:
+    descricao: "Paciente escolhe um dos slots oferecidos"
+    intents_aceitas:
+      - escolher_slot
+      - rejeitar_slots
+      - informar_preferencia_horario
+      - desistir
+    
+    situacoes:
+      
+      escolheu_slot:
+        trigger: "botao_id IN [slot_1, slot_2, slot_3] OR texto_match_slot=true"
+        salva_no_estado:
+          appointment.slot_escolhido_novo: "{slot_correspondente}"
+        action: "executar_remarcacao_dietbox"
+        proximo_estado: "remarcacao_executando"
+      
+      rejeitou_todos_quer_outro:
+        trigger: "intent=rejeitar_slots OR intent=informar_preferencia_horario"
+        salva_no_estado:
+          state.slots_rejeitados: "{rejeitados + last_slots_offered}"
+          state.rodada_negociacao: "{rodada + 1}"
+          last_slots_offered: []
+          # Se nova preferência veio na mensagem, atualiza:
+          collected_data.preferencia_horario: "{nova_preferencia_se_houver}"
+        proximo_estado: "remarcacao_oferecendo_slots"
+
+      
+      desistiu:
+        trigger: "intent=desistir OR texto_contem=[deixa, depois eu vejo, esquece]"
+        resposta: |
+          Tudo bem! Sua consulta segue marcada pra {dia_semana_original}, {data_original} às {hora_original}.
+          Qualquer coisa estou à disposição 💚
+        proximo_estado: "remarcacao_concluida"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 6 — EXECUTANDO REMARCAÇÃO
+  # ════════════════════════════════════════════════════════════════════════
+  remarcacao_executando:
+    descricao: "Atualiza consulta no Dietbox"
+    
+    on_enter:
+      mensagem: |
+        Um instante, estou atualizando sua consulta 💚
+      
+      acao: "tool_remarcar_dietbox"
+      input:
+        id_agenda: "{state.appointment.consulta_atual.id}"
+        novo_slot: "{state.appointment.slot_escolhido_novo}"
+      
+      apos_sucesso:
+        proximo_estado: "remarcacao_concluida_sucesso"
+        salva_no_estado:
+          appointment.consulta_atual.ja_remarcada: true
+      
+      apos_falha:
+        action: "escalar_breno_silencioso"
+        resposta_paciente: |
+          Estou finalizando sua remarcação, só um instante 💚
+        proximo_estado: "remarcacao_aguardando_breno"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 7 — REMARCAÇÃO CONCLUÍDA COM SUCESSO
+  # ════════════════════════════════════════════════════════════════════════
+  remarcacao_concluida_sucesso:
+    descricao: "Confirmação ao paciente"
+    
+    on_enter:
+      mensagem_template: |
+        Fiz a alteração da data e horário da consulta, tá bom?
+
+        📅 Nova data: {dia_semana}, {data_completa} às {hora}
+
+        Qualquer coisa estou à disposição! 💚💚
+      
+      proximo_estado: "remarcacao_concluida"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 8 — CONCLUÍDA
+  # ════════════════════════════════════════════════════════════════════════
+  remarcacao_concluida:
+    descricao: "Fluxo encerrado"
+    on_enter:
+      acoes:
+        - "limpar_estado_redis"
+        - "registrar_metrica_remarcacao"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 9 — AGUARDANDO BRENO
+  # ════════════════════════════════════════════════════════════════════════
+  remarcacao_aguardando_breno:
+    descricao: "Escalado — aguardando orientação do Breno"
+    on_enter:
+      acoes:
+        - "manter_estado_redis"
+        - "registrar_escalacao"
+
+# ───────────────────────────────────────────────────────────────────────────
+# REGRAS INVIOLÁVEIS
+# ───────────────────────────────────────────────────────────────────────────
+regras_invioláveis:
+  
+  janela_remarcacao:
+    descricao: "Slots de remarcação só dentro da janela permitida"
+    janela: "até sexta-feira da semana seguinte à data original da consulta"
+    aplica_em_estados:
+      - remarcacao_oferecendo_slots
+  
+  nao_remarcar_se_passou_24h:
+    descricao: "Não pode remarcar consultas que já passaram"
+    aplica_em_estados:
+      - remarcacao_identificacao
+  
+  todas_as_validacoes_horario:
+    descricao: "Mesma grade do Fluxo 1 — sexta sem noite, sem fim de semana, etc"
+    aplica_em_estados: TODOS
+
+# ───────────────────────────────────────────────────────────────────────────
+# TOOLS
+# ───────────────────────────────────────────────────────────────────────────
+tools:
+  
+  detectar_tipo_remarcacao:
+    descricao: "Identifica se paciente tem consulta ativa, é retorno, etc"
+    input:
+      telefone: str
+      identificador_opcional: str
+    output:
+      tipo_remarcacao: enum [retorno, sem_agendamento_confirmado, nao_localizado]
+      consulta_atual: object
+      paciente: object
+  
+  consultar_slots_dietbox:
+    descricao: "Busca slots respeitando janela de remarcação"
+    input:
+      modalidade: str
+      preferencia: object
+      janela_max: date
+      excluir: array
+    output:
+      slots: array (max 3)
+      match_exato: bool
+  
+  remarcar_dietbox:
+    descricao: "PUT no Dietbox atualizando id_agenda com novo slot"
+    input:
+      id_agenda: int
+      novo_slot: object
+    output:
+      sucesso: bool
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# FLUXO 3 — CANCELAMENTO
+# ═══════════════════════════════════════════════════════════════════════════
+
+fluxo_id: "cancelamento"
+fluxo_nome: "Cancelamento de consulta"
+estado_inicial: "cancelamento_identificacao"
+estado_final: "cancelamento_concluido"
+
+# ───────────────────────────────────────────────────────────────────────────
+# CAMPOS COLETADOS
+# ───────────────────────────────────────────────────────────────────────────
+campos_coletados:
+  obrigatorios:
+    - motivo_cancelamento
+    - decisao_final  # cancelar | remarcar
+
+# ───────────────────────────────────────────────────────────────────────────
+# ESTADOS
+# ───────────────────────────────────────────────────────────────────────────
+estados:
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 1 — IDENTIFICAÇÃO
+  # ════════════════════════════════════════════════════════════════════════
+  cancelamento_identificacao:
+    descricao: "Paciente pediu cancelamento — busca consulta no Dietbox"
+    
+    on_enter:
+      acao: "tool_detectar_tipo_remarcacao"  # mesma tool que remarcação
+      apos_busca: "decidir_proximo_estado"
+    
+    situacoes:
+      
+      encontrou_consulta_ativa:
+        trigger: "tool.tipo_remarcacao=retorno"
+        proximo_estado: "cancelamento_aguardando_motivo"
+        salva_no_estado:
+          appointment.consulta_atual: "{tool.consulta_atual}"
+      
+      nao_tem_consulta_ativa:
+        trigger: "tool.tipo_remarcacao=sem_agendamento_confirmado"
+        resposta: |
+          Não encontrei uma consulta ativa pra cancelar 😊
+          Posso te ajudar com mais alguma coisa?
+        proximo_estado: "cancelamento_concluido"
+      
+      nao_encontrou_paciente:
+        trigger: "tool.tipo_remarcacao=nao_localizado"
+        resposta: |
+          Não encontrei seu cadastro 😊 Pode me mandar seu nome completo?
+        proximo_estado: "cancelamento_pedindo_nome"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 1B — PEDINDO NOME COMPLETO
+  # ════════════════════════════════════════════════════════════════════════
+  cancelamento_pedindo_nome:
+    descricao: "Não achou pelo telefone, pede nome completo"
+    intents_aceitas:
+      - informar_nome
+    
+    situacoes:
+      
+      nome_completo_recebido:
+        trigger: "intent=informar_nome AND nome_tem_sobrenome=true"
+        acao: "tool_detectar_tipo_remarcacao_por_nome"
+        # Se achar → segue cancelamento_aguardando_motivo
+        # Se não → resposta abaixo
+      
+      paciente_nao_localizado_mesmo_com_nome:
+        trigger: "tool.tipo_remarcacao=nao_localizado AND tem_nome_completo=true"
+        resposta: |
+          Não encontrei seu cadastro 😊 Posso te ajudar com mais alguma coisa?
+        proximo_estado: "cancelamento_concluido"
+      
+      apenas_primeiro_nome:
+        trigger: "intent=informar_nome AND nome_tem_sobrenome=false"
+        resposta: |
+          Pra localizar seu cadastro, preciso do nome E sobrenome 😊
+        proximo_estado: "cancelamento_pedindo_nome"
+        max_tentativas: 3
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 2 — AGUARDANDO MOTIVO
+  # ════════════════════════════════════════════════════════════════════════
+  cancelamento_aguardando_motivo:
+    descricao: "Pergunta o motivo do cancelamento"
+    
+    on_enter:
+      mensagem_template: |
+        Entendi, {primeiro_nome}. Sua consulta atual é {dia_semana}, {data} às {hora}.
+
+        Antes de cancelar, pode me contar rapidinho o motivo? Assim consigo entender melhor pra ver se há algo que posso fazer 💚
+    
+    intents_aceitas:
+      - informar_motivo_cancelamento
+      - desistir
+    
+    situacoes:
+      
+      informou_motivo_qualquer:
+        trigger: "qualquer_resposta_significativa"
+        salva_no_estado:
+          collected_data.motivo_cancelamento: "{texto_original}"
+        proximo_estado: "cancelamento_tentativa_retencao"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 3 — TENTATIVA DE RETENÇÃO
+  # ════════════════════════════════════════════════════════════════════════
+  cancelamento_tentativa_retencao:
+    descricao: "Tenta segurar oferecendo remarcação no lugar do cancelamento"
+    
+    on_enter:
+      mensagem_template: |
+        Entendi, {primeiro_nome} 💚
+
+        Que tal a gente remarcar em vez de cancelar? Conseguimos realocar dentro dos próximos 7 dias (até {data_limite}), assim você não perde a consulta nem o valor já pago.
+
+        Topa? Me fala qual dia/horário funciona melhor pra você 😊
+    
+    intents_aceitas:
+      - aceitar_remarcacao
+      - recusar_remarcacao_quer_cancelar
+      - informar_preferencia_horario
+      - desistir
+    
+    situacoes:
+      
+      aceitou_remarcar:
+        trigger: "intent=aceitar_remarcacao OR intent=informar_preferencia_horario OR texto_contem=[topo, vamos, pode ser, sim, ok, claro]"
+        action: "redirecionar_fluxo_remarcacao"
+        # Vai pro Fluxo 2 — Remarcação (estado: remarcacao_oferecendo_slots)
+        salva_no_estado:
+          collected_data.preferencia_horario: "{nova_preferencia_se_houver}"
+      
+      insistiu_cancelar:
+        trigger: "texto_contem=[quero cancelar mesmo, prefiro cancelar, não quero remarcar, cancelar mesmo, mesmo assim]"
+        proximo_estado: "cancelamento_executando"
+      
+      silencio_apos_oferta:
+        trigger: "passaram_24h_sem_resposta"
+        # Agente entende que paciente desistiu ou abandonou
+        action: "executar_cancelamento_e_perda_valor"
+        proximo_estado: "cancelamento_executando_silencioso"
+      
+      pediu_pra_pensar:
+        trigger: "intent=vou_pensar OR texto_contem=[vou ver, depois, deixa eu pensar]"
+        resposta: |
+          Claro, sem pressa! Sua consulta segue marcada por enquanto. Quando decidir me avisa, tá? 💚
+          
+          Só lembrando que se você não responder até 24h antes da consulta, ela é considerada realizada.
+        proximo_estado: "cancelamento_aguardando_decisao_final"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 4 — EXECUTANDO CANCELAMENTO
+  # ════════════════════════════════════════════════════════════════════════
+  cancelamento_executando:
+    descricao: "Atualiza Dietbox com desmarcada=true"
+    
+    on_enter:
+      acao: "tool_cancelar_dietbox"
+      input:
+        id_agenda: "{state.appointment.consulta_atual.id}"
+        operacao: "PUT desmarcada=true"
+      
+      apos_sucesso:
+        proximo_estado: "cancelamento_concluido_sucesso"
+      
+      apos_falha:
+        action: "escalar_breno_silencioso"
+        resposta_paciente: |
+          Estou finalizando seu cancelamento, só um instante 💚
+        proximo_estado: "cancelamento_aguardando_breno"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 5 — CONCLUÍDO COM SUCESSO
+  # ════════════════════════════════════════════════════════════════════════
+  cancelamento_concluido_sucesso:
+    descricao: "Cancelou no Dietbox e notifica internamente"
+    
+    on_enter:
+      mensagem: |
+        Pronto! Sua consulta foi cancelada.
+        
+        Qualquer coisa, estou à disposição 💚
+      
+      acao_interna_obrigatoria: "notificar_thaynara_breno"
+      mensagem_notificacao_template: |
+        ⚠️ Cancelamento — {nome}
+        Consulta cancelada: {dia_semana}, {data} às {hora}
+        Modalidade: {modalidade}
+        Plano: {plano}
+        Motivo informado: {motivo_cancelamento}
+      
+      proximo_estado: "cancelamento_concluido"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 6 — CANCELAMENTO EXECUTADO SILENCIOSAMENTE (paciente sumiu)
+  # ════════════════════════════════════════════════════════════════════════
+  cancelamento_executando_silencioso:
+    descricao: "Paciente sumiu após oferta de retenção, sistema cancela e notifica"
+    
+    on_enter:
+      acao: "tool_cancelar_dietbox"
+      acao_interna_obrigatoria: "notificar_thaynara_breno"
+      mensagem_notificacao_template: |
+        ⚠️ Cancelamento por silêncio — {nome}
+        Paciente não respondeu após oferta de remarcação.
+        Consulta cancelada: {dia_semana}, {data} às {hora}
+        Motivo informado: {motivo_cancelamento}
+        Valor não reembolsado.
+      
+      # Paciente NÃO recebe mensagem de cancelamento (não informa perda do valor)
+      proximo_estado: "cancelamento_concluido"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 7 — AGUARDANDO DECISÃO FINAL (paciente pediu pra pensar)
+  # ════════════════════════════════════════════════════════════════════════
+  cancelamento_aguardando_decisao_final:
+    descricao: "Paciente pediu tempo pra decidir"
+    
+    intents_aceitas:
+      - aceitar_remarcacao
+      - recusar_remarcacao_quer_cancelar
+      - informar_preferencia_horario
+      - desistir
+    
+    situacoes:
+      
+      decidiu_remarcar:
+        trigger: "intent=aceitar_remarcacao OR intent=informar_preferencia_horario"
+        action: "redirecionar_fluxo_remarcacao"
+      
+      decidiu_cancelar_mesmo:
+        trigger: "texto_contem=[quero cancelar, prefiro cancelar, cancela]"
+        proximo_estado: "cancelamento_executando"
+      
+      decidiu_manter:
+        trigger: "texto_contem=[vou manter, vou tentar, fico mesmo]"
+        resposta: |
+          Que ótimo! 💚 Sua consulta segue marcada pra {dia_semana}, {data} às {hora}.
+        proximo_estado: "cancelamento_concluido"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 8 — CONCLUÍDO
+  # ════════════════════════════════════════════════════════════════════════
+  cancelamento_concluido:
+    descricao: "Fluxo encerrado"
+    on_enter:
+      acoes:
+        - "limpar_estado_redis"
+        - "registrar_metrica_cancelamento"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 9 — AGUARDANDO BRENO
+  # ════════════════════════════════════════════════════════════════════════
+  cancelamento_aguardando_breno:
+    descricao: "Escalado — aguardando orientação"
+    on_enter:
+      acoes:
+        - "manter_estado_redis"
+        - "registrar_escalacao"
+
+# ───────────────────────────────────────────────────────────────────────────
+# REGRAS INVIOLÁVEIS
+# ───────────────────────────────────────────────────────────────────────────
+regras_invioláveis:
+  
+  cancelar_sempre_via_put:
+    descricao: "Cancelamento sempre via PUT desmarcada=true — nunca DELETE"
+    aplica_em_estados:
+      - cancelamento_executando
+      - cancelamento_executando_silencioso
+  
+  nunca_informar_perda_valor:
+    descricao: "Não falar 'o valor não será reembolsado' pro paciente"
+    aplica_em_estados: TODOS
+  
+  sempre_notificar_thaynara_breno:
+    descricao: "Toda vez que cancela, notifica internamente com motivo"
+    aplica_em_estados:
+      - cancelamento_concluido_sucesso
+      - cancelamento_executando_silencioso
+
+# ───────────────────────────────────────────────────────────────────────────
+# TOOLS
+# ───────────────────────────────────────────────────────────────────────────
+tools:
+  
+  cancelar_dietbox:
+    descricao: "PUT no Dietbox com desmarcada=true"
+    input:
+      id_agenda: int
+    output:
+      sucesso: bool
+  
+  notificar_thaynara_breno:
+    descricao: "Envia mensagem WhatsApp internamente sobre cancelamento"
+    input:
+      mensagem: str
+    destinos:
+      - "5531991394759"  # Thaynara
+      - "5531992059211"  # Breno

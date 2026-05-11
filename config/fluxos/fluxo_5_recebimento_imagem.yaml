@@ -1,0 +1,224 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# FLUXO 5 — RECEBIMENTO DE IMAGEM / COMPROVANTE
+# ═══════════════════════════════════════════════════════════════════════════
+
+fluxo_id: "recebimento_imagem"
+fluxo_nome: "Recebimento de imagem (comprovante, figurinha, foto qualquer)"
+estado_inicial: "imagem_recebida"
+estado_final: "imagem_processada"
+
+# ───────────────────────────────────────────────────────────────────────────
+# CONTEXTO DE ENTRADA
+# ───────────────────────────────────────────────────────────────────────────
+# Este fluxo é acionado SEMPRE que chega imagem/mídia do paciente.
+# Classifica e roteia conforme o tipo identificado.
+# Não é um fluxo standalone — é um INTERCEPTADOR que opera DENTRO do fluxo ativo.
+
+# ───────────────────────────────────────────────────────────────────────────
+# ESTADOS
+# ───────────────────────────────────────────────────────────────────────────
+estados:
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 1 — IMAGEM RECEBIDA (classifica antes de qualquer ação)
+  # ════════════════════════════════════════════════════════════════════════
+  imagem_recebida:
+    descricao: "Imagem chegou — primeiro classifica o tipo"
+    
+    on_enter:
+      acao: "tool_analisar_imagem"
+      input:
+        imagem_bytes: "{mensagem.media_bytes}"
+        mime_type: "{mensagem.mime_type}"
+        contexto_fluxo_atual: "{state.goal}"
+      saida:
+        tipo: enum [comprovante_pagamento, figurinha_sticker, foto_pessoal, foto_documento, outro]
+        eh_comprovante: bool
+        valor: float (se comprovante)
+      proximo_estado_dinamico: true
+    
+    situacoes:
+      
+      classificou_como_comprovante:
+        trigger: "tool.eh_comprovante=true"
+        proximo_estado: "comprovante_validando"
+      
+      classificou_como_figurinha:
+        trigger: "tipo_mensagem=sticker"
+        resposta: |
+          Hihi 💚 Como posso te ajudar?
+        proximo_estado: "imagem_processada"
+        # Mantém o fluxo anterior ativo
+      
+      foto_recebida_mas_nao_e_comprovante:
+        trigger: "tool.eh_comprovante=false AND tipo_mensagem=image"
+        situacao_secundaria:
+          
+          estava_aguardando_comprovante:
+            trigger: "state.status=aguardando_pagamento_pix"
+            resposta: |
+              Hmm, essa imagem não parece ser um comprovante 😅 
+              Pode me mandar a tela do PIX confirmado?
+            proximo_estado: "imagem_processada"
+          
+          estava_em_outro_fluxo:
+            trigger: "state.status != aguardando_pagamento_pix"
+            resposta: |
+              Recebo comprovantes de pagamento por aqui 😊 
+              Posso te ajudar com mais alguma coisa?
+            proximo_estado: "imagem_processada"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 2 — VALIDANDO COMPROVANTE
+  # ════════════════════════════════════════════════════════════════════════
+  comprovante_validando:
+    descricao: "É comprovante — valida valor e processa"
+    
+    on_enter:
+      acao: "tool_validar_comprovante_completo"
+      input:
+        valor_extraido: "{tool.valor}"
+        plano: "{state.collected_data.plano}"
+        modalidade: "{state.collected_data.modalidade}"
+      calcular:
+        valor_total_plano: "{kb.get_valor(plano, modalidade)}"
+        valor_sinal_minimo: "{valor_total_plano * 0.5}"
+        valor_restante: "{valor_total_plano - tool.valor}"
+    
+    situacoes:
+      
+      valor_exato_sinal:
+        trigger: "tool.valor == valor_sinal_minimo"
+        resposta_template: |
+          Recebi seu sinal de R$ {valor_pago}! ✅
+          Falta R$ {valor_restante} pra acertar no dia da consulta.
+        action: "encaminhar_comprovante_thaynara"
+        salva_no_estado:
+          flags.pagamento_confirmado: true
+          collected_data.valor_pago_sinal: "{tool.valor}"
+        proximo_estado: "retornar_para_fluxo_anterior"
+      
+      valor_acima_sinal_abaixo_total:
+        trigger: "tool.valor > valor_sinal_minimo AND tool.valor < valor_total_plano"
+        resposta_template: |
+          Recebi R$ {valor_pago}! ✅
+          Falta R$ {valor_restante} pra acertar no dia da consulta.
+        action: "encaminhar_comprovante_thaynara"
+        salva_no_estado:
+          flags.pagamento_confirmado: true
+          collected_data.valor_pago_sinal: "{tool.valor}"
+        proximo_estado: "retornar_para_fluxo_anterior"
+      
+      valor_total_quitado:
+        trigger: "tool.valor >= valor_total_plano"
+        resposta_template: |
+          Recebi pagamento integral de R$ {valor_pago}! ✅ 
+          Tudo quitado, sem saldo a acertar 💚
+        action: "encaminhar_comprovante_thaynara"
+        salva_no_estado:
+          flags.pagamento_confirmado: true
+          flags.pago_integral: true
+          collected_data.valor_pago_sinal: "{tool.valor}"
+        proximo_estado: "retornar_para_fluxo_anterior"
+      
+      valor_abaixo_sinal:
+        trigger: "tool.valor < valor_sinal_minimo"
+        resposta_template: |
+          Recebi seu comprovante de R$ {valor_pago}, mas o sinal mínimo é R$ {valor_sinal} 💚
+          Pode me mandar mais R$ {falta_para_sinal} pra completar?
+
+          Chave PIX (CPF): 14994735670
+        # NÃO encaminha pra Thaynara ainda — espera o complemento
+        proximo_estado: "imagem_processada"
+      
+      ilegivel_ou_erro:
+        trigger: "tool.erro=true"
+        action: "escalar_breno_silencioso"
+        resposta_paciente: |
+          Recebi seu comprovante! Deixa eu confirmar com a equipe e já te respondo 💚
+        proximo_estado: "imagem_processada"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 3 — IMAGEM PROCESSADA
+  # ════════════════════════════════════════════════════════════════════════
+  imagem_processada:
+    descricao: "Imagem processada — fluxo continua de onde parou"
+    on_enter:
+      acao: "manter_state_e_continuar_fluxo_anterior"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 4 — RETORNAR PARA FLUXO ANTERIOR
+  # ════════════════════════════════════════════════════════════════════════
+  retornar_para_fluxo_anterior:
+    descricao: "Comprovante aprovado — segue para próxima etapa do fluxo de origem"
+    on_enter:
+      decisao_dinamica:
+        se_estava_em_fluxo_1_agendamento:
+          proximo_estado: "Fluxo_1.aguardando_cadastro"
+        se_outro_contexto:
+          proximo_estado: "manter_estado_atual"
+
+# ───────────────────────────────────────────────────────────────────────────
+# REGRAS INVIOLÁVEIS
+# ───────────────────────────────────────────────────────────────────────────
+regras_invioláveis:
+  
+  nunca_aprovar_valor_abaixo_sinal:
+    descricao: "Comprovante com valor < 50% do plano nunca é aprovado"
+    aplica_em_estados:
+      - comprovante_validando
+  
+  sempre_encaminhar_comprovante_thaynara:
+    descricao: "Todo comprovante APROVADO é encaminhado à Thaynara com resumo"
+    aplica_em_estados:
+      - comprovante_validando
+    formato_encaminhamento_template: |
+      🧾 Comprovante recebido
+      
+      👤 Paciente: {nome}
+      💰 Valor: R$ {valor}
+      📋 Plano: {plano} ({modalidade})
+      {se_valor_confere: ✅ Valor confere: Sim}
+      {se_acima_sinal_abaixo_total: ⚠️ Sinal pago, saldo de R$ {valor_restante} a acertar no dia}
+      {se_pago_integral: ✅ Pago integral - quitado}
+    destino: "5531991394759"  # Thaynara
+    incluir_imagem_original: true
+  
+  classificacao_obrigatoria:
+    descricao: "Toda imagem passa por classificação antes de qualquer ação"
+    aplica_em_estados:
+      - imagem_recebida
+
+# ───────────────────────────────────────────────────────────────────────────
+# TOOLS
+# ───────────────────────────────────────────────────────────────────────────
+tools:
+  
+  analisar_imagem:
+    descricao: "Classifica tipo de imagem via Gemini Vision"
+    input:
+      imagem_bytes: bytes
+      mime_type: str
+      contexto: str
+    output:
+      tipo: enum [comprovante_pagamento, figurinha, foto_pessoal, foto_documento, outro]
+      eh_comprovante: bool
+      valor: float (se comprovante)
+      favorecido: str (se comprovante)
+  
+  validar_comprovante_completo:
+    descricao: "Compara valor pago vs plano escolhido"
+    input:
+      valor_extraido: float
+      plano: str
+      modalidade: str
+    output:
+      situacao: enum [exato_sinal, acima_sinal_abaixo_total, total_quitado, abaixo_sinal, ilegivel]
+      valor_restante: float
+  
+  encaminhar_comprovante_thaynara:
+    descricao: "Envia imagem + resumo formatado pra Thaynara"
+    input:
+      imagem_original: bytes
+      resumo_formatado: str
+    destino_obrigatorio: "5531991394759"

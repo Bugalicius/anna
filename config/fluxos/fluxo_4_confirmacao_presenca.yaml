@@ -1,0 +1,314 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# FLUXO 4 — CONFIRMAÇÃO DE PRESENÇA
+# ═══════════════════════════════════════════════════════════════════════════
+
+fluxo_id: "confirmacao_presenca"
+fluxo_nome: "Confirmação de presença + lembrete véspera"
+estado_inicial: "confirmacao_enviada"
+estado_final: "confirmacao_concluida"
+
+# ───────────────────────────────────────────────────────────────────────────
+# CONTEXTO DE ENTRADA
+# ───────────────────────────────────────────────────────────────────────────
+# Este fluxo é acionado por JOBS automáticos do scheduler:
+#
+#   JOB 1: _confirmacao_semanal — toda sexta às 13h
+#          Busca consultas da semana seguinte (segunda → sexta)
+#          Envia mensagem com botões "Confirmar / Remarcar"
+#
+#   JOB 2: _lembrete_vespera — todo dia às 18h
+#          Busca consultas do dia seguinte
+#          Envia lembrete curto (sem botões — janela 24h pode estar fechada)
+
+# ───────────────────────────────────────────────────────────────────────────
+# CAMPOS COLETADOS
+# ───────────────────────────────────────────────────────────────────────────
+campos_coletados:
+  obrigatorios:
+    - resposta_confirmacao  # confirmou | quer_remarcar | nao_respondeu
+
+# ───────────────────────────────────────────────────────────────────────────
+# JOBS DO SCHEDULER
+# ───────────────────────────────────────────────────────────────────────────
+jobs:
+  
+  confirmacao_semanal:
+    cron: "0 13 * * 5"  # toda sexta às 13h
+    descricao: "Envia confirmação semanal para consultas da semana seguinte"
+    acao: "enviar_confirmacao_semanal_para_cada_consulta"
+    
+    template_presencial:
+      mensagem: |
+        Oi, {primeiro_nome}! Tudo bem?
+
+        Aqui é a Ana, assistente da Nutri Thaynara.
+        Passando para te lembrar da sua consulta presencial na {dia_semana}, {data}, às {hora}. *Posso confirmar?*
+
+        👉 Caso precise cancelar ou remarcar, é necessário avisar com mínimo de 24h de antecedência.
+        ⚠️ Se não houver aviso nesse prazo ou se você não comparecer, a consulta será considerada realizada e o valor pago, não será reembolsado.
+
+        📍 Aura Clinic & Beauty – Rua Melo Franco, 204, Sala 103, Jardim da Glória – Vespasiano.
+        ⏳ Tolerância de atraso: 10 min.
+        Ah, não esqueça de vir com short e top/camiseta de treino, pois teremos sua avaliação física.
+
+        Até logo!! 💚
+      botoes_interativos:
+        - id: "confirmar_presenca"
+          label: "Confirmar ✅"
+        - id: "remarcar_consulta"
+          label: "Preciso remarcar 📅"
+    
+    template_online:
+      mensagem: |
+        Oi, {primeiro_nome}. Tudo bem?
+
+        Aqui é a Ana, assistente da Nutri Thaynara.
+        Passando para te lembrar do seu {tipo_consulta} online agendado para {dia_semana}, {data}, às {hora}. *Posso confirmar?*
+
+        👉 Caso precise cancelar ou remarcar, é necessário avisar com pelo menos 24h de antecedência.
+        ⚠️ Se não houver aviso nesse prazo ou se você não comparecer, a consulta será considerada realizada normalmente (tanto para quem já fez sinal quanto para quem tem plano Premium).
+
+        ✅ Certifique-se de ter uma boa conexão de internet durante o horário.
+        ⏳ Tolerância de atraso: 10 min.
+
+        Ah, não se esqueça:
+          • Pese-se pela manhã
+          • Envie as fotos com a mesma roupa e de preferência no mesmo local, para o número da Nutri antes da consulta.
+
+        Qualquer dúvida, estou a disposição!
+      
+      botoes_interativos:
+        - id: "confirmar_presenca"
+          label: "Confirmar ✅"
+        - id: "remarcar_consulta"
+          label: "Preciso remarcar 📅"
+      
+      acao_pos_envio:
+        - tipo: "enviar_contato"
+          numero: "5531991394759"
+          nome: "Thaynara Teixeira"
+    
+    apos_envio:
+      salva_no_estado:
+        confirmacao.enviada_em: "{timestamp_atual}"
+        confirmacao.tipo_envio: "semanal"
+      proximo_estado: "aguardando_resposta_confirmacao"
+      agendar_followup_24h: true
+  
+  lembrete_vespera:
+    cron: "0 18 * * *"  # todo dia às 18h
+    descricao: "Envia lembrete da véspera para consultas do dia seguinte"
+    acao: "enviar_lembrete_vespera_para_cada_consulta"
+    
+    template_unico:
+      mensagem: |
+        Oi {primeiro_nome}! 💚 Só passando pra te lembrar da sua consulta amanhã às {hora}.
+        Até lá! 💚
+      sem_botoes: true  # janela 24h da Meta pode estar fechada — só texto
+
+# ───────────────────────────────────────────────────────────────────────────
+# ESTADOS
+# ───────────────────────────────────────────────────────────────────────────
+estados:
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 1 — CONFIRMAÇÃO ENVIADA (paciente recebeu, aguardando resposta)
+  # ════════════════════════════════════════════════════════════════════════
+  confirmacao_enviada:
+    descricao: "Mensagem de confirmação foi enviada, aguarda resposta do paciente"
+    intents_aceitas:
+      - confirmar_presenca
+      - solicitar_remarcacao
+      - qualquer_outra
+    
+    situacoes:
+      
+      clicou_confirmar:
+        trigger: "botao_id=confirmar_presenca OR texto_match=[sim, confirmo, vou, ok, beleza, perfeito, posso, claro]"
+        resposta: |
+          Confirmado então! Obrigadaaa 💚😉
+        action: "tool_marcar_confirmacao_dietbox"
+        salva_no_estado:
+          confirmacao.status: "confirmada"
+        proximo_estado: "confirmacao_concluida"
+      
+      clicou_remarcar:
+        trigger: "botao_id=remarcar_consulta"
+        action: "redirecionar_fluxo_remarcacao"
+        salva_no_estado:
+          confirmacao.status: "pediu_remarcacao"
+        # Vai pro Fluxo 2 — Remarcação
+      
+      paciente_pediu_remarcar_em_texto:
+        trigger: "texto_contem=[remarcar, mudar, outro horário, outro dia, trocar]"
+        action: "redirecionar_fluxo_remarcacao"
+        salva_no_estado:
+          confirmacao.status: "pediu_remarcacao"
+      
+      paciente_disse_que_nao_vai:
+        trigger: "texto_contem=[não vou, não consigo, não posso ir, não dá, vou ter que cancelar]"
+        action: "redirecionar_fluxo_cancelamento"
+        salva_no_estado:
+          confirmacao.status: "pediu_cancelamento"
+      
+      pergunta_durante_confirmacao:
+        trigger: "intent=duvida_operacional"
+        permite_improviso: true
+        instrucao_para_llm: |
+          Responda a dúvida brevemente da base de conhecimento.
+          Termine retomando: "Posso confirmar sua presença?"
+        proximo_estado: "confirmacao_enviada"
+      
+      resposta_ambigua:
+        trigger: "confidence < 0.6"
+        resposta: |
+          Pra eu confirmar, você consegue comparecer no horário marcado? 💚
+        botoes_interativos:
+          - id: "confirmar_presenca"
+            label: "Confirmar ✅"
+          - id: "remarcar_consulta"
+            label: "Preciso remarcar 📅"
+        proximo_estado: "confirmacao_enviada"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 2 — AGUARDANDO FOLLOW-UP 24H (único follow-up)
+  # ════════════════════════════════════════════════════════════════════════
+  aguardando_followup_24h:
+    descricao: "24h depois da confirmação semanal sem resposta — único follow-up"
+    
+    on_enter_via_scheduler:
+      condicao: "confirmacao.status=null AND confirmacao.enviada_em < timestamp_atual - 24h"
+      mensagem_template: |
+        {primeiro_nome}?
+      proximo_estado: "confirmacao_pendente"
+      # Não agenda mais follow-up — deixa pro lembrete véspera tentar de novo
+    
+    situacoes:
+      
+      finalmente_confirmou:
+        trigger: "botao_id=confirmar_presenca OR texto_match=[sim, confirmo, vou, posso, claro, beleza]"
+        resposta: |
+          Confirmado então! Obrigadaaa 💚😉
+        action: "tool_marcar_confirmacao_dietbox"
+        salva_no_estado:
+          confirmacao.status: "confirmada"
+        proximo_estado: "confirmacao_concluida"
+      
+      finalmente_quer_remarcar:
+        trigger: "botao_id=remarcar_consulta OR texto_contem=[remarcar, mudar]"
+        action: "redirecionar_fluxo_remarcacao"
+        salva_no_estado:
+          confirmacao.status: "pediu_remarcacao"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 3 — CONFIRMAÇÃO PENDENTE (aguardando lembrete véspera atuar)
+  # ════════════════════════════════════════════════════════════════════════
+  confirmacao_pendente:
+    descricao: "Não respondeu ao follow-up — lembrete véspera será nova tentativa"
+    
+    on_enter:
+      # Sistema simplesmente aguarda. O job lembrete_vespera (18h dia anterior)
+      # vai disparar e tentar uma segunda interação.
+      acao: "marcar_pendente_e_aguardar_lembrete_vespera"
+    
+    situacoes:
+      
+      respondeu_ao_lembrete_vespera_confirmou:
+        trigger: "botao_id=confirmar_presenca OR texto_match=[sim, vou, confirmo]"
+        resposta: |
+          Confirmado então! Obrigadaaa 💚😉
+        action: "tool_marcar_confirmacao_dietbox"
+        proximo_estado: "confirmacao_concluida"
+      
+      respondeu_ao_lembrete_vespera_quer_remarcar:
+        trigger: "texto_contem=[remarcar, mudar, não consigo]"
+        action: "redirecionar_fluxo_remarcacao"
+      
+      chegou_dia_consulta_sem_resposta:
+        trigger: "data_atual >= data_consulta AND confirmacao.status=null"
+        # Notifica Breno na hora — humano decide
+        action: "notificar_breno_paciente_nao_confirmou"
+        mensagem_breno_template: |
+          ⚠️ Ana: {nome} não confirmou presença para hoje às {hora}.
+          Modalidade: {modalidade}
+          Plano: {plano}
+          Telefone: {telefone}
+          
+          Aguardo orientação se devo desmarcar ou continuar tentando contato.
+        proximo_estado: "aguardando_orientacao_breno"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 4 — AGUARDANDO ORIENTAÇÃO DO BRENO
+  # ════════════════════════════════════════════════════════════════════════
+  aguardando_orientacao_breno:
+    descricao: "Paciente não confirmou — Breno foi notificado e vai decidir"
+    on_enter:
+      acoes:
+        - "manter_estado_redis"
+        - "registrar_escalacao"
+    
+    situacoes:
+      
+      breno_mandou_desmarcar:
+        trigger: "comando_interno_breno=desmarcar"
+        action: "tool_marcar_desmarcada_dietbox"
+        proximo_estado: "confirmacao_concluida"
+      
+      breno_mandou_aguardar:
+        trigger: "comando_interno_breno=aguardar"
+        proximo_estado: "aguardando_orientacao_breno"
+      
+      paciente_apareceu_finalmente:
+        trigger: "qualquer_mensagem_paciente"
+        # Sistema continua aguardando orientação do Breno antes de responder
+        action: "escalar_breno_com_contexto_paciente_apareceu"
+        proximo_estado: "aguardando_orientacao_breno"
+
+    # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 5 — CONCLUÍDA
+  # ════════════════════════════════════════════════════════════════════════
+  confirmacao_concluida:
+    descricao: "Fluxo encerrado (confirmada, remarcada ou desmarcada)"
+    on_enter:
+      acoes:
+        - "limpar_followups_pendentes_redis"
+        - "registrar_metrica_confirmacao"
+
+# ───────────────────────────────────────────────────────────────────────────
+# REGRAS INVIOLÁVEIS
+# ───────────────────────────────────────────────────────────────────────────
+regras_invioláveis:
+  
+  desmarcar_sempre_via_put:
+    descricao: "Quando desmarcar, sempre via PUT desmarcada=true — nunca DELETE"
+    aplica_em_estados:
+      - aguardando_orientacao_breno
+  
+  nunca_informar_perda_valor_paciente:
+    descricao: "Em nenhum momento informar ao paciente sobre perda do valor"
+    aplica_em_estados: TODOS
+  
+  notificar_breno_quando_paciente_nao_confirma:
+    descricao: "Sistema NÃO desmarca automaticamente — sempre notifica Breno pra decidir"
+    aplica_em_estados:
+      - confirmacao_pendente
+
+# ───────────────────────────────────────────────────────────────────────────
+# TOOLS
+# ───────────────────────────────────────────────────────────────────────────
+tools:
+  
+  enviar_confirmacao_semanal:
+    descricao: "Envia mensagem de confirmação com botões interativos"
+  
+  enviar_lembrete_vespera:
+    descricao: "Envia texto curto da véspera (sem botões)"
+  
+  marcar_confirmacao_dietbox:
+    descricao: "Marca consulta como confirmada no Dietbox (campo confirmada=true)"
+  
+  marcar_desmarcada_dietbox:
+    descricao: "Marca consulta como desmarcada (PUT desmarcada=true)"
+  
+  notificar_breno_paciente_nao_confirmou:
+    descricao: "Envia mensagem ao Breno (5531992059211) sobre paciente que não confirmou"
