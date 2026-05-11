@@ -121,15 +121,15 @@ estados:
         remetente: "{Thaynara | Breno}"
         contexto_escalacoes_pendentes: "{state.escalacoes_pendentes}"
       saida:
-        comando_identificado: enum [
-          consultar_status_paciente,
-          perguntar_paciente_troca_horario,
-          cancelar_consulta,
-          remarcar_consulta,
-          responder_escalacao,
-          enviar_mensagem_para_paciente,
-          nao_reconhecido
-        ]
+        comando_identificado:
+          enum:
+            - consultar_status_paciente
+            - perguntar_paciente_troca_horario
+            - cancelar_consulta
+            - remarcar_consulta
+            - responder_escalacao
+            - enviar_mensagem_para_paciente
+            - nao_reconhecido
         parametros_extraidos: object
         confidence: float
     
