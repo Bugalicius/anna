@@ -155,6 +155,7 @@ class Interpretacao(StrictModel):
     entities: dict[str, Any] = Field(default_factory=dict)
     botao_id: str | None = None
     message_type: str = "text"
+    patient_message_type: str | None = None
     validacoes: dict[str, Any] = Field(default_factory=dict)
     texto_original: str = ""
 

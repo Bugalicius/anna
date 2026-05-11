@@ -42,12 +42,18 @@ def _render_template(texto: str, ctx: dict[str, Any]) -> str:
 
 
 def _aplicar_mapeamentos(mapeamento: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+    def _render_valor(valor: Any) -> Any:
+        if isinstance(valor, str):
+            return _render_template(valor, ctx)
+        if isinstance(valor, dict):
+            return {k: _render_valor(v) for k, v in valor.items()}
+        if isinstance(valor, list):
+            return [_render_valor(v) for v in valor]
+        return valor
+
     saida: dict[str, Any] = {}
     for chave, valor in (mapeamento or {}).items():
-        if isinstance(valor, str):
-            saida[chave] = _render_template(valor, ctx)
-        else:
-            saida[chave] = valor
+        saida[chave] = _render_valor(valor)
     return saida
 
 
@@ -74,13 +80,18 @@ def _avaliar_condicao(cond: str, ctx: dict[str, Any]) -> bool:
         lista = [v.strip().strip('"\'').lower() for v in raw.split(",")]
         return str(_get_nested(ctx, key) or "").lower() in lista
 
-    for op in ("!=", "<=", ">="):
+    for op in ("!=", "<=", ">=", "=="):
         m = re.match(rf"^([\w.]+)\s*{re.escape(op)}\s*(.+)$", cond)
         if not m:
             continue
         key, raw = m.group(1), m.group(2).strip()
         atual = _get_nested(ctx, key)
-        if op == "!=":
+        if op in ("!=", "=="):
+            if op == "==":
+                try:
+                    return float(atual) == float(raw)
+                except (TypeError, ValueError):
+                    return str(atual).lower() == raw.lower()
             return str(atual).lower() != raw.lower()
         try:
             atual_n = float(atual)
@@ -110,9 +121,9 @@ def _avaliar_condicao(cond: str, ctx: dict[str, Any]) -> bool:
         key, raw = m.group(1), m.group(2).strip()
         atual = _get_nested(ctx, key)
         if raw.lower() == "true":
-            return bool(atual)
+            return atual is True or str(atual).lower() == "true"
         if raw.lower() == "false":
-            return not bool(atual)
+            return atual is False or str(atual).lower() == "false"
         return str(atual).lower() == raw.lower()
 
     if re.match(r"^[\w.]+$", cond):
