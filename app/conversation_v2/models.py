@@ -55,6 +55,7 @@ class Situacao(StrictModel):
     situacao_secundaria: str | dict[str, Any] | None = None
     mensagem_breno_template: str | None = None
     mensagem_para_paciente_real_template: str | None = None
+    input: dict[str, Any] = Field(default_factory=dict)
     notas: str | None = None
 
     def texto_resposta(self) -> str | None:

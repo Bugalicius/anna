@@ -7,20 +7,23 @@ import hashlib
 import json
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 from app.conversation.state import add_message, load_state, save_state
 from app.conversation_v2 import response_writer, rules, state_machine
 from app.conversation_v2.config_loader import config
-from app.conversation_v2.interpreter import interpretar
+from app.conversation_v2.interpreter import _extrair_nome, _extrair_preferencia, interpretar
 from app.conversation_v2.models import AcaoAutorizada, Mensagem, ResultadoTurno, TipoAcao
 from app.conversation_v2.tools.registry import call_tool
 
 logger = logging.getLogger(__name__)
 
-FLUXO_ID = "agendamento_paciente_novo"
+AGENDAMENTO_ID = "agendamento_paciente_novo"
+REMARCACAO_ID = "remarcacao"
+CANCELAMENTO_ID = "cancelamento"
+FLUXO_ID = AGENDAMENTO_ID
 LOG_PATH = Path("logs/metrics.jsonl")
 
 ACTION_NEXT_STATE = {
@@ -55,11 +58,13 @@ def _ensure_v2_state(state: dict[str, Any], phone: str) -> dict[str, Any]:
     cd = state["collected_data"]
     for key in (
         "nome",
+        "nome_completo",
         "status_paciente",
         "objetivo",
         "plano",
         "modalidade",
         "preferencia_horario",
+        "preferencia_horario_nova",
         "forma_pagamento",
         "data_nascimento",
         "email",
@@ -68,9 +73,12 @@ def _ensure_v2_state(state: dict[str, Any], phone: str) -> dict[str, Any]:
         "profissao",
         "cep_endereco",
         "indicacao_origem",
+        "motivo_cancelamento",
     ):
         cd.setdefault(key, None)
     state["appointment"].setdefault("slot_escolhido", None)
+    state["appointment"].setdefault("slot_escolhido_novo", None)
+    state["appointment"].setdefault("consulta_atual", None)
     state["flags"].setdefault("pagamento_confirmado", False)
     return state
 
@@ -108,6 +116,54 @@ def _slot_descricao(slot: dict[str, Any]) -> str:
     return _slot_label(slot)
 
 
+def _texto_mensagem(mensagem: dict[str, Any]) -> str:
+    if isinstance(mensagem.get("text"), str):
+        return str(mensagem.get("text") or "")
+    if isinstance(mensagem.get("text"), dict):
+        return str((mensagem.get("text") or {}).get("body") or "")
+    return str(mensagem.get("body") or mensagem.get("content") or mensagem.get("caption") or "")
+
+
+def _norm_text(texto: str) -> str:
+    import unicodedata
+
+    return unicodedata.normalize("NFKD", texto.lower()).encode("ascii", "ignore").decode("ascii")
+
+
+def _consulta_atual(state: dict[str, Any]) -> dict[str, Any]:
+    consulta = (state.get("appointment") or {}).get("consulta_atual") or {}
+    return consulta if isinstance(consulta, dict) else {}
+
+
+def _dt_consulta(consulta: dict[str, Any]) -> datetime | None:
+    raw = consulta.get("inicio") or consulta.get("datetime") or consulta.get("data_hora") or consulta.get("start")
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _sexta_semana_seguinte(dt: datetime | None) -> date:
+    base = (dt or datetime.now()).date()
+    dias_ate_proxima_sexta = (4 - base.weekday()) % 7
+    if dias_ate_proxima_sexta == 0:
+        dias_ate_proxima_sexta = 7
+    return base + timedelta(days=dias_ate_proxima_sexta)
+
+
+def _formatar_data_slot(slot: dict[str, Any]) -> tuple[str, str]:
+    data_fmt = str(slot.get("data_fmt") or "")
+    hora = str(slot.get("hora") or "")
+    if data_fmt and hora:
+        return data_fmt, hora
+    dt = _dt_consulta(slot)
+    if not dt:
+        return data_fmt or str(slot.get("datetime") or ""), hora
+    return dt.strftime("%d/%m/%Y"), hora or dt.strftime("%H:%M")
+
+
 def _slot_por_id(state: dict[str, Any], slot_id: str | None) -> dict[str, Any] | None:
     if not slot_id or not slot_id.startswith("slot_"):
         return None
@@ -138,6 +194,24 @@ def _contexto_template(state: dict[str, Any], extra: dict[str, Any] | None = Non
         ctx["data_completa"] = slot.get("data_fmt") or slot.get("datetime", "")[:10]
         ctx["hora"] = slot.get("hora") or slot.get("datetime", "")[11:16]
         ctx["dia_semana"] = ctx["data_completa"]
+    consulta = _consulta_atual(state)
+    if consulta:
+        dt = _dt_consulta(consulta)
+        data_original, hora_original = _formatar_data_slot(consulta)
+        ctx.update(
+            {
+                "data": data_original,
+                "hora": ctx.get("hora") or hora_original,
+                "data_original": data_original,
+                "hora_original": hora_original,
+                "dia_semana": ctx.get("dia_semana") or data_original,
+                "dia_semana_original": data_original,
+                "data_limite": _sexta_semana_seguinte(dt).strftime("%d/%m/%Y"),
+                "modalidade": consulta.get("modalidade") or (state.get("collected_data") or {}).get("modalidade") or "",
+                "plano": consulta.get("plano") or (state.get("collected_data") or {}).get("plano") or "",
+                "nome": (state.get("collected_data") or {}).get("nome") or consulta.get("nome") or "",
+            }
+        )
     for i, s in enumerate(state.get("last_slots_offered") or [], start=1):
         ctx[f"slot_{i}_descricao"] = _slot_descricao(s)
         ctx[f"slot_{i}_label_curto"] = _slot_label(s)[:20]
@@ -204,6 +278,34 @@ def _acao_navegacao(acao: AcaoAutorizada) -> str | None:
     return ACTION_NEXT_STATE.get(str(action or ""))
 
 
+def _intencao_remarcacao(texto: str) -> bool:
+    n = _norm_text(texto)
+    termos = ("remarcar", "mudar horario", "alterar horario", "trocar horario", "preciso remarcar", "preciso mudar", "preciso remarcar 📅")
+    return any(t in n for t in termos)
+
+
+def _intencao_cancelamento(texto: str) -> bool:
+    n = _norm_text(texto)
+    return any(t in n for t in ("cancelar", "cancelamento", "desmarcar", "quero cancelar"))
+
+
+def _ativar_fluxo_por_intencao(state: dict[str, Any], mensagem: dict[str, Any]) -> None:
+    texto = _texto_mensagem(mensagem)
+    estado = state.get("estado")
+    if estado == "inicio":
+        if _intencao_cancelamento(texto):
+            state["fluxo_id"] = CANCELAMENTO_ID
+            state["estado"] = "cancelamento_identificacao"
+        elif _intencao_remarcacao(texto):
+            state["fluxo_id"] = REMARCACAO_ID
+            state["estado"] = "remarcacao_identificacao"
+    elif estado in ("cancelamento_tentativa_retencao", "cancelamento_aguardando_decisao_final"):
+        n = _norm_text(texto)
+        if any(t in n for t in ("topo", "vamos", "pode ser", "sim", "ok", "remarcar", "segunda", "terca", "terça", "quarta", "quinta", "sexta", "manha", "tarde", "noite")):
+            state["fluxo_id"] = REMARCACAO_ID
+            state["estado"] = "remarcacao_oferecendo_seguranca"
+
+
 def _deve_disparar_on_enter(acao: AcaoAutorizada, target: str | None) -> bool:
     if not target:
         return False
@@ -264,6 +366,7 @@ def _confirmacao_final_acao(state: dict[str, Any]) -> AcaoAutorizada:
 
 
 async def _mensagens_on_enter(state: dict[str, Any], estado: str) -> tuple[list[Mensagem], str | None]:
+    fluxo_id = state.get("fluxo_id") or AGENDAMENTO_ID
     custom = _acao_on_enter_custom(state, estado)
     if custom:
         msgs = await response_writer.escrever_async(custom, _contexto_template(state))
@@ -293,7 +396,7 @@ async def _mensagens_on_enter(state: dict[str, Any], estado: str) -> tuple[list[
                 conteudo="Não consegui gerar o link agora. Quer seguir por PIX para garantir o horário?",
             )
         ], "aguardando_forma_pagamento"
-    on_enter = state_machine.on_enter_estado(FLUXO_ID, estado)
+    on_enter = state_machine.on_enter_estado(fluxo_id, estado)
     if not on_enter:
         return [], None
     msgs = await response_writer.escrever_async(on_enter, _contexto_template(state))
@@ -398,6 +501,269 @@ async def _criar_agendamento_e_confirmar(state: dict[str, Any]) -> tuple[list[Me
     return msgs, "concluido"
 
 
+def _mensagem_consulta_atual(state: dict[str, Any]) -> str:
+    ctx = _contexto_template(state)
+    data = ctx.get("data_original") or ctx.get("data") or "a data combinada"
+    hora = ctx.get("hora_original") or ctx.get("hora") or "o horário combinado"
+    return f"{data} às {hora}"
+
+
+def _aplicar_consulta_detectada(state: dict[str, Any], dados: dict[str, Any]) -> None:
+    consulta = dict(dados.get("consulta_atual") or {})
+    paciente = dados.get("paciente") or {}
+    if "ja_remarcada" not in consulta:
+        consulta["ja_remarcada"] = bool(dados.get("ja_remarcada"))
+    state["appointment"]["consulta_atual"] = consulta
+    state["tipo_remarcacao"] = dados.get("tipo_remarcacao")
+    if paciente and not (state.get("collected_data") or {}).get("nome"):
+        state["collected_data"]["nome"] = paciente.get("nome") or paciente.get("name")
+    if consulta:
+        state["collected_data"]["modalidade"] = consulta.get("modalidade") or state["collected_data"].get("modalidade")
+        state["collected_data"]["plano"] = consulta.get("plano") or state["collected_data"].get("plano")
+
+
+async def _identificar_consulta(state: dict[str, Any], fluxo_id: str, identificador: str | None = None) -> tuple[list[Mensagem], str]:
+    result = await call_tool(
+        "detectar_tipo_remarcacao",
+        {"telefone": state.get("phone") or "", "identificador": identificador},
+    )
+    dados = result.dados if result.sucesso else {"tipo_remarcacao": "nao_localizado"}
+    tipo = dados.get("tipo_remarcacao")
+
+    if fluxo_id == REMARCACAO_ID:
+        if tipo == "retorno":
+            _aplicar_consulta_detectada(state, dados)
+            consulta = _consulta_atual(state)
+            if consulta.get("ja_remarcada") or int(state.get("remarcacoes_count") or 0) >= 1:
+                texto = (
+                    "Entendo, mas essa consulta já foi remarcada uma vez. "
+                    f"Sua consulta segue marcada para {_mensagem_consulta_atual(state)}."
+                )
+                return [Mensagem(tipo="texto", conteudo=texto)], "remarcacao_concluida"
+            return [Mensagem(tipo="texto", conteudo=_texto_seguranca_remarcacao(state))], "remarcacao_oferecendo_seguranca"
+        if tipo == "sem_agendamento_confirmado":
+            return [
+                Mensagem(
+                    tipo="botoes",
+                    conteudo="Não encontrei uma consulta ativa pra você. Quer agendar uma nova consulta com a Thaynara?",
+                    botoes=[
+                        {"id": "sim_nova_consulta", "label": "Sim, agendar nova"},  # type: ignore[list-item]
+                        {"id": "nao_obrigado", "label": "Não, obrigado"},  # type: ignore[list-item]
+                    ],
+                )
+            ], "remarcacao_aguardando_decisao_nova_consulta"
+        return [Mensagem(tipo="texto", conteudo="Oi! Pra eu localizar seu cadastro certinho, pode me mandar seu nome completo?")], "remarcacao_pedindo_nome_completo"
+
+    if tipo == "retorno":
+        _aplicar_consulta_detectada(state, dados)
+        return [Mensagem(tipo="texto", conteudo=_texto_pedir_motivo_cancelamento(state))], "cancelamento_aguardando_motivo"
+    if tipo == "sem_agendamento_confirmado":
+        return [Mensagem(tipo="texto", conteudo="Não encontrei uma consulta ativa pra cancelar. Posso te ajudar com mais alguma coisa?")], "cancelamento_concluido"
+    return [Mensagem(tipo="texto", conteudo="Não encontrei seu cadastro. Pode me mandar seu nome completo?")], "cancelamento_pedindo_nome"
+
+
+def _texto_seguranca_remarcacao(state: dict[str, Any]) -> str:
+    ctx = _contexto_template(state)
+    return (
+        f"Tudo bem, {ctx.get('primeiro_nome') or ''}! Podemos remarcar sim.\n\n"
+        "Só queria te orientar que a agenda está bem cheia. Se você conseguir manter o horário atual, melhor para não prejudicar seu acompanhamento.\n\n"
+        f"Sua consulta atual é {_mensagem_consulta_atual(state)}.\n\n"
+        f"Caso realmente não consiga, consigo buscar opções até {ctx.get('data_limite')}. Quais dias e horários funcionam melhor?"
+    )
+
+
+def _texto_pedir_motivo_cancelamento(state: dict[str, Any]) -> str:
+    ctx = _contexto_template(state)
+    return (
+        f"Entendi, {ctx.get('primeiro_nome') or ''}. Sua consulta atual é {_mensagem_consulta_atual(state)}.\n\n"
+        "Antes de cancelar, pode me contar rapidinho o motivo? Assim consigo entender melhor pra ver se há algo que posso fazer."
+    )
+
+
+def _texto_retencao_cancelamento(state: dict[str, Any]) -> str:
+    ctx = _contexto_template(state)
+    return (
+        f"Entendi, {ctx.get('primeiro_nome') or ''}.\n\n"
+        f"Que tal remarcar em vez de cancelar? Consigo realocar dentro do prazo, até {ctx.get('data_limite')}.\n\n"
+        "Topa? Me fala qual dia e horário funciona melhor pra você."
+    )
+
+
+def _slot_fora_janela(state: dict[str, Any], preferencia: dict[str, Any]) -> bool:
+    texto = _norm_text(str(preferencia.get("descricao") or ""))
+    if "semana que vem" in texto or "mes que vem" in texto or "mês que vem" in texto:
+        return True
+    return False
+
+
+def _preferencia_from_texto(texto: str) -> dict[str, Any]:
+    pref = _extrair_preferencia(texto)
+    pref.setdefault("descricao", texto)
+    return pref
+
+
+async def _buscar_slots_remarcacao(state: dict[str, Any], preferencia: dict[str, Any]) -> tuple[list[Mensagem], str]:
+    state["collected_data"]["preferencia_horario_nova"] = preferencia
+    if _slot_fora_janela(state, preferencia):
+        limite = _contexto_template(state).get("data_limite")
+        return [Mensagem(tipo="texto", conteudo=f"Pra remarcação tenho disponibilidade até {limite}. Tem algum horário antes disso?")], "remarcacao_oferecendo_seguranca"
+
+    result = await call_tool(
+        "consultar_slots",
+        {
+            "modalidade": state["collected_data"].get("modalidade") or "presencial",
+            "preferencia": preferencia,
+            "janela_max_dias": 14,
+            "excluir_slots": state.get("slots_rejeitados") or [],
+            "max_resultados": 3,
+        },
+    )
+    dados = result.dados if result.sucesso else {"slots": [], "slots_count": 0, "match_exato": False}
+    slots = dados.get("slots") or []
+    state["last_slots_offered"] = slots[:3]
+    if not slots:
+        await call_tool("escalar_breno_silencioso", {"contexto": {"fluxo": REMARCACAO_ID, "state": state}})
+        return [Mensagem(tipo="texto", conteudo="No momento não tenho horários disponíveis dentro do prazo. Vou verificar com a equipe e já te respondo.")], "remarcacao_aguardando_breno"
+
+    linhas = "\n".join(f"{i}. {_slot_descricao(s)}" for i, s in enumerate(slots[:3], start=1))
+    intro = "Encontrei essas opções dentro do prazo de remarcação:"
+    botoes = [{"id": f"slot_{i}", "label": _slot_label(s)[:20]} for i, s in enumerate(slots[:3], start=1)]
+    return [Mensagem(tipo="botoes", conteudo=f"{intro}\n\n{linhas}\n\nQual prefere?", botoes=botoes)], "remarcacao_aguardando_escolha_slot"  # type: ignore[arg-type]
+
+
+async def _executar_remarcacao(state: dict[str, Any], slot: dict[str, Any]) -> tuple[list[Mensagem], str]:
+    consulta = _consulta_atual(state)
+    if consulta.get("ja_remarcada") or int(state.get("remarcacoes_count") or 0) >= 1:
+        return [Mensagem(tipo="texto", conteudo="Essa consulta já foi remarcada uma vez, então não consigo remarcar novamente.")], "remarcacao_concluida"
+
+    state["appointment"]["slot_escolhido_novo"] = slot
+    result = await call_tool(
+        "remarcar_dietbox",
+        {"id_agenda": consulta.get("id") or consulta.get("id_agenda"), "novo_slot": slot},
+    )
+    if not result.sucesso:
+        await call_tool("escalar_breno_silencioso", {"contexto": {"fluxo": REMARCACAO_ID, "state": state, "erro": result.erro}})
+        return [Mensagem(tipo="texto", conteudo="Estou finalizando sua remarcação, só um instante.")], "remarcacao_aguardando_breno"
+
+    consulta["ja_remarcada"] = True
+    state["appointment"]["consulta_atual"] = consulta
+    state["remarcacoes_count"] = int(state.get("remarcacoes_count") or 0) + 1
+    data, hora = _formatar_data_slot(slot)
+    return [Mensagem(tipo="texto", conteudo=f"Fiz a alteração da consulta. Nova data: {data} às {hora}. Qualquer coisa estou à disposição!")], "remarcacao_concluida"
+
+
+def _notificacao_cancelamento(state: dict[str, Any], silencioso: bool = False) -> str:
+    cd = state.get("collected_data") or {}
+    prefixo = "Cancelamento por silêncio" if silencioso else "Cancelamento"
+    return (
+        f"{prefixo} - {cd.get('nome') or 'paciente'}\n"
+        f"Consulta cancelada: {_mensagem_consulta_atual(state)}\n"
+        f"Modalidade: {cd.get('modalidade') or ''}\n"
+        f"Plano: {cd.get('plano') or ''}\n"
+        f"Motivo informado: {cd.get('motivo_cancelamento') or 'não informado'}"
+    )
+
+
+async def _executar_cancelamento(state: dict[str, Any], *, silencioso: bool = False) -> tuple[list[Mensagem], str]:
+    consulta = _consulta_atual(state)
+    result = await call_tool("cancelar_dietbox", {"id_agenda": consulta.get("id") or consulta.get("id_agenda")})
+    if not result.sucesso:
+        await call_tool("escalar_breno_silencioso", {"contexto": {"fluxo": CANCELAMENTO_ID, "state": state, "erro": result.erro}})
+        return [Mensagem(tipo="texto", conteudo="Estou finalizando seu cancelamento, só um instante.")], "cancelamento_aguardando_breno"
+
+    aviso = _notificacao_cancelamento(state, silencioso=silencioso)
+    await call_tool("notificar_thaynara", {"mensagem": aviso})
+    await call_tool("notificar_breno", {"mensagem": aviso})
+    state["status"] = "concluido"
+    if silencioso:
+        return [], "cancelamento_concluido"
+    return [Mensagem(tipo="texto", conteudo="Pronto! Sua consulta foi cancelada. Qualquer coisa, estou à disposição.")], "cancelamento_concluido"
+
+
+async def _processar_remarcacao(state: dict[str, Any], mensagem: dict[str, Any]) -> tuple[list[Mensagem], str]:
+    estado = state.get("estado") or "remarcacao_identificacao"
+    texto = _texto_mensagem(mensagem)
+    n = _norm_text(texto)
+
+    if estado == "remarcacao_identificacao":
+        return await _identificar_consulta(state, REMARCACAO_ID)
+    if estado == "remarcacao_pedindo_nome_completo":
+        nome = _extrair_nome(texto)
+        if nome and len(nome.split()) >= 2:
+            state["collected_data"]["nome"] = nome
+            return await _identificar_consulta(state, REMARCACAO_ID, identificador=nome)
+        return [Mensagem(tipo="texto", conteudo="Pra eu localizar seu cadastro, preciso do nome e sobrenome.")], estado
+    if estado == "remarcacao_aguardando_decisao_nova_consulta":
+        if any(t in n for t in ("sim", "quero", "agendar", "nova")):
+            state["fluxo_id"] = AGENDAMENTO_ID
+            state["estado"] = "inicio"
+            return [Mensagem(tipo="texto", conteudo="Claro. Vamos começar uma nova consulta.")], "inicio"
+        return [Mensagem(tipo="texto", conteudo="Tudo bem! Quando quiser agendar, é só me chamar.")], "remarcacao_concluida"
+    if estado == "remarcacao_oferecendo_seguranca":
+        if any(t in n for t in ("vou manter", "fico mesmo", "mantenho", "deixa como esta", "deixa como está")):
+            return [Mensagem(tipo="texto", conteudo=f"Que ótimo! Sua consulta segue marcada para {_mensagem_consulta_atual(state)}.")], "remarcacao_concluida"
+        pref = _preferencia_from_texto(texto)
+        if pref.get("tem_dia") == "sexta" and pref.get("turno_extraido") == "noite":
+            return [Mensagem(tipo="texto", conteudo="Sexta à noite a Thaynara não atende. Posso te oferecer sexta de tarde ou noite de segunda a quinta.")], estado
+        if pref.get("tem_dia") in ("sábado", "sabado", "domingo"):
+            return [Mensagem(tipo="texto", conteudo="Sábado e domingo a Thaynara não atende. Tem algum dia de segunda a sexta que funciona?")], estado
+        return await _buscar_slots_remarcacao(state, pref)
+    if estado == "remarcacao_oferecendo_slots":
+        pref = state["collected_data"].get("preferencia_horario_nova") or _preferencia_from_texto(texto)
+        return await _buscar_slots_remarcacao(state, pref)
+    if estado == "remarcacao_aguardando_escolha_slot":
+        if any(t in n for t in ("outra", "outro", "nao serve", "não serve", "mais")):
+            state["slots_rejeitados"] = list(state.get("slots_rejeitados") or []) + list(state.get("last_slots_offered") or [])
+            state["last_slots_offered"] = []
+            state["rodada_negociacao"] = int(state.get("rodada_negociacao") or 0) + 1
+            pref = _preferencia_from_texto(texto)
+            return await _buscar_slots_remarcacao(state, pref)
+        slot = _slot_por_id(state, texto.strip()) or _slot_por_id(state, mensagem.get("botao_id")) or _slot_por_id(state, "slot_1")
+        return await _executar_remarcacao(state, slot or {})
+    if estado == "remarcacao_executando":
+        slot = state["appointment"].get("slot_escolhido_novo") or {}
+        return await _executar_remarcacao(state, slot)
+    return [Mensagem(tipo="texto", conteudo="Sua remarcação está encerrada. Qualquer coisa estou à disposição.")], "remarcacao_concluida"
+
+
+async def _processar_cancelamento(state: dict[str, Any], mensagem: dict[str, Any]) -> tuple[list[Mensagem], str]:
+    estado = state.get("estado") or "cancelamento_identificacao"
+    texto = _texto_mensagem(mensagem)
+    n = _norm_text(texto)
+
+    if estado == "cancelamento_identificacao":
+        return await _identificar_consulta(state, CANCELAMENTO_ID)
+    if estado == "cancelamento_pedindo_nome":
+        nome = _extrair_nome(texto)
+        if nome and len(nome.split()) >= 2:
+            state["collected_data"]["nome"] = nome
+            return await _identificar_consulta(state, CANCELAMENTO_ID, identificador=nome)
+        return [Mensagem(tipo="texto", conteudo="Pra localizar seu cadastro, preciso do nome e sobrenome.")], estado
+    if estado == "cancelamento_aguardando_motivo":
+        if len(texto.strip()) < 2:
+            return [Mensagem(tipo="texto", conteudo="Pode me contar rapidinho o motivo do cancelamento?")], estado
+        state["collected_data"]["motivo_cancelamento"] = texto.strip()
+        return [Mensagem(tipo="texto", conteudo=_texto_retencao_cancelamento(state))], "cancelamento_tentativa_retencao"
+    if estado in ("cancelamento_tentativa_retencao", "cancelamento_aguardando_decisao_final"):
+        if "24h" in n or "sem resposta" in n:
+            return await _executar_cancelamento(state, silencioso=True)
+        if any(t in n for t in ("cancelar mesmo", "prefiro cancelar", "nao quero remarcar", "não quero remarcar", "cancela")):
+            return await _executar_cancelamento(state)
+        if any(t in n for t in ("vou manter", "fico mesmo", "vou tentar")):
+            return [Mensagem(tipo="texto", conteudo=f"Que ótimo! Sua consulta segue marcada para {_mensagem_consulta_atual(state)}.")], "cancelamento_concluido"
+        if any(t in n for t in ("vou pensar", "vou ver", "depois", "pensar")):
+            return [Mensagem(tipo="texto", conteudo="Claro, sem pressa. Sua consulta segue marcada por enquanto. Quando decidir, me avisa.")], "cancelamento_aguardando_decisao_final"
+        state["fluxo_id"] = REMARCACAO_ID
+        state["estado"] = "remarcacao_oferecendo_seguranca"
+        pref = _preferencia_from_texto(texto)
+        return await _buscar_slots_remarcacao(state, pref)
+    if estado == "cancelamento_executando":
+        return await _executar_cancelamento(state)
+    if estado == "cancelamento_executando_silencioso":
+        return await _executar_cancelamento(state, silencioso=True)
+    return [Mensagem(tipo="texto", conteudo="Cancelamento encerrado. Qualquer coisa estou à disposição.")], "cancelamento_concluido"
+
+
 async def _log_metric(payload: dict[str, Any]) -> None:
     try:
         LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -412,12 +778,32 @@ async def processar_turno(phone: str, mensagem: dict[str, Any]) -> ResultadoTurn
     started = time.perf_counter()
     phone_hash = _phone_hash(phone)
     state = _ensure_v2_state(await load_state(phone_hash, phone), phone)
+    state["phone_hash"] = phone_hash
+    _ativar_fluxo_por_intencao(state, mensagem)
     estado_antes = state.get("estado", "inicio")
+    fluxo_ativo = state.get("fluxo_id") or AGENDAMENTO_ID
     mensagens: list[Mensagem] = []
     tools_chamadas: list[str] = []
     erro: str | None = None
 
     try:
+        if fluxo_ativo in (REMARCACAO_ID, CANCELAMENTO_ID):
+            if fluxo_ativo == REMARCACAO_ID:
+                mensagens, target = await _processar_remarcacao(state, mensagem)
+            else:
+                mensagens, target = await _processar_cancelamento(state, mensagem)
+            state["estado"] = target
+            add_message(state, "user", _texto_mensagem(mensagem))
+            add_message(state, "assistant", "\n".join(m.conteudo for m in mensagens if m.conteudo))
+            await save_state(phone_hash, state)
+            return ResultadoTurno(
+                sucesso=True,
+                mensagens_enviadas=mensagens,
+                novo_estado=state["estado"],
+                fluxo_id=state.get("fluxo_id"),
+                duracao_ms=int((time.perf_counter() - started) * 1000),
+            )
+
         if estado_antes == "inicio":
             enter_msgs, prox = await _mensagens_on_enter(state, "inicio")
             mensagens.extend(enter_msgs)
@@ -425,7 +811,7 @@ async def processar_turno(phone: str, mensagem: dict[str, Any]) -> ResultadoTurn
             add_message(state, "user", mensagem.get("text") or mensagem.get("body") or "")
             add_message(state, "assistant", "\n".join(m.conteudo for m in mensagens if m.conteudo))
             await save_state(phone_hash, state)
-            return ResultadoTurno(sucesso=True, mensagens_enviadas=mensagens, novo_estado=state["estado"], fluxo_id=FLUXO_ID)
+            return ResultadoTurno(sucesso=True, mensagens_enviadas=mensagens, novo_estado=state["estado"], fluxo_id=AGENDAMENTO_ID)
 
         interpretacao = await interpretar(mensagem, estado_antes, state.get("history", [])[-6:], state=state)
         entidades = _normalizar_entidades(
@@ -447,7 +833,7 @@ async def processar_turno(phone: str, mensagem: dict[str, Any]) -> ResultadoTurn
                 estado_atual=estado_antes,
                 intent=interpretacao.intent,
                 entities=entidades,
-                fluxo_id=FLUXO_ID,
+                fluxo_id=AGENDAMENTO_ID,
                 confidence=interpretacao.confidence,
                 botao_id=interpretacao.botao_id,
                 message_type=interpretacao.message_type,
@@ -525,19 +911,19 @@ async def processar_turno(phone: str, mensagem: dict[str, Any]) -> ResultadoTurn
             sucesso=True,
             mensagens_enviadas=mensagens,
             novo_estado=state["estado"],
-            fluxo_id=FLUXO_ID,
+            fluxo_id=AGENDAMENTO_ID,
             duracao_ms=int((time.perf_counter() - started) * 1000),
         )
     except Exception as exc:
         erro = str(exc)
         logger.exception("Erro no orchestrator v2: %s", exc)
         fallback = Mensagem(tipo="texto", conteudo="Tive uma instabilidade aqui. Pode me mandar de novo, por favor?")
-        return ResultadoTurno(sucesso=False, mensagens_enviadas=[fallback], novo_estado=state.get("estado"), fluxo_id=FLUXO_ID, erro=erro)
+        return ResultadoTurno(sucesso=False, mensagens_enviadas=[fallback], novo_estado=state.get("estado"), fluxo_id=state.get("fluxo_id") or AGENDAMENTO_ID, erro=erro)
     finally:
         await _log_metric({
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "phone_hash": phone_hash,
-            "fluxo": FLUXO_ID,
+            "fluxo": state.get("fluxo_id") or AGENDAMENTO_ID,
             "estado_antes": estado_antes,
             "estado_depois": state.get("estado"),
             "tools_chamadas": tools_chamadas,

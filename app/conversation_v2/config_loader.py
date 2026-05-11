@@ -13,6 +13,7 @@ Uso:
 from __future__ import annotations
 
 import logging
+import re
 import unicodedata
 from pathlib import Path
 from typing import Any
@@ -86,6 +87,30 @@ class ConfigLoader:
             raise ValueError(f"{path.name} precisa ser um objeto YAML no topo.")
         return _normalize_keys(data)
 
+    def _load_yaml_fluxo_file(self, path: Path) -> list[dict[str, Any]]:
+        """Carrega um ou mais fluxos de um arquivo YAML.
+
+        Alguns arquivos legados agrupam mais de um fluxo no mesmo YAML usando
+        chaves de topo repetidas. O PyYAML manteria só o último bloco; aqui
+        separamos cada bloco iniciado por ``fluxo_id:`` antes de validar.
+        """
+        text = path.read_text(encoding="utf-8")
+        starts = [m.start() for m in re.finditer(r"(?m)^fluxo_id:\s*", text)]
+        if len(starts) <= 1 or "2_3_remarcacao_cancelamento" not in path.stem:
+            return [self._load_yaml_file(path)]
+
+        docs: list[dict[str, Any]] = []
+        for idx, start in enumerate(starts):
+            end = starts[idx + 1] if idx + 1 < len(starts) else len(text)
+            fragment = text[start:end]
+            data = yaml.safe_load(fragment)
+            if data is None:
+                continue
+            if not isinstance(data, dict):
+                raise ValueError(f"{path.name} precisa ser um objeto YAML no topo.")
+            docs.append(_normalize_keys(data))
+        return docs
+
     def _load_global(self) -> GlobalConfig:
         raw = self._load_yaml_file(CONFIG_DIR / "global.yaml")
         return GlobalConfig(**raw)
@@ -96,17 +121,17 @@ class ConfigLoader:
         erros: list[str] = []
         fluxos_dir = CONFIG_DIR / "fluxos"
         for yaml_file in sorted(fluxos_dir.glob("*.yaml")):
-            raw = self._load_yaml_file(yaml_file)
-            try:
-                fluxo = Fluxo(**raw)
-                fluxos[fluxo.fluxo_id] = fluxo
-                slug = yaml_file.stem.replace("fluxo_", "")
-                aliases[slug] = fluxo.fluxo_id
-                aliases[fluxo.fluxo_id] = fluxo.fluxo_id
-                aliases[fluxo.fluxo_id.split("_")[0]] = fluxo.fluxo_id
-                logger.debug("Fluxo carregado: %s (%s)", fluxo.fluxo_id, yaml_file.name)
-            except Exception as exc:
-                erros.append(f"{yaml_file.name}: {exc}")
+            for raw in self._load_yaml_fluxo_file(yaml_file):
+                try:
+                    fluxo = Fluxo(**raw)
+                    fluxos[fluxo.fluxo_id] = fluxo
+                    slug = yaml_file.stem.replace("fluxo_", "")
+                    aliases[slug] = fluxo.fluxo_id
+                    aliases[fluxo.fluxo_id] = fluxo.fluxo_id
+                    aliases[fluxo.fluxo_id.split("_")[0]] = fluxo.fluxo_id
+                    logger.debug("Fluxo carregado: %s (%s)", fluxo.fluxo_id, yaml_file.name)
+                except Exception as exc:
+                    erros.append(f"{yaml_file.name}: {exc}")
         if erros:
             raise ValueError("Falha ao validar YAMLs de fluxo:\n- " + "\n- ".join(erros))
         return fluxos, aliases

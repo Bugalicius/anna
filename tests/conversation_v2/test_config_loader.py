@@ -31,9 +31,11 @@ def test_todos_fluxos_carregam(loader: ConfigLoader) -> None:
     """Todos os YAMLs de fluxo carregam sem erros."""
     fluxos = loader.list_fluxos()
     arquivos = list((Path("config") / "fluxos").glob("*.yaml"))
-    assert len(fluxos) == len(arquivos), (
-        f"Esperado {len(arquivos)} fluxos, got {len(fluxos)}: {fluxos}"
+    assert len(fluxos) >= len(arquivos), (
+        f"Esperado pelo menos {len(arquivos)} fluxos, got {len(fluxos)}: {fluxos}"
     )
+    assert "remarcacao" in fluxos
+    assert "cancelamento" in fluxos
 
 
 def test_get_plano_ouro(loader: ConfigLoader) -> None:
