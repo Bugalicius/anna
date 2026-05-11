@@ -36,7 +36,7 @@ def _render_template(texto: str, ctx: dict[str, Any]) -> str:
     def _replace(match: re.Match[str]) -> str:
         k = match.group(1).strip()
         v = _get_nested(ctx, k)
-        return "" if v is None else str(v)
+        return f"{{{k}}}" if v is None else str(v)
 
     return re.sub(r"\{([\w.]+)\}", _replace, texto)
 
@@ -55,6 +55,12 @@ def _avaliar_condicao(cond: str, ctx: dict[str, Any]) -> bool:
     cond = cond.strip()
     if cond == "nao_match_acima":
         return bool(ctx.get("nao_match_acima", False))
+
+    m = re.match(r"^([\w.]+)\s+IN\s+\[(.+)\]$", cond, flags=re.IGNORECASE)
+    if m:
+        key, raw = m.group(1), m.group(2)
+        lista = [v.strip().strip('"\'').lower() for v in raw.split(",")]
+        return str(_get_nested(ctx, key) or "").lower() in lista
 
     m = re.match(r"^texto_contem=\[(.+)\]$", cond)
     if m:
@@ -109,24 +115,66 @@ def _avaliar_condicao(cond: str, ctx: dict[str, Any]) -> bool:
             return not bool(atual)
         return str(atual).lower() == raw.lower()
 
+    if re.match(r"^[\w.]+$", cond):
+        return bool(_get_nested(ctx, cond))
+
     logger.debug("Condição não reconhecida: %s", cond)
     return False
 
 
 def _avaliar_trigger(trigger: str, ctx: dict[str, Any]) -> bool:
-    partes_or = re.split(r"\s+OR\s+", trigger)
+    partes_or = re.split(r"\s+OR\s+", trigger, flags=re.IGNORECASE)
     for parte_or in partes_or:
-        partes_and = re.split(r"\s+AND\s+", parte_or)
+        partes_and = re.split(r"\s+AND\s+", parte_or, flags=re.IGNORECASE)
         if all(_avaliar_condicao(cond, ctx) for cond in partes_and):
             return True
     return False
+
+
+def _resolver_tool_name(acao: str | None) -> str | None:
+    if not acao:
+        return None
+    aliases = {
+        "consultar_slots_dietbox": "consultar_slots",
+        "consultar_slots_proxima_pagina": "consultar_slots",
+        "tool_analisar_comprovante": "analisar_comprovante",
+        "tool_analisar_imagem": "classificar_imagem",
+        "tool_cancelar_dietbox": "cancelar_dietbox",
+        "tool_detectar_tipo_remarcacao": "detectar_tipo_remarcacao",
+        "tool_detectar_tipo_remarcacao_por_nome": "detectar_tipo_remarcacao",
+        "tool_gerar_link_pagamento": "gerar_link_pagamento",
+        "tool_gerar_link_pagamento_novo": "gerar_link_pagamento",
+        "tool_transcrever_audio_gemini": "transcrever_audio",
+        "tool_validar_comprovante_completo": "analisar_comprovante",
+        "validar_comprovante": "analisar_comprovante",
+        "interpretar_comando_via_gemini": "interpretar_comando",
+        "encaminhar_comprovante_thaynara": "encaminhar_comprovante_thaynara",
+        "escalar_breno_silencioso": "escalar_breno_silencioso",
+        "notificar_breno_paciente_nao_confirmou": "notificar_breno",
+        "notificar_breno_tentativa_b2b": "notificar_breno",
+        "encaminhar_pagamento_thaynara": "notificar_thaynara",
+    }
+    candidates = [
+        acao,
+        aliases.get(acao, ""),
+        acao.removeprefix("tool_"),
+        acao.removeprefix("tool_").removesuffix("_dietbox"),
+    ]
+    try:
+        from app.conversation_v2.tools.registry import TOOLS
+    except Exception:
+        TOOLS = {}
+    for candidate in candidates:
+        if candidate and candidate in TOOLS:
+            return candidate
+    return None
 
 
 def _tipo_acao(situacao: Situacao) -> TipoAcao:
     acao = situacao.acao_declarada or ""
     if situacao.permite_improviso:
         return TipoAcao.improviso_llm
-    if acao.startswith("tool_"):
+    if _resolver_tool_name(acao):
         return TipoAcao.executar_tool
     if "escalar" in acao:
         return TipoAcao.escalar
@@ -147,13 +195,14 @@ def _situacao_para_acao(nome: str, situacao: Situacao, ctx: dict[str, Any]) -> A
             )
         )
     acao = situacao.acao_declarada
+    tool_name = _resolver_tool_name(acao)
     salvar = _aplicar_mapeamentos(situacao.salva_no_estado, ctx)
     return AcaoAutorizada(
         tipo=_tipo_acao(situacao),
         proximo_estado=situacao.proximo_estado,
         mensagens=mensagens,
         mensagens_a_enviar=mensagens,
-        tool_a_executar=acao if acao and acao.startswith("tool_") else None,
+        tool_a_executar=tool_name,
         permite_improviso=situacao.permite_improviso,
         instrucao_improviso=situacao.instrucao_para_llm,
         salvar_no_estado=salvar,
@@ -297,7 +346,7 @@ def on_enter_estado(fluxo_id: str, estado_nome: str) -> AcaoAutorizada | None:
                 botoes=oe.botoes_interativos,
             )
         )
-    tool = oe.acao if oe.acao and oe.acao.startswith("tool_") else None
+    tool = _resolver_tool_name(oe.acao)
     return AcaoAutorizada(
         tipo=TipoAcao.executar_tool if tool else TipoAcao.enviar_mensagem,
         proximo_estado=oe.proximo_estado,
@@ -311,4 +360,3 @@ def on_enter_estado(fluxo_id: str, estado_nome: str) -> AcaoAutorizada | None:
             "action": oe.acao,
         },
     )
-

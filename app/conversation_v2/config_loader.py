@@ -163,7 +163,4 @@ class ConfigLoader:
 
 # Singleton global — importar e usar diretamente
 config = ConfigLoader()
-try:
-    config.load()
-except Exception:
-    logger.exception("Falha ao carregar configuração conversation_v2 no startup.")
+config.load()

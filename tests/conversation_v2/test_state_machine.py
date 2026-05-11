@@ -49,3 +49,93 @@ def test_proxima_acao_retorna_none_sem_match(monkeypatch) -> None:
     )
     assert acao is None
 
+
+def test_trigger_in_e_flag_booleana() -> None:
+    ctx = {"intent": "remarcar", "passaram_24h_sem_resposta": True}
+    assert state_machine._avaliar_trigger(
+        "intent IN [agendar_consulta, remarcar] AND passaram_24h_sem_resposta",
+        ctx,
+    ) is True
+
+
+def test_action_sem_prefixo_resolve_tool_registrada(monkeypatch) -> None:
+    fluxo = Fluxo(
+        fluxo_id="mock_fluxo",
+        estado_inicial="inicio",
+        estados={
+            "inicio": Estado(
+                situacoes={
+                    "comprovante": Situacao(
+                        trigger="intent=confirmar_pagamento",
+                        action="encaminhar_comprovante_thaynara",
+                    )
+                }
+            )
+        },
+    )
+    monkeypatch.setattr(state_machine.config, "get_fluxo", lambda _: fluxo)
+
+    acao = state_machine.proxima_acao(
+        estado_atual="inicio",
+        intent="confirmar_pagamento",
+        entities={},
+        fluxo_id="mock_fluxo",
+    )
+
+    assert acao is not None
+    assert acao.tipo == TipoAcao.executar_tool
+    assert acao.tool_a_executar == "encaminhar_comprovante_thaynara"
+
+
+def test_action_tool_prefixo_resolve_registry_alias(monkeypatch) -> None:
+    fluxo = Fluxo(
+        fluxo_id="mock_fluxo",
+        estados={
+            "inicio": Estado(
+                situacoes={
+                    "imagem": Situacao(
+                        trigger="intent=mandou_imagem",
+                        action="tool_analisar_imagem",
+                    )
+                }
+            )
+        },
+    )
+    monkeypatch.setattr(state_machine.config, "get_fluxo", lambda _: fluxo)
+
+    acao = state_machine.proxima_acao(
+        estado_atual="inicio",
+        intent="mandou_imagem",
+        entities={},
+        fluxo_id="mock_fluxo",
+    )
+
+    assert acao is not None
+    assert acao.tool_a_executar == "classificar_imagem"
+
+
+def test_salva_no_estado_preserva_placeholder_ausente(monkeypatch) -> None:
+    fluxo = Fluxo(
+        fluxo_id="mock_fluxo",
+        estados={
+            "inicio": Estado(
+                situacoes={
+                    "ok": Situacao(
+                        trigger="intent=ok",
+                        salva_no_estado={"collected_data.nome": "{nome_extraido}"},
+                    )
+                }
+            )
+        },
+    )
+    monkeypatch.setattr(state_machine.config, "get_fluxo", lambda _: fluxo)
+
+    acao = state_machine.proxima_acao(
+        estado_atual="inicio",
+        intent="ok",
+        entities={},
+        fluxo_id="mock_fluxo",
+    )
+
+    assert acao is not None
+    assert acao.salvar_no_estado["collected_data.nome"] == "{nome_extraido}"

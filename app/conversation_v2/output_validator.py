@@ -38,9 +38,16 @@ def _validar_mensagem_unica(
     contexto: dict[str, Any],
 ) -> list[RuleResult]:
     """Valida uma mensagem individual. Retorna lista de violações."""
-    if msg.tipo in ("delay", "imagem", "pdf"):
-        return []  # tipos não-texto não têm conteúdo textual a validar
-    return [r for r in validar_resposta_completa(msg.conteudo, contexto) if not r.passou]
+    if msg.tipo == "delay":
+        return []
+    partes = [
+        msg.conteudo or "",
+        msg.numero_contato or "",
+    ]
+    texto_validavel = "\n".join(p for p in partes if p)
+    if not texto_validavel:
+        return []
+    return [r for r in validar_resposta_completa(texto_validavel, contexto) if not r.passou]
 
 
 def _coletar_violacoes(mensagens: list[Mensagem], contexto: dict[str, Any]) -> list[RuleResult]:

@@ -62,11 +62,20 @@ def _renderizar_mensagem(msg: Mensagem, contexto: dict[str, Any]) -> Mensagem:
 
 def _processar_acao_sequencial(acao: dict[str, Any], contexto: dict[str, Any]) -> Mensagem | None:
     tipo = str(acao.get("tipo", "")).strip().lower()
+    if not tipo and any(k in acao for k in ("texto", "mensagem", "mensagem_template", "resposta_template")):
+        tipo = "enviar_texto"
     if not tipo:
         return None
     if tipo == "enviar_texto":
-        texto = renderizar_template(str(acao.get("texto", "")), contexto)
-        botoes = _normalizar_botoes(acao.get("botoes_interativos", []))
+        texto_raw = (
+            acao.get("texto")
+            or acao.get("mensagem")
+            or acao.get("mensagem_template")
+            or acao.get("resposta_template")
+            or ""
+        )
+        texto = renderizar_template(str(texto_raw), contexto)
+        botoes = _normalizar_botoes(acao.get("botoes_interativos") or acao.get("botoes") or [])
         return Mensagem(tipo="botoes" if botoes else "texto", conteudo=texto, botoes=botoes)
     if tipo == "enviar_imagem":
         return Mensagem(
@@ -94,6 +103,8 @@ def _mensagens_base(acao: AcaoAutorizada, contexto: dict[str, Any]) -> list[Mens
         mensagens.append(_renderizar_mensagem(msg, contexto))
 
     sequencia = acao.dados.get("acoes_em_sequencia")
+    if isinstance(sequencia, dict):
+        sequencia = list(sequencia.values())
     if isinstance(sequencia, list):
         for item in sequencia:
             if isinstance(item, dict):
