@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.conversation_v2.tools.patients import detectar_tipo_remarcacao
+from app.conversation.tools.patients import detectar_tipo_remarcacao
 
 
 @pytest.mark.asyncio

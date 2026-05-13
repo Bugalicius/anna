@@ -22,16 +22,16 @@ def _state() -> dict:
 
 @pytest.mark.asyncio
 async def test_engine_salva_estado_concluido_para_router_persistir_contato():
-    from app.conversation.engine import ConversationEngine
+    from app.conversation_legacy.engine import ConversationEngine
 
     state = _state()
     plano = {"action": "send_confirmacao", "new_status": "concluido"}
 
-    with patch("app.conversation.engine.load_state", new_callable=AsyncMock, return_value=state), \
-         patch("app.conversation.engine.interpretar_turno", new_callable=AsyncMock, return_value={"intent": "agendar"}), \
-         patch("app.conversation.engine.decidir_acao", new_callable=AsyncMock, return_value=plano), \
-         patch("app.conversation.engine.gerar_resposta", new_callable=AsyncMock, return_value=["ok"]), \
-         patch("app.conversation.engine.save_state", new_callable=AsyncMock) as mock_save:
+    with patch("app.conversation_legacy.engine.load_state", new_callable=AsyncMock, return_value=state), \
+         patch("app.conversation_legacy.engine.interpretar_turno", new_callable=AsyncMock, return_value={"intent": "agendar"}), \
+         patch("app.conversation_legacy.engine.decidir_acao", new_callable=AsyncMock, return_value=plano), \
+         patch("app.conversation_legacy.engine.gerar_resposta", new_callable=AsyncMock, return_value=["ok"]), \
+         patch("app.conversation_legacy.engine.save_state", new_callable=AsyncMock) as mock_save:
         respostas = await ConversationEngine().handle_message("hash123", "ok", phone="5511999")
 
     assert respostas == ["ok"]
@@ -41,7 +41,7 @@ async def test_engine_salva_estado_concluido_para_router_persistir_contato():
 
 
 def test_apply_tool_result_remarcacao_sucesso_conclui_estado():
-    from app.conversation.state import apply_tool_result
+    from app.conversation_legacy.state import apply_tool_result
 
     state = _state()
     state["goal"] = "remarcar"

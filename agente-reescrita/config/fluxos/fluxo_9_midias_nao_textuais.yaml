@@ -1,0 +1,123 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# FLUXO 9 — MÍDIAS NÃO TEXTUAIS
+# ═══════════════════════════════════════════════════════════════════════════
+
+fluxo_id: "midias_nao_textuais"
+fluxo_nome: "Áudio, sticker, localização, vídeo"
+
+# ───────────────────────────────────────────────────────────────────────────
+# CONTEXTO DE ENTRADA
+# ───────────────────────────────────────────────────────────────────────────
+# Imagens são tratadas pelo Fluxo 5 (Recebimento de Imagem) — não aqui.
+# Este fluxo trata: áudio, sticker, localização, vídeo, documento
+
+# ───────────────────────────────────────────────────────────────────────────
+# ESTADOS
+# ───────────────────────────────────────────────────────────────────────────
+estados:
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ÁUDIO
+  # ════════════════════════════════════════════════════════════════════════
+  audio_recebido:
+    descricao: "Paciente mandou áudio — transcreve com Gemini e trata como texto"
+    
+    on_enter:
+      acao: "tool_transcrever_audio_gemini"
+      input:
+        audio_bytes: "{mensagem.media_bytes}"
+        mime_type: "{mensagem.mime_type}"
+      
+      apos_transcricao:
+        se_sucesso:
+          acao: "tratar_como_texto_normal"
+          # Re-roteia para o fluxo correto com o texto transcrito
+        
+        se_falha:
+          resposta: |
+            Não consegui ouvir seu áudio 😔 Pode me escrever o que precisa? 💚
+          proximo_estado: "midia_processada"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # STICKER (FIGURINHA)
+  # ════════════════════════════════════════════════════════════════════════
+  sticker_recebido:
+    descricao: "Paciente mandou figurinha"
+    
+    on_enter:
+      decisao_dinamica:
+        se_estava_em_fluxo_ativo:
+          resposta: |
+            Hihi 💚 Como posso te ajudar?
+          proximo_estado: "retornar_para_fluxo_anterior"
+        
+        se_lead_novo_sem_fluxo:
+          resposta: |
+            Hihi 💚 Oi! Sou a Ana, da Nutri Thaynara Teixeira. Como posso te ajudar?
+          proximo_estado: "midia_processada"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # LOCALIZAÇÃO
+  # ════════════════════════════════════════════════════════════════════════
+  localizacao_recebida:
+    descricao: "Paciente mandou localização"
+    
+    on_enter:
+      resposta: |
+        Recebo mensagens de texto por aqui 😊 Como posso te ajudar?
+      proximo_estado: "retornar_para_fluxo_anterior"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # VÍDEO
+  # ════════════════════════════════════════════════════════════════════════
+  video_recebido:
+    descricao: "Paciente mandou vídeo"
+    
+    on_enter:
+      resposta: |
+        Não consigo ver vídeos por aqui 😅 Pode me explicar por mensagem?
+      proximo_estado: "retornar_para_fluxo_anterior"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # DOCUMENTO (PDF, etc)
+  # ════════════════════════════════════════════════════════════════════════
+  documento_recebido:
+    descricao: "Paciente mandou PDF ou documento"
+    
+    on_enter:
+      decisao_dinamica:
+        se_pode_ser_comprovante:
+          # Reaproveita Fluxo 5 (Recebimento de Imagem)
+          acao: "redirecionar_fluxo_5_recebimento_imagem"
+        
+        se_outro_tipo:
+          resposta: |
+            Recebi seu documento 💚 Pode me explicar o que precisa?
+          proximo_estado: "retornar_para_fluxo_anterior"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADOS DE SAÍDA
+  # ════════════════════════════════════════════════════════════════════════
+  midia_processada:
+    descricao: "Mídia tratada — fluxo continua"
+    on_enter:
+      acao: "manter_state_atual"
+  
+  retornar_para_fluxo_anterior:
+    descricao: "Volta ao fluxo que estava ativo antes da mídia"
+    on_enter:
+      acao: "restaurar_fluxo_anterior"
+
+# ───────────────────────────────────────────────────────────────────────────
+# TOOLS
+# ───────────────────────────────────────────────────────────────────────────
+tools:
+  
+  transcrever_audio_gemini:
+    descricao: "Transcreve áudio via Gemini Vision (suporta áudio nativamente)"
+    input:
+      audio_bytes: bytes
+      mime_type: str
+    output:
+      texto: str
+      sucesso: bool

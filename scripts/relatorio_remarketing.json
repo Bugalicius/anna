@@ -1,0 +1,5751 @@
+{
+  "resumo": {
+    "lead_frio": 168,
+    "quase_marcou": 19,
+    "ex_paciente": 530,
+    "remarketing_concluido": 0
+  },
+  "lead_frio": [
+    {
+      "nome": "Ana Freire 🦋",
+      "numero": "+553194370616",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Dani Sousa",
+      "numero": "+553199681885",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Boa Tarde, meu nome é Danielle eu ganhei o desafio do Box Cyti, queria agendar minha consulta."
+    },
+    {
+      "nome": "Ismael Franca",
+      "numero": "+553182557508",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Ana, bom dia tudo bem? \n\nSou o ismael da Vortex, vi que você manifestou interesse em nossa solução de automação por inte"
+    },
+    {
+      "nome": "Jaqueline Lima | Ambitus",
+      "numero": "+5511917404889",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Oi, tudo bem?\nPreciso falar com o responsável pela clínica sobre alguns pontos que costumam impactar agenda, crescimento"
+    },
+    {
+      "nome": "Mari 🧿°🤍°📿",
+      "numero": "+553191436485",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 8,
+      "conversas": 1,
+      "ultima_mensagem": "se for no crédito recorrente consigo"
+    },
+    {
+      "nome": "Sem nome",
+      "numero": "+0",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "*Atendimento ao cliente mais fácil com as notas* 🫶\n\nCansou de fazer confusão com as informações de clientes? Use as nota"
+    },
+    {
+      "nome": "Sem nome 004",
+      "numero": "+5534630208996",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 005",
+      "numero": "+5511963330012",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 007",
+      "numero": "+5517992082898",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 009",
+      "numero": "+5521993686082",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 010",
+      "numero": "+5522998107505",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 017",
+      "numero": "+553171287971",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 018",
+      "numero": "+553171340520",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 019",
+      "numero": "+553171375959",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 022",
+      "numero": "+553171529363",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 023",
+      "numero": "+553171565156",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Não."
+    },
+    {
+      "nome": "Sem nome 024",
+      "numero": "+553171602151",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 030",
+      "numero": "+553171892684",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 032",
+      "numero": "+553171920293",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 034",
+      "numero": "+553172081817",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 035",
+      "numero": "+553172117142",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 036",
+      "numero": "+553172348799",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 037",
+      "numero": "+553172526674",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 038",
+      "numero": "+553173033062",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 039",
+      "numero": "+553173190530",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 040",
+      "numero": "+553173454774",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 044",
+      "numero": "+553173548264",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "❌(Leia com atenção) ❌\nAqui na Barbearia Andre, para agilizar nossos atendimentos estamos usando uma plataforma de agenda"
+    },
+    {
+      "nome": "Sem nome 045",
+      "numero": "+553173551086",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 046",
+      "numero": "+553173562650",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 048",
+      "numero": "+553173658347",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 058",
+      "numero": "+553180209708",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 062",
+      "numero": "+553181125805",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 065",
+      "numero": "+553182219892",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 066",
+      "numero": "+553182353568",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 068",
+      "numero": "+553182700142",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 070",
+      "numero": "+553182993329",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 072",
+      "numero": "+553183253225",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 073",
+      "numero": "+553183276682",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 076",
+      "numero": "+553183470831",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 077",
+      "numero": "+553183601282",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "oiii!! muito obrigada"
+    },
+    {
+      "nome": "Sem nome 078",
+      "numero": "+553183601971",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 081",
+      "numero": "+553183722138",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 082",
+      "numero": "+553183859343",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 083",
+      "numero": "+553183889602",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 087",
+      "numero": "+553184089965",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 088",
+      "numero": "+553184170683",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 090",
+      "numero": "+553184243615",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Oii, tudo bem? \nTerá atendimento na sexta 20/02?"
+    },
+    {
+      "nome": "Sem nome 091",
+      "numero": "+553184306463",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 094",
+      "numero": "+553184616086",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 095",
+      "numero": "+553184631543",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 097",
+      "numero": "+553184888496",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Sem nome 102",
+      "numero": "+553185133774",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 103",
+      "numero": "+553185270310",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 105",
+      "numero": "+553185441147",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Mais informações sobre o acompanhamento nutricional"
+    },
+    {
+      "nome": "Sem nome 110",
+      "numero": "+553185618460",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 4,
+      "conversas": 2,
+      "ultima_mensagem": "Pode confirmar por favor"
+    },
+    {
+      "nome": "Sem nome 112",
+      "numero": "+553185849389",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 114",
+      "numero": "+553185873239",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 116",
+      "numero": "+553185962587",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 119",
+      "numero": "+553186066594",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 120",
+      "numero": "+553186067703",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 121",
+      "numero": "+553186074918",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 122",
+      "numero": "+553186265094",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 123",
+      "numero": "+553186424596",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 126",
+      "numero": "+553186502714",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 128",
+      "numero": "+553186668154",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 129",
+      "numero": "+553186687010",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 131",
+      "numero": "+553186732649",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 133",
+      "numero": "+553186787865",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 136",
+      "numero": "+553186817345",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 138",
+      "numero": "+553186904164",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Ola"
+    },
+    {
+      "nome": "Sem nome 139",
+      "numero": "+553186905291",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 144",
+      "numero": "+553187070056",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 146",
+      "numero": "+553187259848",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá boa noite!\nPoderia me enviar os valores dos planos por favor"
+    },
+    {
+      "nome": "Sem nome 147",
+      "numero": "+553187278484",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 149",
+      "numero": "+553187386473",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 150",
+      "numero": "+553187434062",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 153",
+      "numero": "+553187647760",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 157",
+      "numero": "+553187784224",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 159",
+      "numero": "+553187967668",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 161",
+      "numero": "+553188354682",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 162",
+      "numero": "+553188391934",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 164",
+      "numero": "+553188486306",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 165",
+      "numero": "+553188513881",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 166",
+      "numero": "+553188532231",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 167",
+      "numero": "+553188563238",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 169",
+      "numero": "+553188706280",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 170",
+      "numero": "+553188707853",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 171",
+      "numero": "+553188838505",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 172",
+      "numero": "+553188843655",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 173",
+      "numero": "+553189126798",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 174",
+      "numero": "+553189159085",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 176",
+      "numero": "+553189203280",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 179",
+      "numero": "+553189295139",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 182",
+      "numero": "+553189490976",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 184",
+      "numero": "+553189647606",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 188",
+      "numero": "+553189825114",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Seja bem-vindo(a) a Carvalho Ramos - Advogados Associados!\n\nDeixe sua mensagem que em breve responderemos.\n\n\nSiga o noss"
+    },
+    {
+      "nome": "Sem nome 189",
+      "numero": "+553190700812",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 190",
+      "numero": "+553191023570",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 191",
+      "numero": "+553191278734",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 192",
+      "numero": "+553191343976",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 193",
+      "numero": "+553191444645",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 194",
+      "numero": "+553191492253",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 195",
+      "numero": "+553191583011",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 196",
+      "numero": "+553191669329",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 197",
+      "numero": "+553191688118",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 198",
+      "numero": "+553191703127",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 199",
+      "numero": "+553191925253",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 202",
+      "numero": "+553192012581",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 203",
+      "numero": "+553192017478",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 207",
+      "numero": "+553192209701",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 210",
+      "numero": "+553192393809",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 213",
+      "numero": "+553192571199",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 216",
+      "numero": "+553192826674",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 218",
+      "numero": "+553192953615",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 219",
+      "numero": "+553192960144",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 221",
+      "numero": "+553193013472",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 223",
+      "numero": "+553193057241",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 225",
+      "numero": "+553193218030",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 226",
+      "numero": "+553193377915",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 229",
+      "numero": "+553193454736",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 231",
+      "numero": "+553193486679",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 232",
+      "numero": "+553193516401",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 234",
+      "numero": "+553193618868",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Neste momento, não estou disponível. Meu horário de atendimento é das 9h às 17h, de segunda a sexta-feira, e aos sábados"
+    },
+    {
+      "nome": "Sem nome 236",
+      "numero": "+553193675102",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 238",
+      "numero": "+553193866961",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 246",
+      "numero": "+553194680547",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 254",
+      "numero": "+553195332738",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 260",
+      "numero": "+553195760616",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 263",
+      "numero": "+553195842716",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 264",
+      "numero": "+553195861351",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 265",
+      "numero": "+553195866914",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 266",
+      "numero": "+553195905896",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 269",
+      "numero": "+553196244275",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 270",
+      "numero": "+553196277459",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 272",
+      "numero": "+553196373178",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 274",
+      "numero": "+553196480403",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 275",
+      "numero": "+553196633914",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 280",
+      "numero": "+553196909325",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 282",
+      "numero": "+553196976348",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 283",
+      "numero": "+553197066376",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 285",
+      "numero": "+553197128248",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 287",
+      "numero": "+553197157753",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 290",
+      "numero": "+553197330473",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 291",
+      "numero": "+553197345759",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 293",
+      "numero": "+553197377960",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 297",
+      "numero": "+553197701650",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Oi, vou precisar desmarcar."
+    },
+    {
+      "nome": "Sem nome 299",
+      "numero": "+553197752168",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Esqueci de te chamar"
+    },
+    {
+      "nome": "Sem nome 303",
+      "numero": "+553197857315",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 304",
+      "numero": "+553197930890",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 308",
+      "numero": "+553198058217",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 310",
+      "numero": "+553198248960",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 315",
+      "numero": "+553198413302",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 318",
+      "numero": "+553198617789",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 322",
+      "numero": "+553198890057",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 323",
+      "numero": "+553198973883",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 324",
+      "numero": "+553199017606",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 329",
+      "numero": "+553199221390",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 331",
+      "numero": "+553199311777",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 336",
+      "numero": "+553199641323",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 338",
+      "numero": "+553199747120",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 343",
+      "numero": "+553199933698",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 344",
+      "numero": "+553388096226",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 345",
+      "numero": "+553398185992",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 346",
+      "numero": "+553898191626",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 348",
+      "numero": "+5551920001062",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 349",
+      "numero": "+556195644447",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Thaís Roque",
+      "numero": "+553187658414",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Mandei errado"
+    },
+    {
+      "nome": "Tá bom",
+      "numero": "+553185957107",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Obrigada"
+    }
+  ],
+  "quase_marcou": [
+    {
+      "nome": "Adriana",
+      "numero": "+553171260482",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 10,
+      "conversas": 2,
+      "ultima_mensagem": "Quanto está a consulta"
+    },
+    {
+      "nome": "Carlos Gangana",
+      "numero": "+553187749745",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Olá, Dra. Thaynara! Tudo bem? 😊\nVoltei só para não deixar minha mensagem anterior passar batido.\n\nHoje, várias nutricion"
+    },
+    {
+      "nome": "Fernanda Campos",
+      "numero": "+553194819979",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Ok. Obrigada"
+    },
+    {
+      "nome": "Sem nome 006",
+      "numero": "+5511999910621",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 2,
+      "ultima_mensagem": "Ou, *se preferir*, escolha uma das opções:\n\n*1-* Ir para Segunda Via de Fatura\n*2-* Pegar o código de barras (sem login)"
+    },
+    {
+      "nome": "Sem nome 074",
+      "numero": "+553183288183",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Bom dia! \nTudo bem? \nEu solicitei o orçamento do plano premium. Vc me enviou uma vez os pacotes mas não sei se é o msm v"
+    },
+    {
+      "nome": "Sem nome 079",
+      "numero": "+553183676819",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Tarde"
+    },
+    {
+      "nome": "Sem nome 084",
+      "numero": "+553183935650",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Gostaria de saber o valor da sua consulta"
+    },
+    {
+      "nome": "Sem nome 145",
+      "numero": "+553187256780",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Quais os planos?"
+    },
+    {
+      "nome": "Sem nome 183",
+      "numero": "+553189500218",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Quero saber os novos valores dos planos"
+    },
+    {
+      "nome": "Sem nome 185",
+      "numero": "+553189708553",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 1,
+      "ultima_mensagem": "pode sim, caso apareça alguma desistência você me avisa?"
+    },
+    {
+      "nome": "Sem nome 201",
+      "numero": "+5531920023462",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Gostaria de saber o valor da consulta"
+    },
+    {
+      "nome": "Sem nome 212",
+      "numero": "+553192497389",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Me envia por gentileza valores consulta"
+    },
+    {
+      "nome": "Sem nome 241",
+      "numero": "+553194201512",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Olá me desculpa responder agora nossa hoje foi uma loucura queria sabe o valor do acompanhamento"
+    },
+    {
+      "nome": "Sem nome 277",
+      "numero": "+553196690199",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 8,
+      "conversas": 2,
+      "ultima_mensagem": "Minha avó é bem ativa! Faz academia e tudo mais kkk"
+    },
+    {
+      "nome": "Sem nome 281",
+      "numero": "+553196911160",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 16,
+      "conversas": 1,
+      "ultima_mensagem": "Conseguimos marcar para a semana que vem na terça 18:00hs?"
+    },
+    {
+      "nome": "Sem nome 295",
+      "numero": "+553197478277",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Gostaria de fazer online"
+    },
+    {
+      "nome": "Sem nome 355",
+      "numero": "+553195912009",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Ai eu te chamo pra marcar"
+    },
+    {
+      "nome": "sirleide Leide",
+      "numero": "+553199854239",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Bom dia"
+    },
+    {
+      "nome": "Suporte da Liveclin",
+      "numero": "+557598701962",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 2,
+      "ultima_mensagem": "*Olá! No momento, estamos offline 😴*\n\nDeixe sua mensagem que responderemos no *próximo horário de atendimento:*\n\n- *Seg "
+    }
+  ],
+  "ex_paciente": [
+    {
+      "nome": "Adriana dos Santos Aredes",
+      "numero": "+553186023269",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 15,
+      "conversas": 1,
+      "ultima_mensagem": "Sim"
+    },
+    {
+      "nome": "Adriana Pereira dos Reis",
+      "numero": "+553175697150",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 27,
+      "conversas": 2,
+      "ultima_mensagem": "Deu sim"
+    },
+    {
+      "nome": "Adriele Caroline",
+      "numero": "+553199209574",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Tá joia , chegando em casa eu vejo direitinho aí decidindo eu te retorno ai"
+    },
+    {
+      "nome": "Alarissia Saldanha",
+      "numero": "+553182134030",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Alarissia Saldanha, primeira consulta"
+    },
+    {
+      "nome": "Alcione Elizete",
+      "numero": "+553198265700",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Obrigada"
+    },
+    {
+      "nome": "Alessandra Lopes",
+      "numero": "+553188050735",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Alessandra Lopes\nPrimeira consulta"
+    },
+    {
+      "nome": "Alessandra Souza",
+      "numero": "+553186015589",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "?"
+    },
+    {
+      "nome": "Alexandra Cruz",
+      "numero": "+553196723349",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Alexia Martins",
+      "numero": "+553197232772",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Já sou paciente antiga"
+    },
+    {
+      "nome": "Aline",
+      "numero": "+553197788989",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 2,
+      "ultima_mensagem": "Bom dia! Sim"
+    },
+    {
+      "nome": "Aline Arruda",
+      "numero": "+553191106305",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Aline Arruda\nPrimeira consulta"
+    },
+    {
+      "nome": "Amanda",
+      "numero": "+553189869183",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 2,
+      "ultima_mensagem": "Teria na terça umas 16h?"
+    },
+    {
+      "nome": "Amanda Aparecida Duarte Almeida",
+      "numero": "+553185128065",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 21,
+      "conversas": 2,
+      "ultima_mensagem": "Amanda Aparecida Duarte Almeida \n26/05/1999\n@amanda.ada\n31 985128065 \namanda.ad.almeida@gmail.com \nEstudante\n33200-142 -"
+    },
+    {
+      "nome": "Amanda Carolina",
+      "numero": "+553186717163",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Ela faz acompanhamento para quem está iniciando o uso de mounjaro também certo?"
+    },
+    {
+      "nome": "Amanda Eliane",
+      "numero": "+553196846795",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 12,
+      "conversas": 1,
+      "ultima_mensagem": "Bom dia, pode sim"
+    },
+    {
+      "nome": "Amanda Fiuza",
+      "numero": "+553183931510",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Ana Beatriz",
+      "numero": "+553195425547",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Gostaria de saber como funciona e os valores"
+    },
+    {
+      "nome": "Ana Carolina",
+      "numero": "+553197415137",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Ana Caroline Reis",
+      "numero": "+553198047446",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Emagrecimento \nAtendimento online"
+    },
+    {
+      "nome": "Ana Caroline Teixeira de Faria",
+      "numero": "+553199623677",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 14,
+      "conversas": 1,
+      "ultima_mensagem": "Obrigada"
+    },
+    {
+      "nome": "Ana Clara Romeiro ✨",
+      "numero": "+553183625738",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 2,
+      "ultima_mensagem": "Pode confirmar"
+    },
+    {
+      "nome": "Ana Claudia",
+      "numero": "+553192337886",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Ana Dianna Matos",
+      "numero": "+553187882421",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 10,
+      "conversas": 2,
+      "ultima_mensagem": "As 09 ?"
+    },
+    {
+      "nome": "Ana Ferreira",
+      "numero": "+553189150807",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 26,
+      "conversas": 1,
+      "ultima_mensagem": "Pq não estou em BH"
+    },
+    {
+      "nome": "Ana Flávia Ferreira Neto",
+      "numero": "+553197154780",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Ana Flávia Ferreira Neto\nPrimeira consulta"
+    },
+    {
+      "nome": "Ana Flávia Gomide",
+      "numero": "+556296150360",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 37,
+      "conversas": 2,
+      "ultima_mensagem": "Sim"
+    },
+    {
+      "nome": "Ana Isabel Pimentel",
+      "numero": "+553193285070",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 1,
+      "ultima_mensagem": "Bom dia , tudo bem ? \nTeria alguma data disponível?"
+    },
+    {
+      "nome": "Ana Laura Armond",
+      "numero": "+553198627035",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Ana laura Armond , já realizei acompanhamento com ela mas tem mais de 1 ano"
+    },
+    {
+      "nome": "Ana Luiza",
+      "numero": "+553195411271",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Ana Luísa Utsch",
+      "numero": "+553189429441",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Ana Luísa primeira consulta"
+    },
+    {
+      "nome": "Ana Paula",
+      "numero": "+553199189320",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Obrigada"
+    },
+    {
+      "nome": "Ana Paula",
+      "numero": "+553186477140",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 9,
+      "conversas": 1,
+      "ultima_mensagem": "😩"
+    },
+    {
+      "nome": "Ana, sim",
+      "numero": "+553171793519",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Gostaria de fazer esse por formulário"
+    },
+    {
+      "nome": "Andreia Fernandes",
+      "numero": "+553182323162",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Obrigada pelas informações"
+    },
+    {
+      "nome": "Andreia Soares",
+      "numero": "+553195007346",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 1,
+      "ultima_mensagem": "Obrigado"
+    },
+    {
+      "nome": "Andréia Soares 🌻✨",
+      "numero": "+553199758975",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Andreia Soares, primeira consulta"
+    },
+    {
+      "nome": "Anna",
+      "numero": "+553182172519",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Vou dar uma olhada"
+    },
+    {
+      "nome": "ARACELLI Drumond",
+      "numero": "+553188687687",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "ARACELLI Drumond \nPrimeira consulta"
+    },
+    {
+      "nome": "Atende sim",
+      "numero": "+553192172473",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 27,
+      "conversas": 1,
+      "ultima_mensagem": "Obrigada"
+    },
+    {
+      "nome": "Babi 🎀",
+      "numero": "+553181219862",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 2,
+      "ultima_mensagem": "entendi , então o outro seria 768,00 e o premium 1.400 ?"
+    },
+    {
+      "nome": "Beatriz Edwarda Muniz Costa",
+      "numero": "+553198912203",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Beatriz Edwarda Muniz Costa \nPrimeira vez"
+    },
+    {
+      "nome": "Bete",
+      "numero": "+553171040462",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Elizabete Pereira, primeira consulta"
+    },
+    {
+      "nome": "Bianca Almeida",
+      "numero": "+553196088665",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 16,
+      "conversas": 2,
+      "ultima_mensagem": "Eu e Danilo"
+    },
+    {
+      "nome": "Bianca Guimaraes Garcia",
+      "numero": "+553193402712",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 24,
+      "conversas": 2,
+      "ultima_mensagem": "Perfeito. Obrigada viu!! ♥️"
+    },
+    {
+      "nome": "Boom dia",
+      "numero": "+553173598734",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 18,
+      "conversas": 2,
+      "ultima_mensagem": "Perfeito"
+    },
+    {
+      "nome": "Brenda Gabrich",
+      "numero": "+553185511756",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 10,
+      "conversas": 1,
+      "ultima_mensagem": "Eu me interessei pelo plano ouro. Me confirma o valor se for parcelado de 4x, por favor? \nE me confirma o dia disponível"
+    },
+    {
+      "nome": "Brenda Karollen",
+      "numero": "+553184078746",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Brendinha 🐓🖤🤍",
+      "numero": "+553195030066",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Olá Ana, boa tarde! \nMeu nome é Brenda Márcia, seria a primeira consulta"
+    },
+    {
+      "nome": "Bruna",
+      "numero": "+553191482223",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Bruna",
+      "numero": "+553184544254",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 10,
+      "conversas": 2,
+      "ultima_mensagem": "Olá boa tarde \n Confirmado sim ☺️"
+    },
+    {
+      "nome": "Bruna Félix",
+      "numero": "+553190891648",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 1,
+      "ultima_mensagem": "pode ser"
+    },
+    {
+      "nome": "Bruna Martins",
+      "numero": "+553193423658",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 44,
+      "conversas": 2,
+      "ultima_mensagem": "Neste dia eu não consigo."
+    },
+    {
+      "nome": "Bruna Miranda",
+      "numero": "+553171597160",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Bruna, não sou paciente"
+    },
+    {
+      "nome": "Bruna Rezende",
+      "numero": "+553186699169",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "mas o valor da consulta também individual ?"
+    },
+    {
+      "nome": "Bruna Rocha",
+      "numero": "+553189641894",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Bruna Rocha \nPrimeira consulta"
+    },
+    {
+      "nome": "Bruna Stephanie",
+      "numero": "+553171614060",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 2,
+      "ultima_mensagem": "Bruna Stephanie \nPrimeira vez"
+    },
+    {
+      "nome": "Bárbara Bruce",
+      "numero": "+559891293534",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira vez"
+    },
+    {
+      "nome": "Bárbara Lourenço",
+      "numero": "+5521982668756",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 10,
+      "conversas": 2,
+      "ultima_mensagem": "😘😘"
+    },
+    {
+      "nome": "Bênia Aparecida dos Santos",
+      "numero": "+553189300965",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Ok"
+    },
+    {
+      "nome": "Camila",
+      "numero": "+553186488179",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Objetivo é emagrecimento.\n\nAtendimento presencial."
+    },
+    {
+      "nome": "Camila Agata",
+      "numero": "+553184752350",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Camila Agata\nPrimeira consulta"
+    },
+    {
+      "nome": "Camila Gonçalves Sales",
+      "numero": "+553193300911",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 13,
+      "conversas": 1,
+      "ultima_mensagem": "Blz!"
+    },
+    {
+      "nome": "Carla Soares",
+      "numero": "+553186765380",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 19,
+      "conversas": 1,
+      "ultima_mensagem": "Pode sim, obrigada!"
+    },
+    {
+      "nome": "Carol",
+      "numero": "+553190829188",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 55,
+      "conversas": 2,
+      "ultima_mensagem": "Oii, esqueci de responder, confirmado sim a consulta de amanhã"
+    },
+    {
+      "nome": "Carolina",
+      "numero": "+553188485116",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Bom dia \nCarolina \nPrimeira consulta"
+    },
+    {
+      "nome": "Cauã Coelho Diniz",
+      "numero": "+553198150798",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 4,
+      "conversas": 2,
+      "ultima_mensagem": "Já consultou antes"
+    },
+    {
+      "nome": "Celina Corradi",
+      "numero": "+553194475058",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 21,
+      "conversas": 2,
+      "ultima_mensagem": "Esse mês não irei conseguir ir, tive uns gastos que não estavam em meus orçamentos. Mas no próximo mês irei entrar em co"
+    },
+    {
+      "nome": "Clara Ramos",
+      "numero": "+553196016502",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 29,
+      "conversas": 2,
+      "ultima_mensagem": "eii sim!"
+    },
+    {
+      "nome": "Confirmado 😘",
+      "numero": "+553195827044",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Boa tarde! Pode ser\nVc me manda o valor do reajuste por favor"
+    },
+    {
+      "nome": "CriS LagareS",
+      "numero": "+553192532910",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 2,
+      "ultima_mensagem": "Já desmarquei com ela. Obrigada"
+    },
+    {
+      "nome": "Cristhiane Cardoso",
+      "numero": "+553192664155",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 12,
+      "conversas": 1,
+      "ultima_mensagem": "Pode me enviar o link para pagamento no  cartao por gentileza?"
+    },
+    {
+      "nome": "Cristiene de Oliveira",
+      "numero": "+553185144930",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 1,
+      "ultima_mensagem": "Como estou fazendo acompanhamento com endocrinologista, preciso apenas dar um ajuste na alimentação para melhorar."
+    },
+    {
+      "nome": "Cristina De souza Farmasi",
+      "numero": "+553192254090",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Será a primeira consulta"
+    },
+    {
+      "nome": "Cristyan Gabriel",
+      "numero": "+5562920039840",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "O que você acha de ter um WebSite exclusivo e com um design único como esse e por um valor muito abaixo do que é cobrado"
+    },
+    {
+      "nome": "Cynthia Bracarense",
+      "numero": "+553187820969",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 21,
+      "conversas": 2,
+      "ultima_mensagem": "Obrigada"
+    },
+    {
+      "nome": "Cynthia das Graças J.dos Santos",
+      "numero": "+553197890362",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 49,
+      "conversas": 1,
+      "ultima_mensagem": "Nome: Cynthia das Graças J.dos Santos\nNascimento: 28/03/1975\nE-MAIL: angelci-31@hotmail.com\nProfissão: Técnico de enferm"
+    },
+    {
+      "nome": "Dama",
+      "numero": "+447843143189",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 20,
+      "conversas": 1,
+      "ultima_mensagem": "Agora recebi . Obrigado"
+    },
+    {
+      "nome": "Daniela Fernanda Cardoso Nascimento",
+      "numero": "+553186289402",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Já sou paciente"
+    },
+    {
+      "nome": "Daniele Simplício 🦋",
+      "numero": "+553183177059",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 2,
+      "ultima_mensagem": "Oi confirmado"
+    },
+    {
+      "nome": "Danielli Ribeiro",
+      "numero": "+553194993406",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Danielli Ribeiro \nPrimeira vez."
+    },
+    {
+      "nome": "Day",
+      "numero": "+553175796089",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 2,
+      "ultima_mensagem": "oi, pode sim"
+    },
+    {
+      "nome": "Dayana Costa",
+      "numero": "+553198277130",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 1,
+      "ultima_mensagem": "Muito obrigada 😘"
+    },
+    {
+      "nome": "Dayanne Araújo",
+      "numero": "+553192432046",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Dayanne Araújo \nPrimeira consulta"
+    },
+    {
+      "nome": "Dayanne Kelly",
+      "numero": "+553192527473",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira"
+    },
+    {
+      "nome": "Dayna Vitória",
+      "numero": "+553187853489",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Dayna Vitória \nPrimeira consulta"
+    },
+    {
+      "nome": "De casal",
+      "numero": "+553199198199",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 18,
+      "conversas": 1,
+      "ultima_mensagem": "Tá bem obrigada"
+    },
+    {
+      "nome": "De manhã",
+      "numero": "+553184055747",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 14,
+      "conversas": 1,
+      "ultima_mensagem": "oi Ana, boa tarde.\nVou precisar cancelar minha consulta. Como já tinha falado com a Thaynara eu mudei de endereço e minh"
+    },
+    {
+      "nome": "Dirlene Aparecida de Jesus Pereira",
+      "numero": "+553187824914",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Douglas Benito Pereira Felix",
+      "numero": "+553184702075",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 30,
+      "conversas": 2,
+      "ultima_mensagem": "qual o endereço"
+    },
+    {
+      "nome": "Dra. Izabella Furtado",
+      "numero": "+553192400552",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 2,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Drielly Idalina",
+      "numero": "+553182508194",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Emagrecimento e hipertrofia \nPresencial"
+    },
+    {
+      "nome": "Dryele Rita",
+      "numero": "+553190663754",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 1,
+      "ultima_mensagem": "17hs"
+    },
+    {
+      "nome": "Débora Oliveira",
+      "numero": "+5516982572488",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 14,
+      "conversas": 1,
+      "ultima_mensagem": "Qual o valor da diferença?"
+    },
+    {
+      "nome": "Déborah Vieira",
+      "numero": "+553180161872",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 11,
+      "conversas": 2,
+      "ultima_mensagem": "Bom dia! Confirmado"
+    },
+    {
+      "nome": "Ediellen Guerra",
+      "numero": "+553197204933",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 2,
+      "ultima_mensagem": "Oii \nEu não vou conseguir agendar no momento"
+    },
+    {
+      "nome": "Eduarda",
+      "numero": "+553175810564",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 10,
+      "conversas": 1,
+      "ultima_mensagem": "Pode manter então, eu vou sem os exames mesmo"
+    },
+    {
+      "nome": "Eduarda Bernardes",
+      "numero": "+553184529107",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 21,
+      "conversas": 2,
+      "ultima_mensagem": "Não precisa não, era só pra confirmar mesmo"
+    },
+    {
+      "nome": "Eduarda Lara",
+      "numero": "+553185158805",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Tenho um encaminhamento nutricional e queria saber como funciona"
+    },
+    {
+      "nome": "Eduarda🤍",
+      "numero": "+553182455400",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Eduardo",
+      "numero": "+553173212248",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Como funciona? Quais são os valores?"
+    },
+    {
+      "nome": "Eliene Rodrigues Figueiredo",
+      "numero": "+553197521909",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Emanuelly Alves",
+      "numero": "+553193583867",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Emanuelly Amaral",
+      "numero": "+553191734886",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 9,
+      "conversas": 1,
+      "ultima_mensagem": "P quando teria agenda?"
+    },
+    {
+      "nome": "Emilly Soares",
+      "numero": "+553189830951",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Emilly Soares \nPrimeira consulta :)"
+    },
+    {
+      "nome": "Erlane Xavier",
+      "numero": "+553171031843",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá, vim do instagram da Aura Clinic e gostaria de mais informações sobre atendimento nutricional."
+    },
+    {
+      "nome": "Ester Cristine da Pedra",
+      "numero": "+553192741739",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 1,
+      "ultima_mensagem": "Ester Cristine da Pedra"
+    },
+    {
+      "nome": "Ester Tavares",
+      "numero": "+553175086741",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Eu teria que realizar a aplicação com outra profissional e somente o acompanhamento de dieta com ela?"
+    },
+    {
+      "nome": "Evelyn Sabino",
+      "numero": "+553192349559",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 28,
+      "conversas": 2,
+      "ultima_mensagem": "pode ser sexta 15h"
+    },
+    {
+      "nome": "Fabiana América 🥰",
+      "numero": "+553197439700",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 25,
+      "conversas": 2,
+      "ultima_mensagem": "Confirmar"
+    },
+    {
+      "nome": "Fabiana Cristina",
+      "numero": "+553186796822",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Ok. Obrigadaa"
+    },
+    {
+      "nome": "Fabiana Sousa",
+      "numero": "+553189016630",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 8,
+      "conversas": 1,
+      "ultima_mensagem": "Ok"
+    },
+    {
+      "nome": "Fabiane Silva",
+      "numero": "+553187244681",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Sim"
+    },
+    {
+      "nome": "Fabio Estevam",
+      "numero": "+553194445703",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Fabio Estevam\nPrimeira consulta"
+    },
+    {
+      "nome": "Fabiolla Cezar",
+      "numero": "+553197136927",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Fabiolla Cezar\né a primeira"
+    },
+    {
+      "nome": "Fernanda Almeida",
+      "numero": "+553184951972",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 11,
+      "conversas": 1,
+      "ultima_mensagem": "Eu vi que quem faz cross tem um desconto vc poderia me falar quanto fica a consulta com o desconto ?"
+    },
+    {
+      "nome": "Fernanda Diniz",
+      "numero": "+553185351249",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 14,
+      "conversas": 1,
+      "ultima_mensagem": "fernandadiniz408@icloud.com"
+    },
+    {
+      "nome": "Fernanda Gonçalves Marques",
+      "numero": "+553173534845",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 44,
+      "conversas": 2,
+      "ultima_mensagem": "Qual o valor por favor?"
+    },
+    {
+      "nome": "Fernanda Kessia",
+      "numero": "+553189460621",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Fernanda kessia \nPrimeira"
+    },
+    {
+      "nome": "Fernanda Lima",
+      "numero": "+553189360895",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 27,
+      "conversas": 2,
+      "ultima_mensagem": "obg"
+    },
+    {
+      "nome": "Fernanda Lopes",
+      "numero": "+553188638115",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Fernanda Lopes, primeira consulta"
+    },
+    {
+      "nome": "Fleiber Alves",
+      "numero": "+553188240432",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Presencial"
+    },
+    {
+      "nome": "Flávia Cabral",
+      "numero": "+553193327228",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Seria primeira consulta"
+    },
+    {
+      "nome": "Francielli Egídio",
+      "numero": "+553197044941",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 1,
+      "ultima_mensagem": "Presencial"
+    },
+    {
+      "nome": "Francis Leide",
+      "numero": "+553192790611",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Francis Leide \nPrimeira consulta"
+    },
+    {
+      "nome": "Gabi",
+      "numero": "+553198292488",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Gabriel Martins",
+      "numero": "+553197331864",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 17,
+      "conversas": 1,
+      "ultima_mensagem": "Boa tarde, tudo bem? Gostaria de saber os novos valores da clínica"
+    },
+    {
+      "nome": "Gabriela Abreu",
+      "numero": "+553186379986",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "primeira consulta"
+    },
+    {
+      "nome": "Gabriela de Souza",
+      "numero": "+553193041140",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Vou dar uma olhada e e entro em contato"
+    },
+    {
+      "nome": "Gabriela Luiza",
+      "numero": "+553188909210",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Gabriela Luiza\nJá fui paciente a uns anos atrás"
+    },
+    {
+      "nome": "Gabriella Porto",
+      "numero": "+553173041104",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Sim primeira"
+    },
+    {
+      "nome": "Gaby",
+      "numero": "+553173021300",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Fernanda\nSim, primeira consulta"
+    },
+    {
+      "nome": "Gaby",
+      "numero": "+553189560213",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Gaby",
+      "numero": "+553185378665",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 21,
+      "conversas": 2,
+      "ultima_mensagem": "Ok obrigada"
+    },
+    {
+      "nome": "gelrogerio05",
+      "numero": "+553189596282",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Bom dia"
+    },
+    {
+      "nome": "Geovana Santos",
+      "numero": "+553195340208",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 2,
+      "ultima_mensagem": "Bom dia ☀️ \nConfirmado"
+    },
+    {
+      "nome": "Giovanna Batista",
+      "numero": "+553183069084",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 66,
+      "conversas": 1,
+      "ultima_mensagem": "não estou encontrando o endereço"
+    },
+    {
+      "nome": "Giovanna Rossi",
+      "numero": "+553199249982",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Gisele Oliveira",
+      "numero": "+553186204288",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Bom dia!\nGisele de oliveira \nPrimeira consulta"
+    },
+    {
+      "nome": "Gleice Rodrigues",
+      "numero": "+553185410573",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "1 consulta"
+    },
+    {
+      "nome": "Gleicia Felipe Lourenço Belarmino",
+      "numero": "+553172140722",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Gleicia Felipe Lourenço Belarmino \nPrimeira consulta"
+    },
+    {
+      "nome": "Glenda",
+      "numero": "+553189791109",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Grazi",
+      "numero": "+553186451042",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira"
+    },
+    {
+      "nome": "Grazi ☺️",
+      "numero": "+553187511994",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 39,
+      "conversas": 2,
+      "ultima_mensagem": "boa tarde confirmado"
+    },
+    {
+      "nome": "Graziele Ferreira",
+      "numero": "+553173402405",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 10,
+      "conversas": 1,
+      "ultima_mensagem": "Pode ser dia 13/05"
+    },
+    {
+      "nome": "Guilhe®️me",
+      "numero": "+553175181313",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Ótimo!\nAgradeço pelo retorno!"
+    },
+    {
+      "nome": "GX Locações",
+      "numero": "+553172540552",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Lucas \nJa fui paciente"
+    },
+    {
+      "nome": "Hanna Eduarda",
+      "numero": "+553193428098",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Gostaria de os valores"
+    },
+    {
+      "nome": "Hellen Aparecida Gomes Inacia",
+      "numero": "+553191724875",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 9,
+      "conversas": 2,
+      "ultima_mensagem": "Consulta única"
+    },
+    {
+      "nome": "Heynne Pacifico",
+      "numero": "+553171358266",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Presencial"
+    },
+    {
+      "nome": "Hingrid",
+      "numero": "+553175045486",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Há sim",
+      "numero": "+553193413590",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 37,
+      "conversas": 1,
+      "ultima_mensagem": "Obrigada"
+    },
+    {
+      "nome": "Iago Costa",
+      "numero": "+553180530926",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Sigo você nas redes socias e pensei que poderia criar um site para você totalmente gratuito. Assim consigo melhorar meu "
+    },
+    {
+      "nome": "Iasmin Soares",
+      "numero": "+553193365343",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 1,
+      "ultima_mensagem": "ainda possuem o valor com o personal?"
+    },
+    {
+      "nome": "Iasmin Valente",
+      "numero": "+553182488790",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Boa tarde!\nTudo bem?\nEstou com algumas dúvidas referente a dieta por formulário.\nEla é avaliada com base na Bio impedânc"
+    },
+    {
+      "nome": "Igor .•.",
+      "numero": "+553188413105",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Sim, primeira consulta"
+    },
+    {
+      "nome": "Indianara Vitoria",
+      "numero": "+553187760144",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 17,
+      "conversas": 1,
+      "ultima_mensagem": "Indianara Vitoria Drumond Andrade\n29/11/2002\nindianara.0v\n31987760144\nAutônomo\n33350000\nRua senhora Maria Mamedes da Sil"
+    },
+    {
+      "nome": "Ingrid Fernandes",
+      "numero": "+553186135191",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Ingrid Fernandes de Freitas, sim"
+    },
+    {
+      "nome": "Ingrid Ramos",
+      "numero": "+553189229769",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de agendar acompanhamento nutricional com a Thay para iniciar agora na primeira semana de maio"
+    },
+    {
+      "nome": "Isabela",
+      "numero": "+553193255555",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Qual o valor da consulta?"
+    },
+    {
+      "nome": "Isabela",
+      "numero": "+553189231772",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "E a minha primeira consulta"
+    },
+    {
+      "nome": "Isabela Fernandes",
+      "numero": "+553194842833",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 8,
+      "conversas": 1,
+      "ultima_mensagem": "Presencial"
+    },
+    {
+      "nome": "Isabella Alves",
+      "numero": "+553187258768",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Vou olhar com calma e lhe retorno com a modalidade escolhida!! Obrigada!!"
+    },
+    {
+      "nome": "Isabella Rici",
+      "numero": "+553194530307",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Isabella Silva",
+      "numero": "+553173113280",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Isabella Silva\nPrimeira"
+    },
+    {
+      "nome": "Isabelle",
+      "numero": "+553194424909",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Olá, Ana! Tudo bem?\nMe chamo Isabelle e nunca me consultei com qualquer nutricionista. \nGostaria de saber mais sobre os "
+    },
+    {
+      "nome": "Isadora Maciel",
+      "numero": "+553199137519",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 28,
+      "conversas": 1,
+      "ultima_mensagem": "Muito obrigada"
+    },
+    {
+      "nome": "Ivi Trindade 🦋",
+      "numero": "+553188620516",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Quero entender melhor como funciona"
+    },
+    {
+      "nome": "Izabela",
+      "numero": "+553198287121",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Izabela Ruas",
+      "numero": "+553195190548",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Izabela Ruas \nJá sou paciente, mas já tem tempo."
+    },
+    {
+      "nome": "Izadora",
+      "numero": "+553199162583",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Me chamo Izadora Ribeiro, seria primeira consulta"
+    },
+    {
+      "nome": "IZA🥰🥰",
+      "numero": "+553199203280",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 1,
+      "ultima_mensagem": "Única coisa que me incomoda"
+    },
+    {
+      "nome": "Jaine Fidelis",
+      "numero": "+554999347121",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Jaine Fidelis \nPrimeira consulta"
+    },
+    {
+      "nome": "Jaqueline",
+      "numero": "+553194860684",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 37,
+      "conversas": 2,
+      "ultima_mensagem": "Eu gostaria de agendar um retorno com a Thaynara"
+    },
+    {
+      "nome": "Jessica Sales",
+      "numero": "+553196578599",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Presencial"
+    },
+    {
+      "nome": "Jhenifer Juliana",
+      "numero": "+553186122256",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Jhenifer Juliana \nSim"
+    },
+    {
+      "nome": "Josy😍",
+      "numero": "+553190815569",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Joyce Lopes",
+      "numero": "+553187166172",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Bom dia !!\nMeu nome é Joyce Lopes \nSeria minha primeira consulta"
+    },
+    {
+      "nome": "Joyce Menezes",
+      "numero": "+553192283950",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Joyce Vilela",
+      "numero": "+553194966489",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Perfeito vou avaliar obrigada"
+    },
+    {
+      "nome": "Julia Santos",
+      "numero": "+553188512691",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "exemplo, paguei esse plano mas ter o retorno a cada 2 ou 3 meses?"
+    },
+    {
+      "nome": "Juliana Barroso",
+      "numero": "+553899709441",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 42,
+      "conversas": 1,
+      "ultima_mensagem": "Deu sim"
+    },
+    {
+      "nome": "Juliana Cassimiro",
+      "numero": "+553199495564",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Juliana Cassimiro \n1⁰ vez! Vocês atendem convênio"
+    },
+    {
+      "nome": "Juliana Melo",
+      "numero": "+553197408218",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "1ª consulta, interesse em acompanhamento presencial"
+    },
+    {
+      "nome": "Juliana Soares",
+      "numero": "+553186240221",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Juliana Soares \nJá consultei com ela ano passado, e agora quero retornar"
+    },
+    {
+      "nome": "Jullie Mariane ✨",
+      "numero": "+553185254043",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 19,
+      "conversas": 2,
+      "ultima_mensagem": "Pode confirmar, mas é na quarta feira o agendamento!"
+    },
+    {
+      "nome": "Jussara Oliveira",
+      "numero": "+553172587216",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Jussara Oliveira \nPrimeira consulta"
+    },
+    {
+      "nome": "Jéssica",
+      "numero": "+553186736072",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 12,
+      "conversas": 1,
+      "ultima_mensagem": "Excelente! Para finalizarmos o cadastro e garantirmos o horário, por favor informe rapidamente:\n\n* Nome completo: Jessic"
+    },
+    {
+      "nome": "Jéssica Correia",
+      "numero": "+553193792310",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "primeira consulta"
+    },
+    {
+      "nome": "Jéssica Moreira",
+      "numero": "+553172278044",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "1 consulta"
+    },
+    {
+      "nome": "Júlia Costa",
+      "numero": "+553183342740",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Seria primeira consulta"
+    },
+    {
+      "nome": "Júnia Gonçalves",
+      "numero": "+553196278418",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Júnia Gonçalves \nSim minha primeira consulta"
+    },
+    {
+      "nome": "Kaka",
+      "numero": "+553183308552",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 19,
+      "conversas": 1,
+      "ultima_mensagem": "Desculpa a demora"
+    },
+    {
+      "nome": "Kamilly Ferreira",
+      "numero": "+553186733706",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Karen Cristina",
+      "numero": "+553186791324",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 9,
+      "conversas": 2,
+      "ultima_mensagem": "Eu entro em contato , melhor"
+    },
+    {
+      "nome": "Karina Viana",
+      "numero": "+553193387500",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Eu já fiz uma consulta com ela mas tem muito tempo já"
+    },
+    {
+      "nome": "Karine Mayara",
+      "numero": "+553198096957",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Kathleen Roberta",
+      "numero": "+553198648389",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Essa segunda tem?"
+    },
+    {
+      "nome": "Keila",
+      "numero": "+5521997128378",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Meu nome é Keila Fernandes, primeira consulta"
+    },
+    {
+      "nome": "Kelly Salomão",
+      "numero": "+553185517644",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 9,
+      "conversas": 1,
+      "ultima_mensagem": "* Nome completo: Kelly Mylene dos Santos Salomão\n* Data de nascimento: 05/07/73\n* Instagram (se houver): kelly_mylene\n* "
+    },
+    {
+      "nome": "Ketery Rocha",
+      "numero": "+553186684598",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Ketery Rocha \nPrimeira"
+    },
+    {
+      "nome": "Ketherin Dias",
+      "numero": "+553183524809",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 13,
+      "conversas": 2,
+      "ultima_mensagem": "Quero agendar por favor"
+    },
+    {
+      "nome": "Ketlin Soares",
+      "numero": "+553180302415",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 20,
+      "conversas": 2,
+      "ultima_mensagem": "marcadinhooo 🥰"
+    },
+    {
+      "nome": "Ketria Ribeiro",
+      "numero": "+553193933117",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Obrigada, assim que decidir entro em contato!"
+    },
+    {
+      "nome": "Laiza moura",
+      "numero": "+553171183138",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Obrigada"
+    },
+    {
+      "nome": "Larissa",
+      "numero": "+553196767330",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Larissa",
+      "numero": "+553189067968",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Larissa Guimarães",
+      "numero": "+553196345432",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "é minha primeira consulta"
+    },
+    {
+      "nome": "Larissa Vieira",
+      "numero": "+553186817174",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 2,
+      "ultima_mensagem": "Confirmado"
+    },
+    {
+      "nome": "Lavinia Matos",
+      "numero": "+553184651313",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 2,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Leidiane",
+      "numero": "+553387631913",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 37,
+      "conversas": 1,
+      "ultima_mensagem": "Ok"
+    },
+    {
+      "nome": "Leidy",
+      "numero": "+553194470962",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 17,
+      "conversas": 2,
+      "ultima_mensagem": "Muito obrigada ☺️"
+    },
+    {
+      "nome": "Leticia Ribeiro",
+      "numero": "+553191178452",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "O plano ouro só te opção via cartão e pix?"
+    },
+    {
+      "nome": "Letícia Coimbra",
+      "numero": "+553198641543",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 1,
+      "ultima_mensagem": "Tem precisão da medidas ?"
+    },
+    {
+      "nome": "Letícia Fernandes",
+      "numero": "+553184535449",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Letícia Fernandes \nPrimeira consulta"
+    },
+    {
+      "nome": "Letícia Polyana",
+      "numero": "+553180260550",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Lilian Karoline",
+      "numero": "+553175208125",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Obrigada ☺️"
+    },
+    {
+      "nome": "Liliane Eduarda",
+      "numero": "+553199315014",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 10,
+      "conversas": 1,
+      "ultima_mensagem": "Esses valores seriam apenas no crédito o parcelamento?"
+    },
+    {
+      "nome": "Lindaiara Gonçalves",
+      "numero": "+553184111523",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Lindaiara Gonçalves \nPrimeira consulta"
+    },
+    {
+      "nome": "Lorena Martins",
+      "numero": "+553194865785",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 2,
+      "ultima_mensagem": "Sim"
+    },
+    {
+      "nome": "Lorena Mendonça",
+      "numero": "+553898035121",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Luana dos Santos",
+      "numero": "+553194444651",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Luana dos Santos \nPrimeira consulta"
+    },
+    {
+      "nome": "LUANA SILVA",
+      "numero": "+553198971374",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 22,
+      "conversas": 1,
+      "ultima_mensagem": "Simm blz"
+    },
+    {
+      "nome": "Lucileny Maely⚖ Contadora",
+      "numero": "+553195081811",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 14,
+      "conversas": 2,
+      "ultima_mensagem": "Confirmado"
+    },
+    {
+      "nome": "Lucélia ✨",
+      "numero": "+553191364921",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 14,
+      "conversas": 2,
+      "ultima_mensagem": "Gostaria de saber informações sobre os planos"
+    },
+    {
+      "nome": "Ludiana Ferreira",
+      "numero": "+553175795803",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Ludiana Ferreira \n\nPrimeira vez"
+    },
+    {
+      "nome": "Ludmila Araújo",
+      "numero": "+553189496829",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 13,
+      "conversas": 2,
+      "ultima_mensagem": "Por favor"
+    },
+    {
+      "nome": "Lusiete Felix de Oliveira",
+      "numero": "+553197305288",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 31,
+      "conversas": 1,
+      "ultima_mensagem": "Pix01444618628"
+    },
+    {
+      "nome": "Luísa 🦋",
+      "numero": "+553189053760",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Ah sim, entendi! Muito obrigada, viu? 🥰"
+    },
+    {
+      "nome": "Lyvia Guimarães",
+      "numero": "+553791224890",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Lívia Oliveira",
+      "numero": "+553193971187",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Malu",
+      "numero": "+553185348618",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 16,
+      "conversas": 2,
+      "ultima_mensagem": "Oi \nBoa tarde ! Desculpe \nEu me mudei , não poderei seguir com as consultas \nObrigada"
+    },
+    {
+      "nome": "Manu Cruz",
+      "numero": "+553183097321",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 1,
+      "ultima_mensagem": "Vamos sim"
+    },
+    {
+      "nome": "Marcela Ribeiro",
+      "numero": "+553186828094",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Presencial"
+    },
+    {
+      "nome": "Marcele Pereira Viegas",
+      "numero": "+553175051389",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Gostaria de agendar uma consulta com retorno de 45 dias"
+    },
+    {
+      "nome": "Marcella 😅",
+      "numero": "+553187852649",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 36,
+      "conversas": 2,
+      "ultima_mensagem": "Bom final de semana"
+    },
+    {
+      "nome": "Marcia",
+      "numero": "+553186055870",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Marcia",
+      "numero": "+553199712398",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Marcos Dhaniel",
+      "numero": "+553191166509",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Presencial"
+    },
+    {
+      "nome": "Maria Clara Santos",
+      "numero": "+553189373165",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Maria Clara Santos \nPrimeira"
+    },
+    {
+      "nome": "Maria Eduarda",
+      "numero": "+553198524747",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "A dieta por formulário mesmo"
+    },
+    {
+      "nome": "Maria Eduarda Rodrigues dos Santos",
+      "numero": "+553186904904",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 17,
+      "conversas": 1,
+      "ultima_mensagem": "Estou um pouco perdida"
+    },
+    {
+      "nome": "Maria Eduarda 💕",
+      "numero": "+553199793504",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Maria Luiza Ferreira",
+      "numero": "+553175265318",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 2,
+      "ultima_mensagem": "Certo"
+    },
+    {
+      "nome": "Maria Luiza Horta",
+      "numero": "+558791594835",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Mariana Mesquita",
+      "numero": "+553188225877",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Presencial"
+    },
+    {
+      "nome": "Mariana Paranhos",
+      "numero": "+553183165944",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 7,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Mariane Gomes - Contadora",
+      "numero": "+553187206741",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 10,
+      "conversas": 2,
+      "ultima_mensagem": "Gostaria de agendar o retorno com a Thay"
+    },
+    {
+      "nome": "Marina Vieira",
+      "numero": "+553196005610",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 14,
+      "conversas": 2,
+      "ultima_mensagem": "Quanto está a consulta ,"
+    },
+    {
+      "nome": "Marnês Costa",
+      "numero": "+553192405085",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Olá \nSim e a primeira consulta \nMarnês Costa"
+    },
+    {
+      "nome": "mary😘",
+      "numero": "+553187713131",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "mariana luiza\nprimeira consulta"
+    },
+    {
+      "nome": "Marília da Silva Gonçalves",
+      "numero": "+553198859313",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 20,
+      "conversas": 1,
+      "ultima_mensagem": "Marília da Silva Gonçalves \n13/09/1995\n@mariisilvag\n31998859313\nmariliagoncalves77@yahoo.com \nAutônoma/dona de casa \nRua"
+    },
+    {
+      "nome": "Matheus Fendler",
+      "numero": "+553192097329",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 10,
+      "conversas": 2,
+      "ultima_mensagem": "Nunca fui informado sobre isso"
+    },
+    {
+      "nome": "Mayene Inácio",
+      "numero": "+553191461020",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Mayene Inácio\nPrimeira consulta"
+    },
+    {
+      "nome": "Maysa Santos",
+      "numero": "+553195125115",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 2,
+      "ultima_mensagem": "eu vim do Instagram, comecei a acompanhar o trabalho da nutri por lá, gostaria de saber se ela atende pacientes com SOP,"
+    },
+    {
+      "nome": "Michelle Correa",
+      "numero": "+553186059447",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "1º consulta"
+    },
+    {
+      "nome": "Michelle Miranda",
+      "numero": "+553198840840",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 18,
+      "conversas": 1,
+      "ultima_mensagem": "será pix"
+    },
+    {
+      "nome": "Millena Gomes",
+      "numero": "+553173377260",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 58,
+      "conversas": 2,
+      "ultima_mensagem": "mas cada um paga o plano a parte? ou seja, R$1.400 para mim e R$1.400 para minha dupla, aplicando 10% de desconto?"
+    },
+    {
+      "nome": "Millene Mendes",
+      "numero": "+553199531943",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Sim, será a primeira consulta"
+    },
+    {
+      "nome": "Natalia Leonel",
+      "numero": "+553175962568",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 2,
+      "ultima_mensagem": "Confirmado"
+    },
+    {
+      "nome": "Natana Ferreira",
+      "numero": "+553188840993",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Seria a primeira consulta"
+    },
+    {
+      "nome": "Nath Santarita",
+      "numero": "+553186415928",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Nathalia, sim. Primeira vez"
+    },
+    {
+      "nome": "Nathalia Paiva",
+      "numero": "+553171110928",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Seria a primeira consulta"
+    },
+    {
+      "nome": "Naty 🌼",
+      "numero": "+553171618817",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Boa tarde Ana.\nMeu nome é Natália Lourina \nPrimeiro consulta"
+    },
+    {
+      "nome": "Natália Ketlin",
+      "numero": "+553182501540",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Natália Oliveira",
+      "numero": "+553195173708",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Natália Oliveira\n\nSim primeira contato com vocês"
+    },
+    {
+      "nome": "Neuza Dorinato ❤️",
+      "numero": "+553185225167",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 2,
+      "ultima_mensagem": "Ok!"
+    },
+    {
+      "nome": "Nicole",
+      "numero": "+553191411646",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Nicole Santiago",
+      "numero": "+553186309012",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Seria primeira consulta , e gostariade saber se ela faz atendimento online"
+    },
+    {
+      "nome": "Ninha",
+      "numero": "+553186123383",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 37,
+      "conversas": 2,
+      "ultima_mensagem": "Boa tarde"
+    },
+    {
+      "nome": "Nome: Damázia Quirino Dias mota",
+      "numero": "+5527996522304",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 26,
+      "conversas": 1,
+      "ultima_mensagem": "Pode ser"
+    },
+    {
+      "nome": "Nutricionista Thaynara Teixeira",
+      "numero": "+553191394759",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1564,
+      "conversas": 2,
+      "ultima_mensagem": "obrigada"
+    },
+    {
+      "nome": "Pamella Aguiar Fonseca",
+      "numero": "+553197225224",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 9,
+      "conversas": 1,
+      "ultima_mensagem": "Ok. Obrigada."
+    },
+    {
+      "nome": "Paola",
+      "numero": "+553185713664",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 2,
+      "ultima_mensagem": "Oi Ana, pode sim. Obrigada!"
+    },
+    {
+      "nome": "Patricia Mara Souza da Silva",
+      "numero": "+553188217115",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 26,
+      "conversas": 1,
+      "ultima_mensagem": "Patricia Mara Souza da Silva \nNao estou gestante\n21/09/84\nPatymss21@gmail.com \n31988217115\nServidora pública\nRua sao laz"
+    },
+    {
+      "nome": "Patrícia Quadros",
+      "numero": "+553196814408",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Qual eh o valor dessa forma? \n1 consulta presencial 5 online"
+    },
+    {
+      "nome": "Paty",
+      "numero": "+553171643229",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Paula",
+      "numero": "+553198150194",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Paula Amaral Barcelos, sim primeira consulta"
+    },
+    {
+      "nome": "Paula Gomes",
+      "numero": "+553190636502",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Meu nome é Paula e seria minha primeira consulta"
+    },
+    {
+      "nome": "Paula Rabelo",
+      "numero": "+553182174372",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 1,
+      "ultima_mensagem": "O tratamento específico do lipedema está dentro do plano que for escolhido ou há um plano específico pra quem tem lipede"
+    },
+    {
+      "nome": "Pode confirmar",
+      "numero": "+553195163144",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 10,
+      "conversas": 2,
+      "ultima_mensagem": "Eu que agradeço!"
+    },
+    {
+      "nome": "Pode confirmar",
+      "numero": "+553171229314",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Bom dia.\nDesculpa não ter respondido.\n\nNão poderei comparecer a consulta"
+    },
+    {
+      "nome": "Pode confirmar",
+      "numero": "+553187966162",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Oi Ana, vou precisar desmarcar essa consulta, nao vou conseguir efetuar o pagamento desse mes."
+    },
+    {
+      "nome": "Pode confirmar",
+      "numero": "+553180116799",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 8,
+      "conversas": 1,
+      "ultima_mensagem": "Pode confirmar"
+    },
+    {
+      "nome": "Poliana Ferreira",
+      "numero": "+553186960797",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Poliana Souza",
+      "numero": "+553186634603",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 17,
+      "conversas": 1,
+      "ultima_mensagem": "Obrigada ☺️"
+    },
+    {
+      "nome": "Primeira consulta",
+      "numero": "+553197403047",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Primeira consulta",
+      "numero": "+553175469555",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 1,
+      "ultima_mensagem": "O valor no pix qual seria o desconto?"
+    },
+    {
+      "nome": "Primeira consulta",
+      "numero": "+553189726332",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 8,
+      "conversas": 1,
+      "ultima_mensagem": "Eu que agradeço"
+    },
+    {
+      "nome": "Priscila Braga",
+      "numero": "+553191164492",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 62,
+      "conversas": 1,
+      "ultima_mensagem": "Aguardo"
+    },
+    {
+      "nome": "Produção Tamires Alves",
+      "numero": "+553199722187",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 1,
+      "ultima_mensagem": "Está ativo ainda ?"
+    },
+    {
+      "nome": "Psicóloga Camila Donnard",
+      "numero": "+553194995805",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 26,
+      "conversas": 2,
+      "ultima_mensagem": "Gostaria de verificar se consigo marcar minha segunda consulta no dia 07 ou 14 de maio ao invés de dia 18."
+    },
+    {
+      "nome": "Qual valor",
+      "numero": "+553186977733",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Qual valor"
+    },
+    {
+      "nome": "Quero remarcar🤯",
+      "numero": "+553184201871",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 8,
+      "conversas": 1,
+      "ultima_mensagem": "15 Hrs"
+    },
+    {
+      "nome": "Rafael Corrêa",
+      "numero": "+553184684024",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 15,
+      "conversas": 1,
+      "ultima_mensagem": "Pode sim pfv"
+    },
+    {
+      "nome": "Rafaela Machado",
+      "numero": "+553496789565",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "On-line"
+    },
+    {
+      "nome": "Rafaela Pinheiro",
+      "numero": "+553173629152",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Rafaela Pinheiro, primeira consulta."
+    },
+    {
+      "nome": "Rafaella Gama",
+      "numero": "+553192231122",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta"
+    },
+    {
+      "nome": "Raiam Maia",
+      "numero": "+553188133136",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 2,
+      "ultima_mensagem": "Pode confirmar"
+    },
+    {
+      "nome": "Raphaela",
+      "numero": "+553186935446",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Queria saber os valores"
+    },
+    {
+      "nome": "Raquel Cançado",
+      "numero": "+553198279117",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Seria primeira consulta"
+    },
+    {
+      "nome": "Raquel Costa",
+      "numero": "+553199362995",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Raquel Reis",
+      "numero": "+553175580990",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 16,
+      "conversas": 2,
+      "ultima_mensagem": "Tudo bem? Gostaria de saber se a plano casal?"
+    },
+    {
+      "nome": "Raquelice Dias 🙌🙌",
+      "numero": "+553199311742",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 9,
+      "conversas": 1,
+      "ultima_mensagem": "Por favor"
+    },
+    {
+      "nome": "Rayane Cristina",
+      "numero": "+553189721834",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Qual o valor ?"
+    },
+    {
+      "nome": "Rayra Lage",
+      "numero": "+553193571789",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Gostaria de entender como estão os valores e dinâmica das consultas, por favor!!"
+    },
+    {
+      "nome": "Rayssa",
+      "numero": "+553193738228",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Ok, obrigada! 😊"
+    },
+    {
+      "nome": "Regiane Vaz",
+      "numero": "+553192091762",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 1,
+      "ultima_mensagem": "Manhã"
+    },
+    {
+      "nome": "Renata Melodivo",
+      "numero": "+553191060464",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 1,
+      "ultima_mensagem": "Poderia ser a dieta por formulário?"
+    },
+    {
+      "nome": "Renata Rodrigues de Oliveira",
+      "numero": "+553897424165",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 19,
+      "conversas": 1,
+      "ultima_mensagem": "Tem disponibilidade na quarta ou sexta?"
+    },
+    {
+      "nome": "Renata Vieira",
+      "numero": "+553193705051",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 9,
+      "conversas": 2,
+      "ultima_mensagem": "Boa tarde\nConfirmado"
+    },
+    {
+      "nome": "Rita",
+      "numero": "+553183028445",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 18,
+      "conversas": 2,
+      "ultima_mensagem": "Boa tarde! Sim"
+    },
+    {
+      "nome": "Roberta",
+      "numero": "+553196779326",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 37,
+      "conversas": 2,
+      "ultima_mensagem": "Obrigada"
+    },
+    {
+      "nome": "Roberta Abreu",
+      "numero": "+553185062358",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 1,
+      "ultima_mensagem": "Muito obrigada!!"
+    },
+    {
+      "nome": "Romanelly Oliveira",
+      "numero": "+553183177859",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Ok vou conferir"
+    },
+    {
+      "nome": "Rosa",
+      "numero": "+553198572028",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Tenho retorno marcado para dia 17/04 e não vou conseguir ir, qual dia você tem disponível?"
+    },
+    {
+      "nome": "Rozeli Avelar",
+      "numero": "+553194077017",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Ok"
+    },
+    {
+      "nome": "Sabrina C DE SOUZA BARBOSA",
+      "numero": "+553172487633",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 31,
+      "conversas": 1,
+      "ultima_mensagem": "Sabrinasouzabarbosa@hotmail.com"
+    },
+    {
+      "nome": "Sabrina Magalhaes",
+      "numero": "+553171324093",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Sabrina Magalhães, sim primeira consulta"
+    },
+    {
+      "nome": "Sabrina Marcelino",
+      "numero": "+553194468708",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Sabrina Oliveira",
+      "numero": "+553185642743",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Quero garantir minha vaga para o próximo Nosso\nMomento em Movimento �"
+    },
+    {
+      "nome": "Sara Viana",
+      "numero": "+553198796778",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 10,
+      "conversas": 1,
+      "ultima_mensagem": "?"
+    },
+    {
+      "nome": "Sarah",
+      "numero": "+553192029746",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 28,
+      "conversas": 2,
+      "ultima_mensagem": "Oi! Tudo bem? Sim, foi desmarcada"
+    },
+    {
+      "nome": "Sarah Gabrielle",
+      "numero": "+553183209274",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Tudo bem ?"
+    },
+    {
+      "nome": "Sarah Lemes",
+      "numero": "+553173029120",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Sarah Lemes \nÉ a minha primeira consulta sim"
+    },
+    {
+      "nome": "Se tiver",
+      "numero": "+553188179268",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 11,
+      "conversas": 1,
+      "ultima_mensagem": "Boa noite!\nTudo bem?\nMais uma vez não vou conseguir ir na segunda-feira, tive um imprevisto de última hora"
+    },
+    {
+      "nome": "Sem nome 001",
+      "numero": "+5516506081002",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Ok! Muito obrigada pela atenção e compreensão!!! 🙌🏼"
+    },
+    {
+      "nome": "Sem nome 002",
+      "numero": "+5531685500944",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 9,
+      "conversas": 1,
+      "ultima_mensagem": "Pode ser na quarta as 16h"
+    },
+    {
+      "nome": "Sem nome 003",
+      "numero": "+5533749465608",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Confirmado"
+    },
+    {
+      "nome": "Sem nome 008",
+      "numero": "+5521976275146",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 2,
+      "ultima_mensagem": "Confirmado ❤️"
+    },
+    {
+      "nome": "Sem nome 012",
+      "numero": "+553171015623",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 2,
+      "ultima_mensagem": "Tá bom☺️"
+    },
+    {
+      "nome": "Sem nome 013",
+      "numero": "+553171102115",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 25,
+      "conversas": 2,
+      "ultima_mensagem": "Eu que agradeço"
+    },
+    {
+      "nome": "Sem nome 014",
+      "numero": "+553171125413",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 19,
+      "conversas": 2,
+      "ultima_mensagem": "pode sim"
+    },
+    {
+      "nome": "Sem nome 015",
+      "numero": "+553171178274",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 33,
+      "conversas": 2,
+      "ultima_mensagem": "Muito obrigada 💖"
+    },
+    {
+      "nome": "Sem nome 021",
+      "numero": "+553171520505",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 23,
+      "conversas": 2,
+      "ultima_mensagem": "Pode confirmar sim"
+    },
+    {
+      "nome": "Sem nome 025",
+      "numero": "+553171717137",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Confirmado"
+    },
+    {
+      "nome": "Sem nome 027",
+      "numero": "+553171796689",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Quero garantir minha vaga para o próximo Nosso\nMomento em Movimento �"
+    },
+    {
+      "nome": "Sem nome 028",
+      "numero": "+553171821746",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Quero garantir minha vaga para o próximo Nosso\nMomento em Movimento �"
+    },
+    {
+      "nome": "Sem nome 029",
+      "numero": "+553171857604",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "‎Olá, me Chamo Ana Fernandes\nSou Corretora de Imóveis ,  Especialista em Lançamentos Imobiliários no Vetor Norte.\nFico f"
+    },
+    {
+      "nome": "Sem nome 031",
+      "numero": "+553171893255",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 91,
+      "conversas": 1,
+      "ultima_mensagem": "Não consegui localizar sua consulta com esse dado.\n\nPode confirmar seu *nome completo* ou enviar o *e-mail cadastrado*?"
+    },
+    {
+      "nome": "Sem nome 033",
+      "numero": "+553171940050",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Oii, tudo bem!\nPode ser."
+    },
+    {
+      "nome": "Sem nome 041",
+      "numero": "+553173520473",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Sem nome 042",
+      "numero": "+553173521975",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Quero garantir minha vaga para o próximo Nosso\nMomento em Movimento �"
+    },
+    {
+      "nome": "Sem nome 043",
+      "numero": "+553173528234",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Já já te confirmo"
+    },
+    {
+      "nome": "Sem nome 049",
+      "numero": "+553175067371",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Estou confirmado, ansioso por esse consulta kk"
+    },
+    {
+      "nome": "Sem nome 051",
+      "numero": "+553175118584",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Que bom ter você por aqui 💚\n\nSou a Ana, responsável pelos agendamentos da nutricionista Thaynara Teixeira.\n\nPra com"
+    },
+    {
+      "nome": "Sem nome 052",
+      "numero": "+553175151748",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 27,
+      "conversas": 1,
+      "ultima_mensagem": "Bom dia! \n\nDiferença da consulta Rodrigo"
+    },
+    {
+      "nome": "Sem nome 054",
+      "numero": "+553175541942",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Olá boa tarde .. nao vou conseguir comparecer"
+    },
+    {
+      "nome": "Sem nome 055",
+      "numero": "+553175736903",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 056",
+      "numero": "+553175889839",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Boa noite \nSim confirmado"
+    },
+    {
+      "nome": "Sem nome 059",
+      "numero": "+553180210905",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 22,
+      "conversas": 2,
+      "ultima_mensagem": "Tá confirmado ✅"
+    },
+    {
+      "nome": "Sem nome 061",
+      "numero": "+553181039083",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 064",
+      "numero": "+553182054885",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Confirmado"
+    },
+    {
+      "nome": "Sem nome 067",
+      "numero": "+553182482626",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Emagrecimento é hipertrofia \nPresencial"
+    },
+    {
+      "nome": "Sem nome 069",
+      "numero": "+553182983975",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Sem nome 071",
+      "numero": "+553183124339",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 16,
+      "conversas": 2,
+      "ultima_mensagem": "Pode confirmar"
+    },
+    {
+      "nome": "Sem nome 075",
+      "numero": "+553183429159",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 53,
+      "conversas": 2,
+      "ultima_mensagem": "Ok obrigada"
+    },
+    {
+      "nome": "Sem nome 080",
+      "numero": "+553183706595",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Presencial"
+    },
+    {
+      "nome": "Sem nome 092",
+      "numero": "+553184448214",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 2,
+      "ultima_mensagem": "Pode sim"
+    },
+    {
+      "nome": "Sem nome 093",
+      "numero": "+553184461747",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Ei, boa tarde!\n\n- Lorranne Santos\n- ⁠Seria primeira consulta"
+    },
+    {
+      "nome": "Sem nome 096",
+      "numero": "+553184709423",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 14,
+      "conversas": 2,
+      "ultima_mensagem": "Boa noite, tudo bem? Perdão, não vi a mensagem, mas estamos confirmadas 🤍"
+    },
+    {
+      "nome": "Sem nome 098",
+      "numero": "+553184998754",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 099",
+      "numero": "+553185005921",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 15,
+      "conversas": 2,
+      "ultima_mensagem": "Obrigadaaaa"
+    },
+    {
+      "nome": "Sem nome 100",
+      "numero": "+553185042506",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Bom dia! Tudo bem sim. \n\nInfelizmente não vou conseguir comparecer a consulta de amanhã. Podemos remarcar para Março, po"
+    },
+    {
+      "nome": "Sem nome 101",
+      "numero": "+553185090477",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Boa tarde"
+    },
+    {
+      "nome": "Sem nome 104",
+      "numero": "+553185418903",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Sem nome 106",
+      "numero": "+553185450506",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Quero garantir minha vaga para o próximo Nosso\nMomento em Movimento �"
+    },
+    {
+      "nome": "Sem nome 107",
+      "numero": "+553185516091",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "performance, atendimento online"
+    },
+    {
+      "nome": "Sem nome 108",
+      "numero": "+553185518762",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 29,
+      "conversas": 2,
+      "ultima_mensagem": "Pode confirmar sim"
+    },
+    {
+      "nome": "Sem nome 109",
+      "numero": "+553185536874",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Quero garantir minha vaga para o próximo Nosso\nMomento em Movimento �"
+    },
+    {
+      "nome": "Sem nome 111",
+      "numero": "+553185709360",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 2,
+      "ultima_mensagem": "Oi boa tarde Gostaria de saber o valor da consulta"
+    },
+    {
+      "nome": "Sem nome 113",
+      "numero": "+553185869159",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 20,
+      "conversas": 2,
+      "ultima_mensagem": "Pode confirmar sim!"
+    },
+    {
+      "nome": "Sem nome 117",
+      "numero": "+553185976256",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 2,
+      "ultima_mensagem": "Pode confirmar sim"
+    },
+    {
+      "nome": "Sem nome 118",
+      "numero": "+553185991486",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 15,
+      "conversas": 2,
+      "ultima_mensagem": "Tá pode ser o mesmo horário 17h"
+    },
+    {
+      "nome": "Sem nome 124",
+      "numero": "+553186476075",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 2,
+      "ultima_mensagem": "Obg"
+    },
+    {
+      "nome": "Sem nome 125",
+      "numero": "+553186485020",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Sem nome 127",
+      "numero": "+553186649288",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Quero garantir minha vaga para o próximo Nosso\nMomento em Movimento �"
+    },
+    {
+      "nome": "Sem nome 130",
+      "numero": "+553186716950",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 40,
+      "conversas": 2,
+      "ultima_mensagem": "Obrigada"
+    },
+    {
+      "nome": "Sem nome 132",
+      "numero": "+553186768835",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Nega é a Ana ✨"
+    },
+    {
+      "nome": "Sem nome 134",
+      "numero": "+553186799882",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 24,
+      "conversas": 2,
+      "ultima_mensagem": "Joice de Souza Viana silva \n13/07/1990\n31986476075\njoicejeane387@gmail.com \nGerente \n33113010 \nAvenida Adair de Souza\n43"
+    },
+    {
+      "nome": "Sem nome 135",
+      "numero": "+553186804604",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 15,
+      "conversas": 2,
+      "ultima_mensagem": "Oi tudo bem \nPode confirmar 😃"
+    },
+    {
+      "nome": "Sem nome 137",
+      "numero": "+553186844160",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 2,
+      "ultima_mensagem": "Confirmado"
+    },
+    {
+      "nome": "Sem nome 140",
+      "numero": "+553186960163",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 2,
+      "ultima_mensagem": "Bom Dia!!\nPode confirmar, por gentileza!"
+    },
+    {
+      "nome": "Sem nome 142",
+      "numero": "+553186983603",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 9,
+      "conversas": 1,
+      "ultima_mensagem": "Feito , obrigada."
+    },
+    {
+      "nome": "Sem nome 143",
+      "numero": "+553187032618",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 22,
+      "conversas": 2,
+      "ultima_mensagem": "Boa tarde! Pode confirmar sim por favor."
+    },
+    {
+      "nome": "Sem nome 148",
+      "numero": "+553187304004",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Larissa \nJá fui paciente"
+    },
+    {
+      "nome": "Sem nome 151",
+      "numero": "+553187435030",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 15,
+      "conversas": 2,
+      "ultima_mensagem": "Entendi. \nObrigada."
+    },
+    {
+      "nome": "Sem nome 152",
+      "numero": "+553187644311",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 30,
+      "conversas": 2,
+      "ultima_mensagem": "Me manda por favor"
+    },
+    {
+      "nome": "Sem nome 154",
+      "numero": "+553187670666",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 8,
+      "conversas": 1,
+      "ultima_mensagem": "Tá certo vou fazer"
+    },
+    {
+      "nome": "Sem nome 155",
+      "numero": "+553187712345",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 17,
+      "conversas": 1,
+      "ultima_mensagem": "Oiee! Bom dia! Sim sim, confirmado :))"
+    },
+    {
+      "nome": "Sem nome 156",
+      "numero": "+553187735985",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 163",
+      "numero": "+553188404550",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Bom dia ! Quero fazer o de consulta única no Pix"
+    },
+    {
+      "nome": "Sem nome 168",
+      "numero": "+553188695607",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 2,
+      "ultima_mensagem": "Pode ser sexta as 17 então vou tentar sair mais cedo…"
+    },
+    {
+      "nome": "Sem nome 175",
+      "numero": "+553189203101",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 177",
+      "numero": "+553189245468",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 178",
+      "numero": "+553189275896",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Quero garantir minha vaga para o próximo Nosso\nMomento em Movimento �"
+    },
+    {
+      "nome": "Sem nome 180",
+      "numero": "+553189435382",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 15,
+      "conversas": 2,
+      "ultima_mensagem": "Pode confirmar"
+    },
+    {
+      "nome": "Sem nome 181",
+      "numero": "+553189456788",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 13,
+      "conversas": 1,
+      "ultima_mensagem": "Oi Ana\nBoa tarde!\n\nVou precisar cancelar meu horário do dia 11/03. Já mandei uma mensagem para Thaynara e em breve eu en"
+    },
+    {
+      "nome": "Sem nome 187",
+      "numero": "+553189806333",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 13,
+      "conversas": 1,
+      "ultima_mensagem": "Boa tarde, tudo bem? \n\nEu havia pedido para ela cancelar a consulta. \n\nMuito obrigada ☺️"
+    },
+    {
+      "nome": "Sem nome 200",
+      "numero": "+553191951094",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 9,
+      "conversas": 1,
+      "ultima_mensagem": "19h"
+    },
+    {
+      "nome": "Sem nome 204",
+      "numero": "+553192059211",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 2,
+      "ultima_mensagem": "31986687010"
+    },
+    {
+      "nome": "Sem nome 205",
+      "numero": "+553192144033",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Quero garantir minha vaga para o próximo Nosso Momento em Movimento"
+    },
+    {
+      "nome": "Sem nome 208",
+      "numero": "+553192271016",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Olá Ana, me chamou Bruna Magda, será a primeira consulta"
+    },
+    {
+      "nome": "Sem nome 209",
+      "numero": "+553192292212",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Me desculpe, estava tentando entender se eu conseguiria ir hoje mesmo, mas não vou conseguir, marcaram reunião para mim "
+    },
+    {
+      "nome": "Sem nome 211",
+      "numero": "+553192495925",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "Em novembro e na fui em dezembro nem janeiro"
+    },
+    {
+      "nome": "Sem nome 214",
+      "numero": "+553192656601",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 1,
+      "ultima_mensagem": "Na avaliação presencial é feita bioimpedância ?"
+    },
+    {
+      "nome": "Sem nome 215",
+      "numero": "+553192719028",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "ja consultei"
+    },
+    {
+      "nome": "Sem nome 217",
+      "numero": "+553192894476",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Boa noite. Desculpa a demora. Vou precisar remarcar. Na verdade não consegui mudar nada desde a última consulta. Acho me"
+    },
+    {
+      "nome": "Sem nome 220",
+      "numero": "+553192966576",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 25,
+      "conversas": 2,
+      "ultima_mensagem": "Tá bom obrigada"
+    },
+    {
+      "nome": "Sem nome 222",
+      "numero": "+553193026319",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 39,
+      "conversas": 2,
+      "ultima_mensagem": "sim.. pode ser"
+    },
+    {
+      "nome": "Sem nome 224",
+      "numero": "+553193168470",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 21,
+      "conversas": 2,
+      "ultima_mensagem": "Obrigada"
+    },
+    {
+      "nome": "Sem nome 227",
+      "numero": "+553193387024",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "aliás parece que meu plano está acabando você olha para mim valores para renovação"
+    },
+    {
+      "nome": "Sem nome 230",
+      "numero": "+553193476188",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 8,
+      "conversas": 2,
+      "ultima_mensagem": "200,00 né"
+    },
+    {
+      "nome": "Sem nome 233",
+      "numero": "+553193581753",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Sem nome 235",
+      "numero": "+553193654309",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Tá bem, vou chamar uma amiga e retorno . Obrigada"
+    },
+    {
+      "nome": "Sem nome 237",
+      "numero": "+553193688310",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Sem nome 239",
+      "numero": "+553194079088",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 240",
+      "numero": "+553194085292",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Sem nome 242",
+      "numero": "+553194220036",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 10,
+      "conversas": 1,
+      "ultima_mensagem": "Sim confirmado 👍🏻"
+    },
+    {
+      "nome": "Sem nome 243",
+      "numero": "+553194256328",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 2,
+      "ultima_mensagem": "Oi, bom dia!\nPode confirmar sim!"
+    },
+    {
+      "nome": "Sem nome 244",
+      "numero": "+553194527050",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 10,
+      "conversas": 1,
+      "ultima_mensagem": "Por agora não vou ir, não consegui fazer dieta e nem treino por essas últimas semanas, e estou de mudança oq tbm dificul"
+    },
+    {
+      "nome": "Sem nome 245",
+      "numero": "+553194612986",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Boa noite! Tudo bem?"
+    },
+    {
+      "nome": "Sem nome 247",
+      "numero": "+553194696795",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 248",
+      "numero": "+553194704346",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Sem nome 251",
+      "numero": "+553195094799",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Sem nome 253",
+      "numero": "+553195164203",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Oiiii"
+    },
+    {
+      "nome": "Sem nome 255",
+      "numero": "+553195438950",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Qual valor?"
+    },
+    {
+      "nome": "Sem nome 256",
+      "numero": "+553195571226",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 65,
+      "conversas": 2,
+      "ultima_mensagem": "Boa tarde \nTudo bem . É só pq estou próximo , só se desse pra ela mesmo"
+    },
+    {
+      "nome": "Sem nome 257",
+      "numero": "+553195629520",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Quero garantir minha vaga para o próximo Nosso\nMomento em Movimento �"
+    },
+    {
+      "nome": "Sem nome 258",
+      "numero": "+553195634290",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 259",
+      "numero": "+553195744028",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Quero garantir minha vaga para o próximo Nosso\nMomento em Movimento �"
+    },
+    {
+      "nome": "Sem nome 261",
+      "numero": "+553195777140",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 31,
+      "conversas": 2,
+      "ultima_mensagem": "Boa noite!"
+    },
+    {
+      "nome": "Sem nome 268",
+      "numero": "+553196096036",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 2,
+      "ultima_mensagem": "Pode confirmar"
+    },
+    {
+      "nome": "Sem nome 271",
+      "numero": "+553196364210",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 9,
+      "conversas": 1,
+      "ultima_mensagem": "Podemos!"
+    },
+    {
+      "nome": "Sem nome 273",
+      "numero": "+553196467246",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Boa tarde confirmado"
+    },
+    {
+      "nome": "Sem nome 276",
+      "numero": "+553196672326",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 1,
+      "ultima_mensagem": "✨ Agradeço contato, mas no momento estou indisponível.\nDeixe sua mensagem, assim que possível irei respondê -lá(o)."
+    },
+    {
+      "nome": "Sem nome 278",
+      "numero": "+553196791065",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 9,
+      "conversas": 2,
+      "ultima_mensagem": "Confirmado"
+    },
+    {
+      "nome": "Sem nome 279",
+      "numero": "+553196850300",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Hipertrofia, redução de celulites \n\nPresencial"
+    },
+    {
+      "nome": "Sem nome 284",
+      "numero": "+553197103611",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 286",
+      "numero": "+553197155082",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 18,
+      "conversas": 2,
+      "ultima_mensagem": "Obrigada vc"
+    },
+    {
+      "nome": "Sem nome 288",
+      "numero": "+553197204911",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 35,
+      "conversas": 2,
+      "ultima_mensagem": "Eu que agradeço 🙏🏾"
+    },
+    {
+      "nome": "Sem nome 289",
+      "numero": "+553197270954",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 29,
+      "conversas": 2,
+      "ultima_mensagem": "Meninas boa noite! \nToquei interfone mas não sei se está funcionando!"
+    },
+    {
+      "nome": "Sem nome 292",
+      "numero": "+553197376423",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 9,
+      "conversas": 2,
+      "ultima_mensagem": "Confirmado"
+    },
+    {
+      "nome": "Sem nome 296",
+      "numero": "+553197647714",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 26,
+      "conversas": 2,
+      "ultima_mensagem": "Muito obrigada 😊🫶🏽"
+    },
+    {
+      "nome": "Sem nome 298",
+      "numero": "+553197735580",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 54,
+      "conversas": 2,
+      "ultima_mensagem": "Obrigada"
+    },
+    {
+      "nome": "Sem nome 300",
+      "numero": "+553197794262",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "oi Ana boa tarde! poderia enviar os novos valores?"
+    },
+    {
+      "nome": "Sem nome 301",
+      "numero": "+553197810630",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 11,
+      "conversas": 1,
+      "ultima_mensagem": "Não"
+    },
+    {
+      "nome": "Sem nome 302",
+      "numero": "+553197848702",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 2,
+      "ultima_mensagem": "Sim está confirmado obrigada 😉"
+    },
+    {
+      "nome": "Sem nome 305",
+      "numero": "+553197947433",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 17,
+      "conversas": 2,
+      "ultima_mensagem": "Por nada! Excelente tarde!"
+    },
+    {
+      "nome": "Sem nome 306",
+      "numero": "+553198010244",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Quero garantir minha vaga para o próximo Nosso\nMomento em Movimento �"
+    },
+    {
+      "nome": "Sem nome 307",
+      "numero": "+553198032374",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 1,
+      "ultima_mensagem": "Bom dia, confirmado 👍"
+    },
+    {
+      "nome": "Sem nome 309",
+      "numero": "+553198142299",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 66,
+      "conversas": 2,
+      "ultima_mensagem": "Obrigada"
+    },
+    {
+      "nome": "Sem nome 311",
+      "numero": "+553198287572",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 51,
+      "conversas": 2,
+      "ultima_mensagem": "Sim"
+    },
+    {
+      "nome": "Sem nome 312",
+      "numero": "+553198287891",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Boa noite. \n\nInfelizmente não consiguirei realizar a consulta. Entro em contato assim que possível."
+    },
+    {
+      "nome": "Sem nome 314",
+      "numero": "+553198302279",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 35,
+      "conversas": 2,
+      "ultima_mensagem": "Vou tentar hoje novamente"
+    },
+    {
+      "nome": "Sem nome 316",
+      "numero": "+553198450399",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 21,
+      "conversas": 2,
+      "ultima_mensagem": "Confirmado!"
+    },
+    {
+      "nome": "Sem nome 317",
+      "numero": "+553198608490",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 8,
+      "conversas": 1,
+      "ultima_mensagem": "Eu queria comprar mais 2"
+    },
+    {
+      "nome": "Sem nome 319",
+      "numero": "+553198639358",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 43,
+      "conversas": 2,
+      "ultima_mensagem": "Mas se perder não tem problema não viu. A gente marca uma nova consulta"
+    },
+    {
+      "nome": "Sem nome 320",
+      "numero": "+553198687884",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 2,
+      "ultima_mensagem": "Confirmado"
+    },
+    {
+      "nome": "Sem nome 321",
+      "numero": "+553198787032",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 13,
+      "conversas": 2,
+      "ultima_mensagem": "Obrigada"
+    },
+    {
+      "nome": "Sem nome 325",
+      "numero": "+553199040945",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 13,
+      "conversas": 2,
+      "ultima_mensagem": "Consegui agora"
+    },
+    {
+      "nome": "Sem nome 326",
+      "numero": "+553199080731",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 9,
+      "conversas": 1,
+      "ultima_mensagem": "Minha consulta está agendada pra quando?"
+    },
+    {
+      "nome": "Sem nome 327",
+      "numero": "+553199121208",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 26,
+      "conversas": 1,
+      "ultima_mensagem": "Boa tarde, peço desculpas mais uma vez, mas infelizmente nao vou conseguir ir."
+    },
+    {
+      "nome": "Sem nome 330",
+      "numero": "+553199299817",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 2,
+      "ultima_mensagem": "Boa tarde.\n\nPode cancelar, por favor!"
+    },
+    {
+      "nome": "Sem nome 332",
+      "numero": "+553199372249",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira"
+    },
+    {
+      "nome": "Sem nome 333",
+      "numero": "+553199381989",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 26,
+      "conversas": 1,
+      "ultima_mensagem": "Sim"
+    },
+    {
+      "nome": "Sem nome 334",
+      "numero": "+553199450713",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 2,
+      "ultima_mensagem": "Sim"
+    },
+    {
+      "nome": "Sem nome 335",
+      "numero": "+553199512265",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Quero garantir minha vaga para o próximo Nosso\nMomento em Movimento �"
+    },
+    {
+      "nome": "Sem nome 339",
+      "numero": "+553199754966",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 24,
+      "conversas": 2,
+      "ultima_mensagem": "Pode sim"
+    },
+    {
+      "nome": "Sem nome 340",
+      "numero": "+553199818003",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "júllia paiva"
+    },
+    {
+      "nome": "Sem nome 341",
+      "numero": "+553199844277",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Quero garantir minha vaga para o próximo Nosso\nMomento em Movimento �"
+    },
+    {
+      "nome": "Sem nome 342",
+      "numero": "+553199897376",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Sem nome 347",
+      "numero": "+553898795891",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 0,
+      "conversas": 1,
+      "ultima_mensagem": ""
+    },
+    {
+      "nome": "Sem nome 350",
+      "numero": "+557191168695",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Bom dia, vocês aceitam plano de saúde do Bradesco ?"
+    },
+    {
+      "nome": "Sem nome 351",
+      "numero": "+558591118630",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "On-line"
+    },
+    {
+      "nome": "Sem nome 352",
+      "numero": "+553187270998",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 55,
+      "conversas": 1,
+      "ultima_mensagem": "Obrigada"
+    },
+    {
+      "nome": "Sem nome 353",
+      "numero": "+553175090292",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 32,
+      "conversas": 1,
+      "ultima_mensagem": "Remarcamos em uma próxima vinda.  \nEu converso com a Thay.  Pq a próxima será online"
+    },
+    {
+      "nome": "Sem nome 354",
+      "numero": "+553180250864",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Oie\nConfirmado"
+    },
+    {
+      "nome": "Sem nome 356",
+      "numero": "+553198297245",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Por favor"
+    },
+    {
+      "nome": "Sem problemas",
+      "numero": "+553199681060",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 6,
+      "conversas": 1,
+      "ultima_mensagem": "Bom dia!\n\nMuito obrigada ☺️"
+    },
+    {
+      "nome": "Sendo presencial",
+      "numero": "+553171519470",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 67,
+      "conversas": 2,
+      "ultima_mensagem": "Olá! Quero garantir minha vaga para o próximo Nosso\nMomento em Movimento"
+    },
+    {
+      "nome": "Shay🌸",
+      "numero": "+553187714303",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Sobre a dieta no formulário, isso é feito de forma online ou presencial também?"
+    },
+    {
+      "nome": "Sibele Storymaker",
+      "numero": "+553197646531",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 22,
+      "conversas": 2,
+      "ultima_mensagem": "Tô querendo fazer esse plano"
+    },
+    {
+      "nome": "Soraia Silva",
+      "numero": "+553187644772",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 37,
+      "conversas": 2,
+      "ultima_mensagem": "Sim"
+    },
+    {
+      "nome": "Stefani Muller",
+      "numero": "+553193266954",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Stefani Muller \nPrimeira consulta"
+    },
+    {
+      "nome": "Stefany Bitencourt",
+      "numero": "+553192864108",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 1,
+      "ultima_mensagem": "Qual a diferença do on-line / presencial ?"
+    },
+    {
+      "nome": "Studio Clivia Danielle Makeup",
+      "numero": "+553189797250",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Sim"
+    },
+    {
+      "nome": "Sulamita Belmiro",
+      "numero": "+553194966093",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 11,
+      "conversas": 1,
+      "ultima_mensagem": "estou em aula agora, assim q conseguir te mando um áudio"
+    },
+    {
+      "nome": "Tainara Caroline",
+      "numero": "+553175716537",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Talita Cunha",
+      "numero": "+553193971640",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "primeira consulta"
+    },
+    {
+      "nome": "Tamires Teixeira",
+      "numero": "+553173658606",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Tamires Teixeira \nPrimeira consulta"
+    },
+    {
+      "nome": "TAMIRIS FERNANDES",
+      "numero": "+553194839488",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Tamiris Fernandes, já fui paciente"
+    },
+    {
+      "nome": "Tana",
+      "numero": "+553189466572",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Muito obrigada viu, vou avaliar aqui com calma. Grata 🙏🏻"
+    },
+    {
+      "nome": "Tatiana Barbosa",
+      "numero": "+553195545465",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 2,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Tatianna Murta",
+      "numero": "+553182898170",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 22,
+      "conversas": 1,
+      "ultima_mensagem": "Boa tarde. A consulta será em algum link? Ou naquela plataforma que me passou?"
+    },
+    {
+      "nome": "Tay",
+      "numero": "+553175254782",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "taynara oliveira \nprimeira consulta"
+    },
+    {
+      "nome": "Tayla Veríssimo",
+      "numero": "+553193547522",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 21,
+      "conversas": 1,
+      "ultima_mensagem": "Combinado"
+    },
+    {
+      "nome": "Taynara Fonseca",
+      "numero": "+553195417704",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Tays Alves",
+      "numero": "+553193377089",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 20,
+      "conversas": 1,
+      "ultima_mensagem": "Tays Alves Cândido \n15/02/1997\ntays_alves18 \n31993377089 \nalvestays548@gmail.com \nRecepcionista \n31995162 \nSim \nShaine M"
+    },
+    {
+      "nome": "Tenho interesse",
+      "numero": "+553184038197",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 20,
+      "conversas": 1,
+      "ultima_mensagem": "Obrigada, mandei pra ela aqui"
+    },
+    {
+      "nome": "Thais Costa",
+      "numero": "+553197408579",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Olá, me chamo Thais Costa \nE a primeira consulta, gostaria de saber os valores e como funciona ☺️"
+    },
+    {
+      "nome": "Thais Lares",
+      "numero": "+553186930474",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 10,
+      "conversas": 2,
+      "ultima_mensagem": "Infelizmente não vou conseguir comparecer no dia e horário marcado."
+    },
+    {
+      "nome": "Thais Lourraine",
+      "numero": "+553191846770",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira consulta, mas gostaria de saber valores"
+    },
+    {
+      "nome": "Thales nikson",
+      "numero": "+553181186213",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 8,
+      "conversas": 1,
+      "ultima_mensagem": "10h"
+    },
+    {
+      "nome": "Thalita Fernandes",
+      "numero": "+553194222911",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 11,
+      "conversas": 2,
+      "ultima_mensagem": "Pode ser segunda às 15"
+    },
+    {
+      "nome": "Thamires",
+      "numero": "+553190738298",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 2,
+      "ultima_mensagem": "estou querendo saber valores"
+    },
+    {
+      "nome": "Thamiris Emeliano",
+      "numero": "+553194384122",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Oii Thaynara, tudo bem? \nComo funciona sua consulta? Tenho te acompanhado e acho que também tenho lipedema"
+    },
+    {
+      "nome": "Thayane Nagle",
+      "numero": "+553189500807",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 19,
+      "conversas": 2,
+      "ultima_mensagem": "Confirmado"
+    },
+    {
+      "nome": "Thayná Valadares",
+      "numero": "+553183341168",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 1,
+      "ultima_mensagem": "Quero uma nova consulta"
+    },
+    {
+      "nome": "Thaís Bárbara Rodrigues Pereira",
+      "numero": "+553173264265",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 19,
+      "conversas": 2,
+      "ultima_mensagem": "Thaisbarbrodrigues@gmail.com"
+    },
+    {
+      "nome": "Thaís Sousa",
+      "numero": "+553194819204",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 30,
+      "conversas": 2,
+      "ultima_mensagem": "Obrigada"
+    },
+    {
+      "nome": "Thiago Oliveira",
+      "numero": "+553195455628",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Thiavo oliveira \nPrimeira consulta"
+    },
+    {
+      "nome": "Transeguro Transportes",
+      "numero": "+553171134797",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 17,
+      "conversas": 2,
+      "ultima_mensagem": "Pode marcar então, por favor"
+    },
+    {
+      "nome": "trança da aninha",
+      "numero": "+553172355540",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 2,
+      "conversas": 1,
+      "ultima_mensagem": "Oi boa tarde \nAna Beatriz \nSim minha primeira consulta nunca fui no nutricionista"
+    },
+    {
+      "nome": "Tâmara Gomes",
+      "numero": "+553183264684",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 24,
+      "conversas": 1,
+      "ultima_mensagem": "Me desculpo mais uma vez"
+    },
+    {
+      "nome": "Valdinei Alves dos Santos",
+      "numero": "+553183017128",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 5,
+      "conversas": 1,
+      "ultima_mensagem": "E a primeira consulta"
+    },
+    {
+      "nome": "Valeria",
+      "numero": "+553187574758",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Vamos sim",
+      "numero": "+553195052875",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 36,
+      "conversas": 1,
+      "ultima_mensagem": "Não está dando agora pelo seu"
+    },
+    {
+      "nome": "vanessa ferreira",
+      "numero": "+553187213668",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 20,
+      "conversas": 2,
+      "ultima_mensagem": "Obrigada até segunda 😘"
+    },
+    {
+      "nome": "Vanessa Lima",
+      "numero": "+553185863855",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Vanessa Santos",
+      "numero": "+553171015789",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 3,
+      "conversas": 1,
+      "ultima_mensagem": "Primeira"
+    },
+    {
+      "nome": "Victoria Santos",
+      "numero": "+553194712642",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 10,
+      "conversas": 1,
+      "ultima_mensagem": "Eu que agradeço"
+    },
+    {
+      "nome": "Vitoria Botelho",
+      "numero": "+553185436754",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 22,
+      "conversas": 1,
+      "ultima_mensagem": "Excelente! Para finalizarmos o cadastro e garantirmos o horário, por favor informe rapidamente:\n\n* Nome completo: Vitóri"
+    },
+    {
+      "nome": "Vitória Fonseca",
+      "numero": "+553191318682",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 14,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Qual endereço da clínica?"
+    },
+    {
+      "nome": "Vânia Honorato De Paula👨‍👩‍👧‍👦💕",
+      "numero": "+553185797976",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 7,
+      "conversas": 2,
+      "ultima_mensagem": "Pode confirmar"
+    },
+    {
+      "nome": "Wagner Junior Costa Rosa",
+      "numero": "+5511995269077",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Oii, você atende online também?"
+    },
+    {
+      "nome": "Wallisson Bispo",
+      "numero": "+553185498486",
+      "remarketing_enviados": 1,
+      "mensagens_paciente": 11,
+      "conversas": 1,
+      "ultima_mensagem": "Excelente! Para finalizarmos o cadastro e garantirmos o horário, por favor informe rapidamente:\n\n* Nome completo:Walliss"
+    },
+    {
+      "nome": "Yasmin",
+      "numero": "+553186566057",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 1,
+      "conversas": 1,
+      "ultima_mensagem": "Olá! Gostaria de informações sobre o acompanhamento nutricional."
+    },
+    {
+      "nome": "Zaplyo",
+      "numero": "+553180567469",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 4,
+      "conversas": 2,
+      "ultima_mensagem": "‎Oi, tudo bem? Estou retomando meu contato porque acredito que a Zaplyo pode fazer sentido para a sua operação. Hoje mui"
+    },
+    {
+      "nome": "~Fernanda Coimbra",
+      "numero": "+553173105085",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 22,
+      "conversas": 1,
+      "ultima_mensagem": "Muito obrigada"
+    },
+    {
+      "nome": "•Dayane Santos",
+      "numero": "+553189325744",
+      "remarketing_enviados": 0,
+      "mensagens_paciente": 43,
+      "conversas": 2,
+      "ultima_mensagem": "Desculpa o horário, conseguir me organizar e vou conseguir comparecer sim."
+    }
+  ],
+  "remarketing_concluido": []
+}

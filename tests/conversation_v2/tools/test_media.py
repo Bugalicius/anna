@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.conversation_v2.tools.media import classificar_imagem, transcrever_audio
+from app.conversation.tools.media import classificar_imagem, transcrever_audio
 
 
 @pytest.mark.asyncio

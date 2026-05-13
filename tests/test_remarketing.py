@@ -168,6 +168,17 @@ def test_cannot_schedule_when_count_is_3(db, contact):
 
 # ── Task 2: Handler recusou_remarketing no router ─────────────────────────────
 
+
+def _make_resultado(msgs: list):
+    """Cria mock de ResultadoTurno com lista de mensagens."""
+    from unittest.mock import MagicMock
+    resultado = MagicMock()
+    resultado.mensagens_enviadas = [MagicMock(conteudo=m) for m in msgs]
+    resultado.sucesso = True
+    resultado.novo_estado = 'inicio'
+    resultado.erro = None
+    return resultado
+
 MSG_ENCERRAMENTO_ESPERADA = (
     "Tudo bem! Posso perguntar o que pesou na decisão? "
     "Só pra melhorar nosso atendimento 😊"
@@ -218,12 +229,12 @@ async def test_router_recusou_remarketing_envia_mensagem_encerramento():
         patch("app.meta_api.MetaAPIClient", return_value=meta_mock),
         patch("app.router.cancel_pending_remarketing"),
         patch("app.router.set_tag"),
-        patch("app.conversation.engine.engine.handle_message",
-              new_callable=AsyncMock, return_value=[MSG_ENCERRAMENTO_REMARKETING]),
-        patch("app.conversation.state.load_state",
+        patch("app.router.processar_turno",
+              new_callable=AsyncMock, return_value=_make_resultado([MSG_ENCERRAMENTO_REMARKETING])),
+        patch("app.conversation_legacy.state.load_state",
               new_callable=AsyncMock, return_value=_recusou_state()),
-        patch("app.conversation.state.save_state", new_callable=AsyncMock),
-        patch("app.conversation.state.delete_state", new_callable=AsyncMock),
+        patch("app.conversation_legacy.state.save_state", new_callable=AsyncMock),
+        patch("app.conversation_legacy.state.delete_state", new_callable=AsyncMock),
     ):
         await route_message(
             phone="+5531999999999",
@@ -248,12 +259,12 @@ async def test_router_recusou_remarketing_chama_set_tag_lead_perdido():
         patch("app.meta_api.MetaAPIClient", return_value=meta_mock),
         patch("app.router.cancel_pending_remarketing"),
         patch("app.router.set_tag") as mock_set_tag,
-        patch("app.conversation.engine.engine.handle_message",
-              new_callable=AsyncMock, return_value=[MSG_ENCERRAMENTO_REMARKETING]),
-        patch("app.conversation.state.load_state",
+        patch("app.router.processar_turno",
+              new_callable=AsyncMock, return_value=_make_resultado([MSG_ENCERRAMENTO_REMARKETING])),
+        patch("app.conversation_legacy.state.load_state",
               new_callable=AsyncMock, return_value=_recusou_state()),
-        patch("app.conversation.state.save_state", new_callable=AsyncMock),
-        patch("app.conversation.state.delete_state", new_callable=AsyncMock),
+        patch("app.conversation_legacy.state.save_state", new_callable=AsyncMock),
+        patch("app.conversation_legacy.state.delete_state", new_callable=AsyncMock),
     ):
         await route_message(
             phone="+5531999999998",
@@ -278,12 +289,12 @@ async def test_router_recusou_remarketing_chama_cancel_pending():
         patch("app.meta_api.MetaAPIClient", return_value=meta_mock),
         patch("app.router.cancel_pending_remarketing") as mock_cancel,
         patch("app.router.set_tag"),
-        patch("app.conversation.engine.engine.handle_message",
-              new_callable=AsyncMock, return_value=[MSG_ENCERRAMENTO_REMARKETING]),
-        patch("app.conversation.state.load_state",
+        patch("app.router.processar_turno",
+              new_callable=AsyncMock, return_value=_make_resultado([MSG_ENCERRAMENTO_REMARKETING])),
+        patch("app.conversation_legacy.state.load_state",
               new_callable=AsyncMock, return_value=_recusou_state()),
-        patch("app.conversation.state.save_state", new_callable=AsyncMock),
-        patch("app.conversation.state.delete_state", new_callable=AsyncMock),
+        patch("app.conversation_legacy.state.save_state", new_callable=AsyncMock),
+        patch("app.conversation_legacy.state.delete_state", new_callable=AsyncMock),
     ):
         await route_message(
             phone="+5531999999997",
@@ -307,12 +318,12 @@ async def test_router_recusou_remarketing_deleta_estado_redis():
         patch("app.meta_api.MetaAPIClient", return_value=meta_mock),
         patch("app.router.cancel_pending_remarketing"),
         patch("app.router.set_tag"),
-        patch("app.conversation.engine.engine.handle_message",
-              new_callable=AsyncMock, return_value=[MSG_ENCERRAMENTO_REMARKETING]),
-        patch("app.conversation.state.load_state",
+        patch("app.router.processar_turno",
+              new_callable=AsyncMock, return_value=_make_resultado([MSG_ENCERRAMENTO_REMARKETING])),
+        patch("app.conversation_legacy.state.load_state",
               new_callable=AsyncMock, return_value=_recusou_state()),
-        patch("app.conversation.state.save_state", new_callable=AsyncMock),
-        patch("app.conversation.state.delete_state",
+        patch("app.conversation_legacy.state.save_state", new_callable=AsyncMock),
+        patch("app.conversation_legacy.state.delete_state",
               new_callable=AsyncMock) as mock_del,
     ):
         await route_message(

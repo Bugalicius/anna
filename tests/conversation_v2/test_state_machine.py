@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from app.conversation_v2.models import Estado, Fluxo, Situacao, TipoAcao
-from app.conversation_v2 import state_machine
+from app.conversation.models import Estado, Fluxo, Situacao, TipoAcao
+from app.conversation import state_machine
 
 
 def _fluxo_mock() -> Fluxo:

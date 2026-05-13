@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.conversation_v2.rules import (
+from app.conversation.rules import (
     R1_nunca_expor_breno,
     R3_nunca_inventar_valor,
     R12_validar_nome_nao_generico,

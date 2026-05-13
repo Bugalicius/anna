@@ -2,7 +2,7 @@ import pytest
 
 
 def _state_retorno():
-    from app.conversation.state import create_state
+    from app.conversation_legacy.state import create_state
 
     state = create_state("hash", "5531999990000")
     state["goal"] = "remarcar"
@@ -18,8 +18,8 @@ def _state_retorno():
 
 @pytest.mark.asyncio
 async def test_remarcacao_pede_preferencia_com_tom_humano_sem_menu_agendamento():
-    from app.conversation.planner import decidir_acao
-    from app.conversation.responder import gerar_resposta
+    from app.conversation_legacy.planner import decidir_acao
+    from app.conversation_legacy.responder import gerar_resposta
 
     state = _state_retorno()
     turno = {
@@ -41,7 +41,7 @@ async def test_remarcacao_pede_preferencia_com_tom_humano_sem_menu_agendamento()
 
 @pytest.mark.asyncio
 async def test_remarcacao_com_preferencia_consulta_slots_sem_reiniciar_agendamento():
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_retorno()
     state["collected_data"]["preferencia_horario"] = {
@@ -66,7 +66,7 @@ async def test_remarcacao_com_preferencia_consulta_slots_sem_reiniciar_agendamen
 
 @pytest.mark.asyncio
 async def test_remarcacao_rejeita_slots_com_nova_preferencia_busca_outra_janela():
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_retorno()
     state["last_action"] = "consultar_slots_remarcar"
@@ -103,7 +103,7 @@ async def test_remarcacao_rejeita_slots_com_nova_preferencia_busca_outra_janela(
 
 @pytest.mark.asyncio
 async def test_remarcacao_preferencia_corrigida_reconsulta_mesmo_apos_consultar_slots():
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_retorno()
     state["last_action"] = "consultar_slots_remarcar"
@@ -134,7 +134,7 @@ async def test_remarcacao_preferencia_corrigida_reconsulta_mesmo_apos_consultar_
 
 @pytest.mark.asyncio
 async def test_remarcacao_escolha_slot_texto_visivel_confirma_remarcacao():
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_retorno()
     state["last_action"] = "consultar_slots_remarcar"
@@ -164,7 +164,7 @@ async def test_remarcacao_escolha_slot_texto_visivel_confirma_remarcacao():
 
 @pytest.mark.asyncio
 async def test_remarcacao_escolha_slot_retenta_apos_falha_da_tool():
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_retorno()
     slot = {"datetime": "2026-05-11T17:00:00", "data_fmt": "segunda, 11/05", "hora": "17h"}
@@ -195,7 +195,7 @@ async def test_remarcacao_escolha_slot_retenta_apos_falha_da_tool():
 
 @pytest.mark.asyncio
 async def test_remarcacao_pede_outros_horarios_amplia_busca():
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_retorno()
     state["last_action"] = "consultar_slots_remarcar"
@@ -231,7 +231,7 @@ async def test_remarcacao_pede_outros_horarios_amplia_busca():
 
 @pytest.mark.asyncio
 async def test_remarcacao_pergunta_outros_horarios_nao_responde_politica():
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_retorno()
     state["last_action"] = "consultar_slots_remarcar"
@@ -269,7 +269,7 @@ async def test_remarcacao_pergunta_outros_horarios_nao_responde_politica():
 
 @pytest.mark.asyncio
 async def test_confirmacao_remarcacao_usa_prontinho_e_data():
-    from app.conversation.responder import gerar_resposta
+    from app.conversation_legacy.responder import gerar_resposta
 
     state = _state_retorno()
     state["appointment"]["slot_escolhido"] = {
@@ -293,8 +293,8 @@ async def test_confirmacao_remarcacao_usa_prontinho_e_data():
 
 @pytest.mark.asyncio
 async def test_remarcacao_sem_consulta_original_detecta_antes_de_remarcar():
-    from app.conversation.planner import decidir_acao
-    from app.conversation.state import create_state
+    from app.conversation_legacy.planner import decidir_acao
+    from app.conversation_legacy.state import create_state
 
     state = create_state("hash", "5531999990000")
     state["goal"] = "agendar_consulta"
@@ -313,8 +313,8 @@ async def test_remarcacao_sem_consulta_original_detecta_antes_de_remarcar():
 
 @pytest.mark.asyncio
 async def test_retorno_com_preferencia_nao_reinicia_onboarding():
-    from app.conversation.planner import decidir_acao
-    from app.conversation.state import create_state
+    from app.conversation_legacy.planner import decidir_acao
+    from app.conversation_legacy.state import create_state
 
     state = create_state("hash", "553186687010")
     state["goal"] = "agendar_consulta"
@@ -342,7 +342,7 @@ async def test_retorno_com_preferencia_nao_reinicia_onboarding():
 
 @pytest.mark.asyncio
 async def test_erro_remarcacao_operacional_escala_para_breno():
-    from app.conversation.responder import gerar_resposta
+    from app.conversation_legacy.responder import gerar_resposta
 
     state = _state_retorno()
     respostas = await gerar_resposta(
@@ -356,7 +356,7 @@ async def test_erro_remarcacao_operacional_escala_para_breno():
 
 @pytest.mark.asyncio
 async def test_remarcacao_nao_localizada_pede_nome_ou_email_sem_oferecer_nova_consulta():
-    from app.conversation.responder import gerar_resposta
+    from app.conversation_legacy.responder import gerar_resposta
 
     state = _state_retorno()
     respostas = await gerar_resposta(
@@ -378,8 +378,8 @@ async def test_remarcacao_nao_localizada_pede_nome_ou_email_sem_oferecer_nova_co
 
 @pytest.mark.asyncio
 async def test_saudacao_inicial_nao_usa_draft_generico_do_llm():
-    from app.conversation.planner import decidir_acao
-    from app.conversation.state import create_state
+    from app.conversation_legacy.planner import decidir_acao
+    from app.conversation_legacy.state import create_state
 
     state = create_state("hash", "5531999990000")
     turno = {
@@ -398,8 +398,8 @@ async def test_saudacao_inicial_nao_usa_draft_generico_do_llm():
 
 @pytest.mark.asyncio
 async def test_saudacao_paciente_conhecido_e_curta_sem_llm():
-    from app.conversation.planner import decidir_acao
-    from app.conversation.state import create_state
+    from app.conversation_legacy.planner import decidir_acao
+    from app.conversation_legacy.state import create_state
 
     state = create_state("hash", "5531999990000")
     state["collected_data"]["nome"] = "Ana Assistente"
@@ -421,7 +421,7 @@ async def test_saudacao_paciente_conhecido_e_curta_sem_llm():
 
 @pytest.mark.asyncio
 async def test_bloqueia_confirmacao_remarcacao_sem_sucesso_da_tool(monkeypatch):
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_retorno()
     state["last_action"] = "remarcar_dietbox"
@@ -442,7 +442,7 @@ async def test_bloqueia_confirmacao_remarcacao_sem_sucesso_da_tool(monkeypatch):
         return '{"action":"send_confirmacao_remarcacao"}'
 
     monkeypatch.setattr(
-        "app.conversation.planner.llm_client.complete_text_async",
+        "app.conversation_legacy.planner.llm_client.complete_text_async",
         _mock_llm,
     )
 
@@ -454,8 +454,8 @@ async def test_bloqueia_confirmacao_remarcacao_sem_sucesso_da_tool(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_remarcacao_nao_localizada_com_nome_invalido_pede_identificacao_de_novo():
-    from app.conversation.planner import decidir_acao
-    from app.conversation.state import create_state
+    from app.conversation_legacy.planner import decidir_acao
+    from app.conversation_legacy.state import create_state
 
     state = create_state("hash", "5531999990000")
     state["goal"] = "remarcar"
@@ -478,8 +478,8 @@ async def test_remarcacao_nao_localizada_com_nome_invalido_pede_identificacao_de
 
 @pytest.mark.asyncio
 async def test_remarcacao_nao_localizada_repetida_tenta_telefone_de_novo():
-    from app.conversation.planner import decidir_acao
-    from app.conversation.state import create_state
+    from app.conversation_legacy.planner import decidir_acao
+    from app.conversation_legacy.state import create_state
 
     state = create_state("hash", "5531986687010")
     state["goal"] = "remarcar"
@@ -501,7 +501,7 @@ async def test_remarcacao_nao_localizada_repetida_tenta_telefone_de_novo():
 
 @pytest.mark.asyncio
 async def test_remarcacao_retorno_pede_preferencia_com_grade_de_horarios():
-    from app.conversation.responder import gerar_resposta
+    from app.conversation_legacy.responder import gerar_resposta
 
     state = _state_retorno()
     respostas = await gerar_resposta(
@@ -527,8 +527,8 @@ async def test_remarcacao_retorno_pede_preferencia_com_grade_de_horarios():
 
 @pytest.mark.asyncio
 async def test_pergunta_sobre_perda_retorno_explica_janela_sem_politica():
-    from app.conversation.planner import decidir_acao
-    from app.conversation.state import create_state
+    from app.conversation_legacy.planner import decidir_acao
+    from app.conversation_legacy.state import create_state
 
     state = create_state("hash", "5531999990000")
     state["goal"] = "agendar_consulta"

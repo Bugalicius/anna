@@ -1,4 +1,4 @@
-from app.conversation.responder import sanitize_patient_responses
+from app.conversation_legacy.responder import sanitize_patient_responses
 
 
 def test_sanitiza_texto_com_termo_interno_de_planner():

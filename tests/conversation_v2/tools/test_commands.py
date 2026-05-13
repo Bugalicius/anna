@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.conversation_v2.tools.commands import interpretar_comando
-from app.conversation_v2.tools.registry import call_tool
+from app.conversation.tools.commands import interpretar_comando
+from app.conversation.tools.registry import call_tool
 
 
 @pytest.mark.asyncio

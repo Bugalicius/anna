@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from app.conversation_v2.config_loader import ConfigLoader
+from app.conversation.config_loader import ConfigLoader
 
 
 @pytest.fixture

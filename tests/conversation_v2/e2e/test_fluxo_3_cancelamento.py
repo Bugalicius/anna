@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 
 from app.conversation.state import _mem_store, create_state, load_state, save_state
-from app.conversation_v2 import orchestrator
-from app.conversation_v2.tools import ToolResult
+from app.conversation import orchestrator
+from app.conversation.tools import ToolResult
 
 
 pytestmark = pytest.mark.asyncio

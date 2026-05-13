@@ -55,11 +55,11 @@ def test_test_chat_oferece_slots_sem_duplo_waiting():
     with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.database.SessionLocal", return_value=db_mock), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.conversation.engine.engine.handle_message",
+         patch("app.conversation_legacy.engine.engine.handle_message",
                new_callable=AsyncMock, return_value=respostas_engine), \
-         patch("app.conversation.state.load_state",
+         patch("app.conversation_legacy.state.load_state",
                new_callable=AsyncMock, return_value=_make_state()), \
-         patch("app.conversation.state.save_state", new_callable=AsyncMock):
+         patch("app.conversation_legacy.state.save_state", new_callable=AsyncMock):
         with TestClient(app) as client:
             response = client.post("/test/chat", json={"phone": phone, "message": "prefiro manhã"})
 
@@ -87,13 +87,13 @@ def test_test_chat_cancelamento_funciona_em_dois_turnos():
     with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.database.SessionLocal", return_value=db_mock), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.conversation.engine.engine.handle_message",
+         patch("app.conversation_legacy.engine.engine.handle_message",
                new_callable=AsyncMock,
                return_value=["Sua consulta foi cancelada com sucesso! 💚"]), \
-         patch("app.conversation.state.load_state",
+         patch("app.conversation_legacy.state.load_state",
                new_callable=AsyncMock, return_value=state_cancelado), \
-         patch("app.conversation.state.save_state", new_callable=AsyncMock), \
-         patch("app.conversation.state.delete_state", delete_mock):
+         patch("app.conversation_legacy.state.save_state", new_callable=AsyncMock), \
+         patch("app.conversation_legacy.state.delete_state", delete_mock):
         with TestClient(app) as client:
             r = client.post("/test/chat", json={"phone": phone, "message": "tive um imprevisto"})
 

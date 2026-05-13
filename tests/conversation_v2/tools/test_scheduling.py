@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.conversation_v2.tools.scheduling import (
+from app.conversation.tools.scheduling import (
     ConsultarSlotsInput,
     cancelar_dietbox,
     consultar_slots,

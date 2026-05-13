@@ -4,7 +4,7 @@ from app.flows import get_flow_response, FLOWS
 
 
 def test_planos_list_builder_retorna_lista_curta():
-    from app.conversation.responder import _build_planos_list
+    from app.conversation_legacy.responder import _build_planos_list
 
     response = _build_planos_list()
 
@@ -16,7 +16,7 @@ def test_planos_list_builder_retorna_lista_curta():
 
 
 def test_modalidade_list_builder_retorna_lista():
-    from app.conversation.responder import _build_modalidade_list
+    from app.conversation_legacy.responder import _build_modalidade_list
 
     response = _build_modalidade_list()
 
@@ -27,7 +27,7 @@ def test_modalidade_list_builder_retorna_lista():
 
 @pytest.mark.asyncio
 async def test_planner_pix_em_contexto_de_pagamento_nao_reinicia_fluxo():
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = {
         "goal": "agendar_consulta",
@@ -97,7 +97,7 @@ async def test_planner_pix_em_contexto_de_pagamento_nao_reinicia_fluxo():
 
 @pytest.mark.asyncio
 async def test_planner_comprovante_em_pagamento_avanca_para_agendar():
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = {
         "goal": "agendar_consulta",
@@ -168,7 +168,7 @@ async def test_planner_comprovante_em_pagamento_avanca_para_agendar():
 
 @pytest.mark.asyncio
 async def test_planner_nao_retrocede_para_await_payment_quando_comprovante_tambem_indica_pix():
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = {
         "goal": "agendar_consulta",
@@ -238,7 +238,7 @@ async def test_planner_nao_retrocede_para_await_payment_quando_comprovante_tambe
 
 @pytest.mark.asyncio
 async def test_planner_comprovante_com_valor_divergente_nao_agenda():
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = {
         "goal": "agendar_consulta",
@@ -308,7 +308,7 @@ async def test_planner_comprovante_com_valor_divergente_nao_agenda():
 
 @pytest.mark.asyncio
 async def test_planner_comprovante_maior_que_sinal_aceita_valor_pago():
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = {
         "goal": "agendar_consulta",
@@ -380,7 +380,7 @@ async def test_planner_comprovante_maior_que_sinal_aceita_valor_pago():
 
 @pytest.mark.asyncio
 async def test_planner_bloqueia_agendamento_quando_ha_dois_telefones():
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = {
         "goal": "agendar_consulta",
@@ -438,7 +438,7 @@ async def test_planner_bloqueia_agendamento_quando_ha_dois_telefones():
 
 @pytest.mark.asyncio
 async def test_planner_agenda_apos_pagamento_confirmado_e_cadastro_obrigatorio_completo():
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = {
         "goal": "agendar_consulta",
@@ -544,7 +544,7 @@ def test_archived_returns_none():
 
 
 def test_answer_faq_from_message_responde_lilly():
-    from app.conversation.responder import _answer_faq_from_message
+    from app.conversation_legacy.responder import _answer_faq_from_message
 
     response = _answer_faq_from_message("o que é a Lilly?")
 

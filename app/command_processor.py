@@ -256,7 +256,7 @@ async def _cmd_status(parsed: dict, phone_solicitante: str, meta_client) -> str:
     stage = paciente.get("stage", "desconhecido")
 
     try:
-        from app.conversation.state import load_state
+        from app.conversation_legacy.state import load_state
         state = await load_state(paciente["phone_hash"])
         status_engine = state.get("status", "sem conversa ativa")
         goal = state.get("goal", "")

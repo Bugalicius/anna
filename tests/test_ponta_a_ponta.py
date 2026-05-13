@@ -83,8 +83,8 @@ async def test_fora_do_horario_responde_uma_vez(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_menor_de_16_anos_recusa_atendimento():
-    from app.conversation.planner import decidir_acao
-    from app.conversation.state import create_state
+    from app.conversation_legacy.planner import decidir_acao
+    from app.conversation_legacy.state import create_state
 
     plano = await decidir_acao(
         {"intent": "tirar_duvida", "_raw_message": "tenho 15 anos, posso consultar?"},
@@ -97,8 +97,8 @@ async def test_menor_de_16_anos_recusa_atendimento():
 
 @pytest.mark.asyncio
 async def test_gestante_recusa_atendimento():
-    from app.conversation.planner import decidir_acao
-    from app.conversation.state import create_state
+    from app.conversation_legacy.planner import decidir_acao
+    from app.conversation_legacy.state import create_state
 
     plano = await decidir_acao(
         {"intent": "tirar_duvida", "_raw_message": "estou gestante, queria marcar"},
@@ -111,15 +111,15 @@ async def test_gestante_recusa_atendimento():
 
 @pytest.mark.asyncio
 async def test_timeout_de_turno_retorna_fallback(monkeypatch):
-    from app.conversation.engine import ConversationEngine
+    from app.conversation_legacy.engine import ConversationEngine
 
     async def lento(self, phone_hash: str, message: str, phone: str = ""):
         await asyncio.sleep(0.05)
         return ["nao deveria chegar aqui"]
 
     monkeypatch.setenv("TURN_TIMEOUT_SECONDS", "0.01")
-    monkeypatch.setattr("app.conversation.engine.record_turn_error", lambda phone_hash, reason: asyncio.sleep(0, result=1))
-    monkeypatch.setattr("app.conversation.engine.ConversationEngine._handle_message_impl", lento)
+    monkeypatch.setattr("app.conversation_legacy.engine.record_turn_error", lambda phone_hash, reason: asyncio.sleep(0, result=1))
+    monkeypatch.setattr("app.conversation_legacy.engine.ConversationEngine._handle_message_impl", lento)
 
     resposta = await ConversationEngine().handle_message("hash-timeout", "oi")
 

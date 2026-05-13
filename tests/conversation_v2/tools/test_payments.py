@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.conversation_v2.tools.payments import (
+from app.conversation.tools.payments import (
     analisar_comprovante,
     encaminhar_comprovante_thaynara,
     gerar_link_pagamento,

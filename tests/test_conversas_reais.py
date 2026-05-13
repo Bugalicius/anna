@@ -107,7 +107,7 @@ async def test_fernanda_retorno_bom_dia_aciona_detectar_tipo():
     Estado: nenhum override da Regra 1-4 ativa (plano=None impede Regras 3/4),
     então o LLM decide.
     """
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state(
         goal="agendar_consulta",
@@ -141,7 +141,7 @@ async def test_debora_remarcacao_detecta_consulta_existente_primeiro():
     Débora pede remarcação. Antes de oferecer novos slots, planner deve
     detectar a consulta existente. Não deve pular para ask_field.
     """
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state(
         goal="agendar_consulta",
@@ -169,7 +169,7 @@ async def test_debora_tipo_retorno_busca_slots_remarcar():
     Após detectar tipo=retorno, planner deve usar consultar_slots_remarcar
     (dentro da janela de retorno), não consultar_slots comum.
     """
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state(
         goal="agendar_consulta",
@@ -241,7 +241,7 @@ def test_bruna_duracao_nao_e_duvida_clinica_no_fallback():
     Dúvida sobre duração da consulta (topico=modalidade) NÃO deve ser escalada.
     O fallback do planner para tirar_duvida não deve retornar escalate.
     """
-    from app.conversation.planner import _fallback
+    from app.conversation_legacy.planner import _fallback
 
     turno = _turno(intent="tirar_duvida", tem_pergunta=True, topico_pergunta="modalidade")
     state = _state()
@@ -260,7 +260,7 @@ async def test_bruna_planner_answer_question_sem_escalar():
     Planner deve retornar answer_question para dúvida sobre duração.
     Nunca escalate nem respond_fora_de_contexto para esse caso.
     """
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state(goal="desconhecido")
     turno = _turno(intent="tirar_duvida", tem_pergunta=True, topico_pergunta="modalidade")
@@ -286,7 +286,7 @@ async def test_clara_sem_slots_responder_nao_inventa_horario():
     Quando Dietbox retorna lista vazia de slots, responder deve comunicar
     indisponibilidade sem inventar horários ou botões de opção.
     """
-    from app.conversation.responder import gerar_resposta
+    from app.conversation_legacy.responder import gerar_resposta
 
     state = _state(
         goal="agendar_consulta",
@@ -318,7 +318,7 @@ def test_clara_escolha_fora_do_range_nao_confirma_slot_inexistente():
     Se o paciente digita "4" mas só há 3 slots, o override da Regra 5
     não deve confirmar o slot nem avançar para pagamento.
     """
-    from app.conversation.planner import _override_deterministic
+    from app.conversation_legacy.planner import _override_deterministic
 
     slots = [
         {"datetime": "2026-05-05T08:00:00", "data_fmt": "segunda, 05/05", "hora": "08h"},
@@ -354,7 +354,7 @@ def test_lipedema_fallback_escala_duvida_clinica():
     Mesmo quando o LLM falha e o fallback é acionado, dúvidas clínicas
     devem escalar. Ana nunca responde perguntas médicas diretamente.
     """
-    from app.conversation.planner import _fallback
+    from app.conversation_legacy.planner import _fallback
 
     turno = _turno(intent="duvida_clinica", tem_pergunta=True, topico_pergunta="clinica")
     state = _state()
@@ -372,7 +372,7 @@ async def test_lipedema_llm_escala_duvida_clinica():
     LLM deve retornar escalate para 'posso comer X tendo lipedema?'
     O planner não deve retornar answer_question para questões clínicas.
     """
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state(goal="desconhecido")
     turno = _turno(intent="duvida_clinica", tem_pergunta=True, topico_pergunta="clinica")
@@ -419,7 +419,7 @@ def test_preco_resposta_usa_valores_reais_sem_desconto_inventado():
     _answer_from_kb para tópico 'pagamento' deve citar o valor real do KB.
     Não deve mencionar descontos fictícios (80%, 90%, grátis).
     """
-    from app.conversation.responder import _answer_from_kb
+    from app.conversation_legacy.responder import _answer_from_kb
     from app.knowledge_base import kb
 
     cd = {"plano": "ouro", "modalidade": "presencial"}
@@ -441,7 +441,7 @@ async def test_preco_planner_retorna_answer_question_para_pagamento():
     Pergunta sobre parcelamento → planner retorna answer_question com
     ask_context=pagamento. Nunca respond_fora_de_contexto.
     """
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state(goal="desconhecido", status="coletando")
     turno = _turno(intent="tirar_duvida", tem_pergunta=True, topico_pergunta="pagamento")

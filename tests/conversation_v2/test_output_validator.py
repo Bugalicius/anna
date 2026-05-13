@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from app.conversation_v2.models import Mensagem
-from app.conversation_v2.output_validator import validar
+from app.conversation.models import Mensagem
+from app.conversation.output_validator import validar
 
 
 def test_output_validator_bloqueia_numero_breno_em_contato() -> None:

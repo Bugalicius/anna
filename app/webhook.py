@@ -66,11 +66,6 @@ async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
     payload = _json.loads(body)  # usar body já lido, não re-ler o stream
     logger.info("WEBHOOK PAYLOAD: %s", _json.dumps(payload)[:500])
 
-    if os.getenv("USE_AGENT_V2", "false").lower() == "true":
-        from app.conversation_v2.adapters import webhook_adapter
-
-        return await webhook_adapter.processar_webhook(payload)
-
     from app.chatwoot_bridge import relay_meta_webhook_to_chatwoot
     background_tasks.add_task(
         relay_meta_webhook_to_chatwoot,
@@ -319,7 +314,7 @@ async def _encaminhar_comprovante_thaynara(
     modalidade = "—"
     valor_esperado: float | None = None
     try:
-        from app.conversation.state import load_state
+        from app.conversation_legacy.state import load_state
         state = await load_state(phone_hash)
         cd = state.get("collected_data", {})
         nome = cd.get("nome") or nome

@@ -41,6 +41,9 @@ async def lifespan(app: FastAPI):
         _retry_failed_messages, "interval", minutes=5,
         id="retry_processor", replace_existing=True,
     )
+    # Jobs v2: confirmação de presença, lembrete véspera, follow-up
+    from app.conversation.scheduler import register_jobs as register_v2_jobs
+    register_v2_jobs(scheduler)
     scheduler.start()
     app.state.scheduler = scheduler
     yield

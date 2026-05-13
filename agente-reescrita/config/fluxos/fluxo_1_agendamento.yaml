@@ -1,0 +1,1285 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# FLUXO 1 — AGENDAMENTO (paciente novo)
+# Agente Ana — Nutricionista Thaynara Teixeira
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Estrutura:
+#   - estados: máquina de estados explícita
+#   - cada estado tem: situações possíveis, transições, tools, regras
+#   - cada situação: trigger (intent/match), resposta pronta, próximo estado
+#   - improviso permitido SOMENTE para situações marcadas com `permite_improviso: true`
+#
+# Regras invioláveis aplicáveis ao fluxo inteiro (em rules.py):
+#   - nunca expor número do Breno (31992059211)
+#   - nunca expor número da Thaynara como "Thaynara" (só citar nome em terceira pessoa)
+#   - nunca oferecer horário fora da grade (08-10h, 15-17h, 18-19h, sex sem noite)
+#   - nunca confirmar agendamento sem pagamento
+#   - nunca aceitar valor de sinal abaixo de 50%
+#   - nunca usar palavras genéricas como nome ("consulta", "agendar", etc)
+#
+# ═══════════════════════════════════════════════════════════════════════════
+
+fluxo_id: "agendamento_paciente_novo"
+fluxo_nome: "Agendamento (paciente novo)"
+estado_inicial: "inicio"
+estado_final: "concluido"
+
+# ───────────────────────────────────────────────────────────────────────────
+# DADOS COLETADOS NESTE FLUXO
+# ───────────────────────────────────────────────────────────────────────────
+campos_coletados:
+  obrigatorios_para_avancar:
+    - nome
+    - status_paciente
+    - objetivo
+    - plano
+    - modalidade
+    - preferencia_horario
+    - slot_escolhido
+    - forma_pagamento
+    - pagamento_confirmado
+    - data_nascimento
+    - email
+    - whatsapp_contato
+  opcionais:
+    - instagram
+    - profissao
+    - cep_endereco
+    - indicacao_origem
+
+# ───────────────────────────────────────────────────────────────────────────
+# ESTADOS
+# ───────────────────────────────────────────────────────────────────────────
+
+estados:
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 1 — INICIO
+  # ════════════════════════════════════════════════════════════════════════
+  inicio:
+    descricao: "Primeira interação do paciente"
+    
+    on_enter:
+      mensagem: |
+        Olá! Que bom ter você por aqui 💚
+
+        Sou a Ana, responsável pelos agendamentos da nutricionista Thaynara Teixeira.
+
+        Pra começar, qual é o seu nome?
+      proximo_estado: "aguardando_nome"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 2 — AGUARDANDO NOME
+  # ════════════════════════════════════════════════════════════════════════
+  aguardando_nome:
+    descricao: "Aguarda paciente informar o nome"
+    intents_aceitas:
+      - informar_nome
+      - duvida_operacional
+      - desistir
+    
+    situacoes:
+      
+      nome_valido:
+        trigger: "intent=informar_nome AND validacao_nome_passou=true"
+        resposta: |
+          Prazer, {primeiro_nome}! 💚
+
+          É sua primeira consulta com a Thaynara ou você já é paciente?
+        botoes_interativos:
+          - id: "primeira_consulta"
+            label: "Primeira consulta"
+          - id: "ja_paciente"
+            label: "Já sou paciente"
+        proximo_estado: "aguardando_status_paciente"
+        salva_no_estado:
+          collected_data.nome: "{nome_extraido}"
+      
+      nome_palavra_generica:
+        trigger: "intent=informar_nome AND validacao_nome_passou=false"
+        resposta: |
+          Acho que faltou seu nome 😅 Pode me mandar?
+        proximo_estado: "aguardando_nome"
+        max_tentativas: 3
+        ao_atingir_max: "escalar_breno"
+      
+      nao_mandou_nome_fez_pergunta:
+        trigger: "intent=duvida_operacional"
+        permite_improviso: true
+        instrucao_para_llm: |
+          Responda a dúvida do paciente brevemente usando a base de conhecimento.
+          Depois retome pedindo o nome. Mantenha tom da Ana (curto, caloroso).
+          Exemplo: "Sobre [tópico]: [resposta curta da KB]. 
+          Mas pra começar, qual seu nome?"
+        proximo_estado: "aguardando_nome"
+      
+      desistiu:
+        trigger: "intent=desistir"
+        resposta: |
+          Sem problema! Quando quiser agendar, é só me chamar 💚
+        proximo_estado: "concluido"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 3 — AGUARDANDO STATUS DO PACIENTE
+  # ════════════════════════════════════════════════════════════════════════
+  aguardando_status_paciente:
+    descricao: "Pergunta se é primeira consulta ou já é paciente"
+    intents_aceitas:
+      - escolher_status_paciente
+      - duvida_operacional
+      - duvida_sobre_thaynara
+    
+    situacoes:
+      
+      escolheu_primeira_consulta:
+        trigger: "botao_id=primeira_consulta OR texto_contem=[primeira, primeira vez, nunca, novo, nova]"
+        resposta: |
+          Que bom te receber, {primeiro_nome}! 💚
+
+          Antes de te apresentar nossos planos, me conta: qual seu principal objetivo agora?
+        botoes_interativos:
+          - id: "obj_emagrecer"
+            label: "Emagrecer"
+          - id: "obj_ganhar_massa"
+            label: "Ganhar massa"
+          - id: "obj_lipedema"
+            label: "Lipedema"
+        salva_no_estado:
+          collected_data.status_paciente: "novo"
+        proximo_estado: "aguardando_objetivo"
+      
+      escolheu_ja_paciente:
+        trigger: "botao_id=ja_paciente OR texto_contem=[já sou, ja sou, paciente, retorno, voltar]"
+        resposta: |
+          Que bom te ver de novo! 💚 Pra eu localizar seu cadastro, pode me mandar seu nome completo?
+        salva_no_estado:
+          collected_data.status_paciente: "retorno"
+        proximo_estado: "aguardando_nome_completo_retorno"
+        # ⚠️ Bifurca: paciente já tem cadastro → vai pro fluxo de remarcação se tiver consulta ativa
+      
+      pergunta_diferenca:
+        trigger: "texto_contem=[diferença, qual a diferença, como funciona]"
+        resposta: |
+          Primeira consulta é quando você ainda não fez consulta com a Thaynara.
+          Já paciente é quem já fez pelo menos uma 💚
+
+          E você?
+        botoes_interativos:
+          - id: "primeira_consulta"
+            label: "Primeira consulta"
+          - id: "ja_paciente"
+            label: "Já sou paciente"
+        proximo_estado: "aguardando_status_paciente"
+      
+      duvida_sobre_thaynara:
+        trigger: "intent=duvida_sobre_thaynara"
+        permite_improviso: true
+        instrucao_para_llm: |
+          Use a base de conhecimento para falar sobre Thaynara (CRN9 31020,
+          método NutriTransforma, especialidades). Mantenha curto e termine
+          retomando a pergunta sobre primeira consulta vs já paciente.
+        proximo_estado: "aguardando_status_paciente"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 3B — AGUARDANDO NOME COMPLETO PARA RETORNO
+  # ════════════════════════════════════════════════════════════════════════
+  aguardando_nome_completo_retorno:
+    descricao: "Paciente é retorno — precisa nome completo pra buscar Dietbox"
+    intents_aceitas:
+      - informar_nome
+    
+    situacoes:
+      nome_completo_recebido:
+        trigger: "intent=informar_nome AND nome_tem_sobrenome=true"
+        action: "redirecionar_fluxo_remarcacao"
+        # Sai deste fluxo, entra no Fluxo 2 (Remarcação)
+      
+      nome_apenas_primeiro:
+        trigger: "intent=informar_nome AND nome_tem_sobrenome=false"
+        resposta: |
+          Pra eu localizar seu cadastro certinho, preciso do nome E sobrenome 😊
+        proximo_estado: "aguardando_nome_completo_retorno"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 4 — AGUARDANDO OBJETIVO
+  # ════════════════════════════════════════════════════════════════════════
+  aguardando_objetivo:
+    descricao: "Coleta o objetivo do paciente"
+    intents_aceitas:
+      - informar_objetivo
+      - pergunta_clinica
+      - duvida_operacional
+    
+    situacoes:
+      
+      objetivo_emagrecer:
+        trigger: "botao_id=obj_emagrecer OR texto_contem=[emagrecer, perder peso, perder gordura, secar]"
+        action: "ir_apresentacao_planos"
+        salva_no_estado:
+          collected_data.objetivo: "emagrecer"
+      
+      objetivo_ganhar_massa:
+        trigger: "botao_id=obj_ganhar_massa OR texto_contem=[ganhar massa, hipertrofia, ganhar peso, massa muscular]"
+        action: "ir_apresentacao_planos"
+        salva_no_estado:
+          collected_data.objetivo: "ganhar_massa"
+      
+      objetivo_lipedema:
+        trigger: "botao_id=obj_lipedema OR texto_contem=[lipedema]"
+        action: "ir_apresentacao_planos"
+        salva_no_estado:
+          collected_data.objetivo: "lipedema"
+      
+      objetivo_outro:
+        trigger: "intent=informar_objetivo AND nao_match_acima"
+        action: "ir_apresentacao_planos"
+        salva_no_estado:
+          collected_data.objetivo: "outro"
+          collected_data.objetivo_descricao: "{texto_original}"
+      
+      pergunta_clinica:
+        trigger: "intent=pergunta_clinica"
+        action: "escalar_breno_silencioso"
+        resposta_paciente: |
+          Deixa eu verificar essa informação certinho com a equipe. Em alguns instantes te respondo, tá? 💚
+        proximo_estado: "aguardando_objetivo"
+        notas: |
+          Após Breno responder via comando interno, o agente repassa
+          ao paciente e retoma a coleta do objetivo.
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 5 — APRESENTANDO PLANOS
+  # ════════════════════════════════════════════════════════════════════════
+  apresentando_planos:
+    descricao: "Envia mídia kit + lista de planos"
+    
+    on_enter:
+      acoes_em_sequencia:
+        - tipo: "enviar_imagem"
+          arquivo: "midia_kit.jpg"
+          legenda: |
+            Aqui está nosso material completo 💚
+
+            A Thaynara trabalha com o método #NutriTransforma — acompanhamento real, ajustes constantes e resultados sustentáveis, sem dietas extremas nem recomeços frustrantes.
+        
+        - tipo: "delay"
+          segundos: 1
+        
+        - tipo: "enviar_texto"
+          texto: |
+            Hoje temos estas opções. Qual faz mais sentido pra você agora?
+          botoes_interativos:
+            - id: "plano_unica"
+              label: "Consulta Única"
+            - id: "plano_com_retorno"
+              label: "Com Retorno"
+            - id: "plano_ouro"
+              label: "Plano Ouro"
+            - id: "plano_premium"
+              label: "Plano Premium"
+      
+      proximo_estado: "aguardando_escolha_plano"
+      salva_no_estado:
+        flags.planos_enviados: true
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 6 — AGUARDANDO ESCOLHA DE PLANO
+  # ════════════════════════════════════════════════════════════════════════
+  aguardando_escolha_plano:
+    descricao: "Paciente escolhe um dos 4 planos"
+    intents_aceitas:
+      - escolher_plano
+      - pedir_mais_info_plano
+      - pedir_desconto
+      - achou_caro
+      - vou_pensar
+      - duvida_modalidade
+    
+    situacoes:
+      
+      escolheu_unica:
+        trigger: "botao_id=plano_unica OR texto_contem=[única, unica, avulsa, sem retorno]"
+        action: "oferecer_upsell"
+        salva_no_estado:
+          collected_data.plano: "unica"
+        proximo_estado: "oferecendo_upsell"
+      
+      escolheu_com_retorno:
+        trigger: "botao_id=plano_com_retorno OR texto_contem=[com retorno, retorno, c retorno]"
+        action: "oferecer_upsell"
+        salva_no_estado:
+          collected_data.plano: "com_retorno"
+        proximo_estado: "oferecendo_upsell"
+      
+      escolheu_ouro:
+        trigger: "botao_id=plano_ouro OR texto_contem=[ouro]"
+        action: "oferecer_upsell"
+        salva_no_estado:
+          collected_data.plano: "ouro"
+        proximo_estado: "oferecendo_upsell"
+      
+      escolheu_premium:
+        trigger: "botao_id=plano_premium OR texto_contem=[premium]"
+        # Premium não tem upsell — pula direto pra modalidade
+        action: "ir_modalidade"
+        salva_no_estado:
+          collected_data.plano: "premium"
+      
+      pediu_mais_info_plano:
+        trigger: "intent=pedir_mais_info_plano"
+        permite_improviso: true
+        instrucao_para_llm: |
+          Use a base de conhecimento para detalhar o plano específico que
+          o paciente perguntou (consultas, duração, benefícios, valores).
+          Mantenha curto. Termine retomando "Qual prefere?".
+        proximo_estado: "aguardando_escolha_plano"
+      
+      achou_caro:
+        trigger: "intent=achou_caro OR texto_contem=[caro, salgado, valor alto, não tenho condição]"
+        usar_kb_objections: "preco_caro"
+        proximo_estado: "aguardando_escolha_plano"
+      
+      pediu_desconto:
+        trigger: "intent=pedir_desconto OR texto_contem=[desconto, promoção, mais barato]"
+        usar_kb_objections: "quer_desconto"
+        proximo_estado: "aguardando_escolha_plano"
+      
+      vou_pensar:
+        trigger: "intent=vou_pensar OR texto_contem=[vou pensar, deixa eu ver, depois]"
+        usar_kb_objections: "vou_pensar"
+        agendar_remarketing:
+          tipo: "sumiu_apos_ver_preco"
+          delay_horas: 24
+        proximo_estado: "concluido_pendente"
+      
+      pergunta_modalidade:
+        trigger: "intent=duvida_modalidade"
+        usar_kb_objections: "modalidade_duvida"
+        proximo_estado: "aguardando_escolha_plano"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 7 — OFERECENDO UPSELL
+  # ════════════════════════════════════════════════════════════════════════
+  oferecendo_upsell:
+    descricao: "Oferece o plano imediatamente superior"
+    intents_aceitas:
+      - aceitar_upsell
+      - recusar_upsell
+    
+    on_enter:
+      acao: "calcular_e_apresentar_upsell"
+      regras_upsell:
+        unica:
+          plano_destino: "com_retorno"
+          mensagem_template: |
+            Ótima escolha! Posso te dar uma dica? 💚
+
+            Por +R${diferenca} você pega o Plano Com Retorno: 1 consulta + 1 retorno em 30 dias. Mais suporte pelo investimento.
+
+            Quer manter a Consulta Única ou prefere o Com Retorno?
+          botoes:
+            - id: "upsell_aceitar"
+              label: "Quero o Com Retorno"
+            - id: "upsell_recusar"
+              label: "Manter a Única"
+        
+        com_retorno:
+          plano_destino: "ouro"
+          mensagem_template: |
+            Ótima escolha! Posso te dar uma dica? 💚
+
+            Por +R${diferenca} você sobe pro Plano Ouro: 3 consultas, 130 dias de acompanhamento e a Lilly inclusa. É bem mais suporte pelo investimento.
+
+            Quer manter o Com Retorno ou prefere o Ouro?
+          botoes:
+            - id: "upsell_aceitar"
+              label: "Quero o Ouro"
+            - id: "upsell_recusar"
+              label: "Manter Com Retorno"
+        
+        ouro:
+          plano_destino: "premium"
+          mensagem_template: |
+            Ótima escolha! Posso te dar uma dica? 💚
+
+            Por +R${diferenca} você sobe pro Plano Premium: 6 consultas, 270 dias de acompanhamento e encontros coletivos. Cobertura total!
+
+            Quer manter o Ouro ou prefere o Premium?
+          botoes:
+            - id: "upsell_aceitar"
+              label: "Quero o Premium"
+            - id: "upsell_recusar"
+              label: "Manter o Ouro"
+    
+    situacoes:
+      
+      aceitou_upsell:
+        trigger: "botao_id=upsell_aceitar OR texto_contem=[quero, aceito, sim, melhor, vou de]"
+        salva_no_estado:
+          collected_data.plano: "{plano_destino_calculado}"
+          flags.upsell_oferecido: true
+          flags.upsell_aceito: true
+        action: "ir_modalidade"
+      
+      recusou_upsell:
+        trigger: "botao_id=upsell_recusar OR texto_contem=[manter, fico com, não, não obrigado, esse mesmo]"
+        salva_no_estado:
+          flags.upsell_oferecido: true
+          flags.upsell_aceito: false
+        action: "ir_modalidade"
+      
+      pediu_comparacao:
+        trigger: "texto_contem=[comparar, diferença, qual vale mais, qual melhor]"
+        permite_improviso: true
+        instrucao_para_llm: |
+          Compare brevemente os 2 planos da oferta de upsell usando a base
+          de conhecimento. Apresente como benefício, não pressão.
+          Termine repetindo a pergunta de manter ou trocar.
+        proximo_estado: "oferecendo_upsell"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 8 — AGUARDANDO MODALIDADE
+  # ════════════════════════════════════════════════════════════════════════
+  aguardando_modalidade:
+    descricao: "Coleta modalidade (presencial ou online)"
+    pre_check:
+      condicao: "modalidade ja_mencionada anteriormente"
+      acao_se_verdadeiro: "pular_para_aguardando_preferencia_horario"
+    
+    on_enter:
+      mensagem: |
+        Vamos definir a modalidade: como você prefere fazer sua consulta com a Thaynara?
+      botoes_interativos:
+        - id: "mod_presencial"
+          label: "Presencial"
+        - id: "mod_online"
+          label: "Online"
+    
+    intents_aceitas:
+      - escolher_modalidade
+      - duvida_modalidade
+    
+    situacoes:
+      
+      escolheu_presencial:
+        trigger: "botao_id=mod_presencial OR texto_contem=[presencial, na clínica, no consultório, in loco]"
+        salva_no_estado:
+          collected_data.modalidade: "presencial"
+        action: "ir_aguardando_preferencia_horario"
+      
+      escolheu_online:
+        trigger: "botao_id=mod_online OR texto_contem=[online, vídeo, videochamada, meet, à distância, em casa]"
+        salva_no_estado:
+          collected_data.modalidade: "online"
+        action: "ir_aguardando_preferencia_horario"
+      
+      pergunta_diferenca:
+        trigger: "intent=duvida_modalidade"
+        usar_kb_objections: "modalidade_duvida"
+        proximo_estado: "aguardando_modalidade"
+      
+      pergunta_endereco:
+        trigger: "texto_contem=[onde, endereço, local, fica onde]"
+        resposta: |
+          A consulta presencial é na Aura Clinic & Beauty:
+          📍 Rua Melo Franco, 204/Sala 103, Jardim da Glória, Vespasiano/MG
+          https://maps.app.goo.gl/XxHgHxHh7aCxitDs8
+
+          E a online é por videochamada no WhatsApp 😊
+
+          Qual prefere?
+        botoes_interativos:
+          - id: "mod_presencial"
+            label: "Presencial"
+          - id: "mod_online"
+            label: "Online"
+        proximo_estado: "aguardando_modalidade"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 9 — AGUARDANDO PREFERÊNCIA DE HORÁRIO
+  # ════════════════════════════════════════════════════════════════════════
+  aguardando_preferencia_horario:
+    descricao: "Coleta preferência de horário em texto livre"
+    
+    on_enter:
+      mensagem: |
+        Para seguirmos com o agendamento, me informe qual horário atende melhor à sua rotina:
+
+        Segunda a Sexta-feira:
+        Manhã: 08h, 09h e 10h
+        Tarde: 15h, 16h e 17h
+        Noite: 18h e 19h (exceto sexta à noite)
+
+        Importante: só realizamos o agendamento do dia e horário da consulta mediante a confirmação do pagamento. Quanto antes o sinal for enviado, maior a chance de garantir o horário de sua preferência.
+    
+    intents_aceitas:
+      - informar_preferencia_horario
+      - duvida_operacional
+    
+    situacoes:
+      
+      preferencia_valida_dia_e_hora:
+        trigger: "intent=informar_preferencia_horario AND tem_dia=true AND tem_hora=true AND validar_grade=passou"
+        # Ex: "segunda às 08h"
+        action: "consultar_slots"
+        salva_no_estado:
+          collected_data.preferencia_horario:
+            dia_semana: "{dia_extraido}"
+            hora: "{hora_extraida}"
+            turno: "{turno_inferido}"
+            descricao: "{texto_original}"
+      
+      preferencia_valida_so_dia:
+        trigger: "intent=informar_preferencia_horario AND tem_dia=true AND tem_hora=false"
+        # Ex: "quarta", "segunda de manhã"
+        action: "consultar_slots"
+        salva_no_estado:
+          collected_data.preferencia_horario:
+            dia_semana: "{dia_extraido}"
+            turno: "{turno_inferido_ou_null}"
+            descricao: "{texto_original}"
+      
+      preferencia_valida_so_turno:
+        trigger: "intent=informar_preferencia_horario AND tem_dia=false AND tem_turno=true"
+        # Ex: "manhã", "à tarde"
+        action: "consultar_slots"
+        salva_no_estado:
+          collected_data.preferencia_horario:
+            turno: "{turno_extraido}"
+            descricao: "{texto_original}"
+      
+      preferencia_qualquer_horario:
+        trigger: "texto_contem=[qualquer, qualquer um, indiferente, tanto faz, vc escolhe]"
+        action: "consultar_slots"
+        salva_no_estado:
+          collected_data.preferencia_horario:
+            tipo: "qualquer"
+            descricao: "{texto_original}"
+      
+      pediu_sexta_noite:
+        trigger: "tem_dia=sexta AND tem_turno=noite"
+        resposta: |
+          Sexta à noite a Thaynara não atende 😔
+          Posso te oferecer sexta de tarde ou na noite de seg a qui. Qual prefere?
+        proximo_estado: "aguardando_preferencia_horario"
+      
+      pediu_fim_de_semana:
+        trigger: "tem_dia=[sábado, domingo, fds, fim de semana]"
+        resposta: |
+          Sábado e domingo a Thaynara não atende 😔
+          O atendimento é de segunda a sexta. Tem algum dia da semana que funciona pra você?
+        proximo_estado: "aguardando_preferencia_horario"
+      
+      pediu_horario_fora_grade:
+        trigger: "tem_hora_fora_grade=true"
+        # Ex: 14h, 11h, 12h
+        resposta: |
+          Esse horário tá fora da agenda da Thaynara 😔
+
+          Os horários disponíveis são: manhã 08h, 09h ou 10h | tarde 15h, 16h ou 17h | noite 18h ou 19h (exceto sexta).
+
+          Qual atende melhor pra você?
+        proximo_estado: "aguardando_preferencia_horario"
+      
+      pediu_mesmo_dia:
+        trigger: "tem_dia=hoje OR data_pedida=data_atual"
+        resposta: |
+          Pra hoje não tenho disponibilidade 😔 Quer que eu olhe pra amanhã ou outro dia?
+        proximo_estado: "aguardando_preferencia_horario"
+      
+      resposta_vaga:
+        trigger: "intent=ambigua OR confidence < 0.6"
+        resposta: |
+          Pra eu olhar a agenda certinho, me fala qual dia ou turno funciona melhor pra você? 😊
+        proximo_estado: "aguardando_preferencia_horario"
+        max_tentativas: 2
+        ao_atingir_max: "escalar_breno"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 10 — OFERECENDO SLOTS
+  # ════════════════════════════════════════════════════════════════════════
+  oferecendo_slots:
+    descricao: "Apresenta os slots reais retornados pelo Dietbox"
+    
+    on_enter:
+      acao: "consultar_slots_dietbox"
+      input:
+        modalidade: "{collected_data.modalidade}"
+        preferencia: "{collected_data.preferencia_horario}"
+        excluir_slots_rejeitados: "{state.slots_rejeitados}"
+      apos_consulta: "decidir_apresentacao_slots"
+    
+    situacoes:
+      
+      encontrou_horario_pedido:
+        trigger: "tool_consultar_slots.match_exato=true"
+        resposta_template: |
+          Encontrei o horário solicitado e estou enviando dois outros horários mais próximos caso o solicitado esteja distante:
+
+          📅 {slot_1_descricao}
+          📅 {slot_2_descricao}
+          📅 {slot_3_descricao}
+
+          Qual prefere?
+        botoes_interativos:
+          - id: "slot_1"
+            label: "{slot_1_label_curto}"
+          - id: "slot_2"
+            label: "{slot_2_label_curto}"
+          - id: "slot_3"
+            label: "{slot_3_label_curto}"
+        salva_no_estado:
+          last_slots_offered: "{slots_apresentados}"
+        proximo_estado: "aguardando_escolha_slot"
+      
+      nao_encontrou_horario_pedido:
+        trigger: "tool_consultar_slots.match_exato=false AND tem_alternativas=true"
+        resposta_template: |
+          Não tenho exatamente {preferencia_descricao}, mas tenho:
+
+          📅 {slot_1_descricao}
+          📅 {slot_2_descricao}
+          📅 {slot_3_descricao}
+
+          Alguma dessas serve?
+        botoes_interativos:
+          - id: "slot_1"
+            label: "{slot_1_label_curto}"
+          - id: "slot_2"
+            label: "{slot_2_label_curto}"
+          - id: "slot_3"
+            label: "{slot_3_label_curto}"
+        salva_no_estado:
+          last_slots_offered: "{slots_apresentados}"
+        proximo_estado: "aguardando_escolha_slot"
+      
+      sem_disponibilidade:
+        trigger: "tool_consultar_slots.slots_count=0"
+        resposta: |
+          No momento não tenho horários disponíveis nesse período 😔 
+          Quer que eu olhe em outro horário ou na semana que vem? 💚
+        proximo_estado: "aguardando_preferencia_horario"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 11 — AGUARDANDO ESCOLHA DE SLOT
+  # ════════════════════════════════════════════════════════════════════════
+  aguardando_escolha_slot:
+    descricao: "Paciente escolhe um dos 3 slots oferecidos"
+    intents_aceitas:
+      - escolher_slot
+      - rejeitar_slots
+      - desistir
+    
+    situacoes:
+      
+      escolheu_slot_botao:
+        trigger: "botao_id=[slot_1, slot_2, slot_3]"
+        salva_no_estado:
+          appointment.slot_escolhido: "{slot_correspondente}"
+        action: "ir_aguardando_forma_pagamento"
+      
+      escolheu_slot_texto:
+        trigger: "intent=escolher_slot AND match_texto_com_slots=true"
+        # Ex: "o segundo", "sexta 8h", "10h serve"
+        salva_no_estado:
+          appointment.slot_escolhido: "{slot_match}"
+        action: "ir_aguardando_forma_pagamento"
+      
+      rejeitou_todos:
+        trigger: "intent=rejeitar_slots"
+        salva_no_estado:
+          state.slots_rejeitados: "{state.slots_rejeitados + last_slots_offered}"
+          state.rodada_negociacao: "{rodada_atual + 1}"
+          last_slots_offered: []
+        resposta: |
+          Sem problema! Quer que eu olhe outro turno ou outra semana?
+        proximo_estado: "aguardando_preferencia_horario"
+        # Após 3 rodadas → escala
+        regras_escalacao:
+          condicao: "state.rodada_negociacao >= 3"
+          acao: "escalar_breno"
+      
+      pediu_outras_opcoes:
+        trigger: "texto_contem=[outras opções, mais opções, outros horários, mais]"
+        action: "consultar_slots_proxima_pagina"
+        proximo_estado: "oferecendo_slots"
+      
+      desistiu:
+        trigger: "intent=desistir"
+        agendar_remarketing:
+          tipo: "sumiu_apos_receber_info"
+          delay_horas: 48
+        resposta: |
+          Tudo bem! Quando quiser retomar, é só me chamar 💚
+        proximo_estado: "concluido_pendente"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 12 — AGUARDANDO FORMA DE PAGAMENTO
+  # ════════════════════════════════════════════════════════════════════════
+  aguardando_forma_pagamento:
+    descricao: "Paciente escolhe PIX ou cartão"
+    
+    on_enter:
+      mensagem: |
+        Perfeito! Para confirmar seu agendamento, é necessário realizar o pagamento antecipado:
+
+        💸 PIX: sinal de 50% do valor escolhido
+        💳 Cartão: pagamento integral (parcelamento disponível em até 10x)
+
+        Essa é uma política da clínica devido à alta procura e para garantir que seu horário fique reservado pra você.
+
+        Qual opção prefere?
+      botoes_interativos:
+        - id: "pag_pix"
+          label: "PIX"
+        - id: "pag_cartao"
+          label: "Cartão"
+    
+    intents_aceitas:
+      - escolher_forma_pagamento
+      - duvida_pagamento
+    
+    situacoes:
+      
+      escolheu_pix:
+        trigger: "botao_id=pag_pix OR texto_contem=[pix]"
+        salva_no_estado:
+          collected_data.forma_pagamento: "pix"
+        action: "ir_aguardando_pagamento_pix"
+      
+      escolheu_cartao:
+        trigger: "botao_id=pag_cartao OR texto_contem=[cartão, cartao, crédito, debito, credito]"
+        salva_no_estado:
+          collected_data.forma_pagamento: "cartao"
+        action: "ir_aguardando_pagamento_cartao"
+      
+      pediu_parcelamento:
+        trigger: "texto_contem=[parcelar, parcelas, em quantas vezes, parcelado]"
+        resposta: |
+          No cartão você pode parcelar em até 10x sem juros 💚 Quer pagar no cartão?
+        botoes_interativos:
+          - id: "pag_cartao"
+            label: "Sim, cartão"
+          - id: "pag_pix"
+            label: "Não, PIX"
+        proximo_estado: "aguardando_forma_pagamento"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 13 — AGUARDANDO PAGAMENTO PIX
+  # ════════════════════════════════════════════════════════════════════════
+  aguardando_pagamento_pix:
+    descricao: "Enviou chave PIX, aguarda comprovante"
+    
+    on_enter:
+      acao: "calcular_valor_sinal"
+      mensagem_template: |
+        Valor total: R$ {valor_total}
+        Sinal (50%): R$ {valor_sinal}
+
+        Chave PIX (CPF): 14994735670
+        (Nome: Thaynara Teixeira)
+
+        Feito, envie o comprovante que retorno com a confirmação e orientações 👈✅
+    
+    intents_aceitas:
+      - enviou_comprovante
+      - duvida_pagamento
+      - desistir
+    
+    situacoes:
+      
+      recebeu_imagem:
+        trigger: "messageType=image"
+        action: "validar_comprovante"
+        proximo_estado: "validando_comprovante"
+      
+      pediu_outra_chave:
+        trigger: "texto_contem=[outra chave, qrcode, qr code, copiar e colar]"
+        resposta: |
+          A chave PIX é o CPF: 14994735670 💚
+          Pode copiar essa chave que cai direto na conta da Thaynara 😊
+        proximo_estado: "aguardando_pagamento_pix"
+      
+      paciente_disse_que_pagou_sem_comprovante:
+        trigger: "texto_contem=[paguei, pago, foi, fiz pix, transferi]"
+        resposta: |
+          Que ótimo! Pode me mandar o comprovante pra eu confirmar o pagamento? 💚
+        proximo_estado: "aguardando_pagamento_pix"
+      
+      desistiu:
+        trigger: "intent=desistir"
+        agendar_remarketing:
+          tipo: "sumiu_apos_receber_info"
+          delay_horas: 48
+        resposta: |
+          Tudo bem! Seu horário fica reservado por 24h. Se mudar de ideia, me chama 💚
+        proximo_estado: "concluido_pendente"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 14 — VALIDANDO COMPROVANTE
+  # ════════════════════════════════════════════════════════════════════════
+  validando_comprovante:
+    descricao: "Analisa imagem do comprovante"
+    
+    on_enter:
+      acao: "tool_analisar_comprovante"
+      apos_analise: "decidir_resultado_comprovante"
+    
+    situacoes:
+      
+      valor_exato_sinal:
+        trigger: "valor_pago == valor_sinal"
+        # Ex: pagou 345 num plano de 690 (sinal 50%)
+        resposta_template: |
+          Recebi seu sinal de R$ {valor_pago}! ✅
+          Falta R$ {valor_restante} pra acertar no dia da consulta.
+        action: "encaminhar_comprovante_thaynara"
+        proximo_estado: "aguardando_cadastro"
+        salva_no_estado:
+          flags.pagamento_confirmado: true
+          collected_data.valor_pago_sinal: "{valor_pago}"
+      
+      valor_acima_sinal_abaixo_total:
+        trigger: "valor_pago > valor_sinal AND valor_pago < valor_total"
+        resposta_template: |
+          Recebi R$ {valor_pago}! ✅
+          Falta R$ {valor_restante} pra acertar no dia da consulta.
+        action: "encaminhar_comprovante_thaynara"
+        proximo_estado: "aguardando_cadastro"
+        salva_no_estado:
+          flags.pagamento_confirmado: true
+          collected_data.valor_pago_sinal: "{valor_pago}"
+      
+      valor_total_quitado:
+        trigger: "valor_pago >= valor_total"
+        resposta_template: |
+          Recebi pagamento integral de R$ {valor_pago}! ✅ Tudo quitado, sem saldo a acertar 💚
+        action: "encaminhar_comprovante_thaynara"
+        proximo_estado: "aguardando_cadastro"
+        salva_no_estado:
+          flags.pagamento_confirmado: true
+          flags.pago_integral: true
+          collected_data.valor_pago_sinal: "{valor_pago}"
+      
+      valor_abaixo_sinal:
+        trigger: "valor_pago < valor_sinal"
+        resposta_template: |
+          Recebi seu comprovante de R$ {valor_pago}, mas o sinal mínimo é R$ {valor_sinal} 💚
+          Pode me mandar mais R$ {falta_para_sinal} pra completar?
+          
+          Chave PIX (CPF): 14994735670
+        proximo_estado: "aguardando_pagamento_pix"
+      
+      nao_e_comprovante:
+        trigger: "tool_analisar_comprovante.eh_comprovante=false"
+        resposta: |
+          Hmm, essa imagem não parece ser um comprovante 😅 
+          Pode me mandar a tela do PIX confirmado?
+        proximo_estado: "aguardando_pagamento_pix"
+      
+      ilegivel_ou_erro:
+        trigger: "tool_analisar_comprovante.erro=true"
+        action: "escalar_breno_silencioso"
+        resposta_paciente: |
+          Recebi seu comprovante! Deixa eu confirmar com a equipe e já te respondo 💚
+        proximo_estado: "validando_comprovante"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 15 — AGUARDANDO PAGAMENTO CARTÃO
+  # ════════════════════════════════════════════════════════════════════════
+  aguardando_pagamento_cartao:
+    descricao: "Enviou link Rede, aguarda confirmação"
+    
+    on_enter:
+      acao: "tool_gerar_link_pagamento"
+      input:
+        plano: "{collected_data.plano}"
+        modalidade: "{collected_data.modalidade}"
+      apos_geracao: "enviar_link"
+      mensagem_template: |
+        Segue o link:
+        {url_link}
+
+        Pode parcelar em até 10x sem juros 😊
+        Após o pagamento, te confirmo aqui!
+    
+    intents_aceitas:
+      - confirmou_pagamento
+      - problema_pagamento
+      - desistir
+    
+    situacoes:
+      
+      pagamento_confirmado_via_webhook:
+        trigger: "evento_externo=rede_pagamento_confirmado"
+        action: "encaminhar_pagamento_thaynara"
+        resposta: |
+          Pagamento confirmado! ✅
+          Vou seguir com seu cadastro agora 💚
+        proximo_estado: "aguardando_cadastro"
+        salva_no_estado:
+          flags.pagamento_confirmado: true
+          flags.pago_integral: true
+      
+      paciente_disse_pagou:
+        trigger: "texto_contem=[paguei, pronto, ok pago, finalizei]"
+        action: "tool_verificar_pagamento_rede"
+        # Se confirmar → segue. Se não → pede pra esperar
+      
+      problema_link:
+        trigger: "texto_contem=[não funcionou, deu erro, não abre, não consegui]"
+        resposta: |
+          Vou gerar um novo link pra você 💚 Um instante...
+        action: "tool_gerar_link_pagamento_novo"
+        proximo_estado: "aguardando_pagamento_cartao"
+      
+      desistiu:
+        trigger: "intent=desistir"
+        agendar_remarketing:
+          tipo: "sumiu_apos_link_pagamento"
+          delay_horas: 4
+        proximo_estado: "concluido_pendente"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 16 — AGUARDANDO CADASTRO
+  # ════════════════════════════════════════════════════════════════════════
+  aguardando_cadastro:
+    descricao: "Coleta dados de cadastro completo"
+    
+    on_enter:
+      mensagem_template: |
+        Excelente, {primeiro_nome}!
+
+        Para finalizarmos o cadastro e garantirmos o horário, por favor informe:
+
+        👉 Nome completo:
+        👉 Data de nascimento:
+        👉 Instagram (se houver):
+        👉 WhatsApp para contato:
+        👉 E-mail:
+        👉 Profissão:
+        👉 CEP e endereço completo:
+        👉 Chegou até nós por indicação de alguém? Se não, por onde conheceu a Thaynara?
+
+        Importante: As consultas têm duração média de 1 hora. Não atendemos gestantes ou menores de 16 anos.
+    
+    intents_aceitas:
+      - informar_cadastro
+      - dado_cadastral_individual
+      - duvida_operacional
+    
+    situacoes:
+      
+      cadastro_completo_obrigatorios:
+        trigger: "tem_nome_completo=true AND tem_data_nascimento=true AND tem_email=true AND tem_whatsapp_contato=true"
+        action: "criar_agendamento"
+        salva_no_estado:
+          collected_data.nome: "{nome_completo}"
+          collected_data.data_nascimento: "{data_nasc}"
+          collected_data.email: "{email}"
+          collected_data.whatsapp_contato: "{whatsapp_extraido}"
+          collected_data.instagram: "{instagram_se_houver}"
+          collected_data.profissao: "{profissao_se_houver}"
+          collected_data.cep_endereco: "{cep_se_houver}"
+          collected_data.indicacao_origem: "{indicacao_se_houver}"
+        proximo_estado: "criando_agendamento"
+      
+      cadastro_parcial_falta_obrigatorios:
+        trigger: "informou_alguns_obrigatorios=true"
+        permite_improviso: true
+        instrucao_para_llm: |
+          Liste os obrigatórios que ainda faltam (nome completo, data nascimento,
+          email, whatsapp). Mantenha curto e gentil.
+          Exemplo: "Show! Falta só {campos_faltantes}, pode mandar?"
+        proximo_estado: "aguardando_cadastro"
+      
+      mandou_so_um_dado:
+        trigger: "informou_um_dado_isolado=true"
+        permite_improviso: true
+        instrucao_para_llm: |
+          Confirma o dado recebido e pede o próximo obrigatório que falta.
+          Exemplo: "Anotei seu email! Agora preciso da data de nascimento 💚"
+        proximo_estado: "aguardando_cadastro"
+      
+      detectou_gestante_ou_menor_16:
+        trigger: "tem_idade < 16 OR texto_contem=[grávida, gravida, gestante, gestação]"
+        resposta: |
+          Que pena! Infelizmente a Thaynara não realiza atendimento para gestantes e menores de 16 anos no momento 😔
+          
+          Como o pagamento já foi feito, vou avisar a equipe pra acertar o reembolso com você. Em alguns instantes te respondo 💚
+        action: "escalar_breno_com_contexto"
+        proximo_estado: "concluido_escalado"
+      
+      duvida_durante_cadastro:
+        trigger: "intent=duvida_operacional"
+        permite_improviso: true
+        instrucao_para_llm: |
+          Responda a dúvida brevemente da KB e retome pedindo os dados que faltam.
+        proximo_estado: "aguardando_cadastro"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 17 — CRIANDO AGENDAMENTO
+  # ════════════════════════════════════════════════════════════════════════
+  criando_agendamento:
+    descricao: "Cria paciente, agenda e lança financeiro no Dietbox"
+    
+    on_enter:
+      mensagem: |
+        Um instante, estou agendando sua consulta 💚
+      
+      acoes_em_sequencia:
+        - "tool_dietbox_criar_paciente"
+        - "tool_dietbox_agendar_consulta"
+        - "tool_dietbox_lancar_financeiro"
+        - "tool_dietbox_marcar_pagamento_confirmado"
+      
+      apos_sucesso:
+        proximo_estado: "confirmacao_final"
+      
+      apos_falha:
+        action: "escalar_breno_silencioso"
+        resposta_paciente: |
+          Estou finalizando seu agendamento, só um instante 💚
+        proximo_estado: "criando_agendamento_aguardando_breno"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 18 — CONFIRMAÇÃO FINAL (BIFURCA POR MODALIDADE)
+  # ════════════════════════════════════════════════════════════════════════
+  confirmacao_final:
+    descricao: "Envia template 4.9.1 ou 4.9.2 conforme modalidade"
+    
+    on_enter:
+      condicional_modalidade:
+        
+        presencial:
+          mensagem_template: |
+            {primeiro_nome}, sua consulta foi confirmada com sucesso! ✅
+
+            📅 Data e hora: {dia_semana}, {data_completa} às {hora}
+
+            📍 Local: Aura Clinic & Beauty - Rua Melo Franco, 204/Sala 103, Jardim da Glória, Vespasiano
+            https://maps.app.goo.gl/XxHgHxHh7aCxitDs8
+
+            Políticas importantes:
+            ⏱️ Tolerância máxima de atraso: 10 minutos.
+            🔄 Reagendar/cancelar: informar com 24h de antecedência. Remarcação em até 7 dias corridos.
+            🚫 Não comparecimento: consulta considerada realizada, sem reembolso.
+
+            💚 Obrigada pela confiança! Estamos te esperando.
+          
+          acoes_apos_mensagem:
+            - tipo: "delay"
+              segundos: 2
+            - tipo: "enviar_imagem"
+              arquivo: "COMO-SE-PREPARAR---presencial.jpg"
+        
+        online:
+          mensagem_template: |
+            {primeiro_nome}, sua consulta foi confirmada com sucesso! ✅
+
+            📅 Data e hora: {dia_semana}, {data_completa} às {hora}
+
+            📍 Local: Chamada de vídeo pelo WhatsApp (a nutri irá te ligar no número cadastrado)
+
+            ✅ Certifique-se de ter uma boa conexão de internet.
+
+            Políticas importantes:
+            ⏱️ Tolerância máxima de atraso: 10 minutos.
+            🔄 Reagendar/cancelar: informar com 24h de antecedência. Remarcação em até 7 dias corridos.
+            🚫 Não comparecimento: consulta considerada realizada, sem reembolso.
+
+            💚 Obrigada pela confiança! Estamos te esperando.
+          
+          acoes_apos_mensagem:
+            - tipo: "delay"
+              segundos: 2
+            - tipo: "enviar_imagem"
+              arquivo: "COMO-SE-PREPARAR---ONLINE.jpg"
+            - tipo: "delay"
+              segundos: 1
+            - tipo: "enviar_pdf"
+              arquivo_dinamico: "Guia - Circunferências Corporais - {sexo_inferido_do_nome}.pdf"
+              # sexo_inferido: "Mulheres" ou "Homens"
+              # fallback se ambíguo: enviar os 2 PDFs
+            - tipo: "delay"
+              segundos: 1
+            - tipo: "enviar_contato"
+              numero: "5531991394759"
+              nome: "Thaynara Teixeira"
+            - tipo: "delay"
+              segundos: 1
+            - tipo: "enviar_texto"
+              texto: |
+                Não esquece de mandar a foto e as medidas no número da Nutri, por favor. Elas são muito importantes na realização da consulta. Obrigadaaa 💚
+      
+      proximo_estado: "concluido"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 19 — CONCLUÍDO
+  # ════════════════════════════════════════════════════════════════════════
+  concluido:
+    descricao: "Fluxo finalizado com sucesso"
+    on_enter:
+      acoes:
+        - "limpar_estado_redis"
+        - "marcar_conversa_dietbox_ok"
+        - "registrar_metrica_conversao"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 19B — CONCLUÍDO PENDENTE
+  # ════════════════════════════════════════════════════════════════════════
+  concluido_pendente:
+    descricao: "Paciente desistiu mas pode voltar (remarketing agendado)"
+    on_enter:
+      acoes:
+        - "manter_estado_redis_temporario"
+        - "registrar_metrica_abandono"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 19C — ESCALADO PARA BRENO
+  # ════════════════════════════════════════════════════════════════════════
+  concluido_escalado:
+    descricao: "Caso requer ação humana"
+    on_enter:
+      acoes:
+        - "manter_estado_redis"
+        - "registrar_metrica_escalacao"
+
+# ───────────────────────────────────────────────────────────────────────────
+# REGRAS DE NEGÓCIO INVIOLÁVEIS DESTE FLUXO (rules.py)
+# ───────────────────────────────────────────────────────────────────────────
+regras_invioláveis:
+  
+  validar_horario_atendimento:
+    descricao: "Horário pedido cabe na grade?"
+    grade:
+      segunda_a_quinta:
+        manha: ["08:00", "09:00", "10:00"]
+        tarde: ["15:00", "16:00", "17:00"]
+        noite: ["18:00", "19:00"]
+      sexta:
+        manha: ["08:00", "09:00", "10:00"]
+        tarde: ["15:00", "16:00", "17:00"]
+        # sexta noite NÃO atende
+      sabado: []
+      domingo: []
+    aplica_em_estados:
+      - aguardando_preferencia_horario
+      - oferecendo_slots
+  
+  validar_distribuicao_slots:
+    descricao: "Conjunto de slots oferecidos respeita as regras"
+    regras:
+      - max_slots_por_dia: 2
+      - turnos_diferentes_no_mesmo_dia: true
+      - sem_horarios_consecutivos_mesmo_dia: true
+      - preferir_diversidade_dias: true
+    aplica_em_estados:
+      - oferecendo_slots
+  
+  validar_valor_pagamento:
+    descricao: "Valor pago é válido?"
+    regras:
+      - pix_minimo: "50% do valor total"
+      - pix_aceita_acima: true
+      - cartao_sempre_integral: true
+    aplica_em_estados:
+      - validando_comprovante
+  
+  validar_dados_obrigatorios_cadastro:
+    descricao: "Tem todos os campos obrigatórios?"
+    obrigatorios:
+      - nome_completo
+      - data_nascimento
+      - email
+      - whatsapp_contato
+    aplica_em_estados:
+      - aguardando_cadastro
+  
+  validar_idade:
+    descricao: "Paciente >= 16 anos?"
+    regra: "data_nascimento > 16 anos atrás"
+    aplica_em_estados:
+      - aguardando_cadastro
+  
+  validar_resposta_nao_expoe_breno:
+    descricao: "Resposta NÃO contém referências ao Breno"
+    palavras_proibidas:
+      - "Breno"
+      - "31 99205-9211"
+      - "31992059211"
+      - "5531992059211"
+    aplica_em_estados: TODOS
+  
+  validar_resposta_nao_oferece_horario_invalido:
+    descricao: "Resposta não oferece horário fora da grade"
+    aplica_em_estados:
+      - oferecendo_slots
+      - aguardando_preferencia_horario
+
+# ───────────────────────────────────────────────────────────────────────────
+# TOOLS UTILIZADAS NESTE FLUXO
+# ───────────────────────────────────────────────────────────────────────────
+tools:
+  
+  consultar_slots_dietbox:
+    descricao: "Busca slots reais no Dietbox respeitando preferência e regras"
+    input:
+      modalidade: ["presencial", "online"]
+      preferencia_horario: object
+      excluir_slots: array
+    output:
+      slots: array (max 3)
+      match_exato: bool
+      slots_count: int
+  
+  analisar_comprovante:
+    descricao: "Analisa imagem do comprovante PIX via Gemini Vision"
+    input:
+      imagem_bytes: bytes
+      mime_type: str
+    output:
+      eh_comprovante: bool
+      valor_pago: float
+      favorecido: str
+  
+  gerar_link_pagamento:
+    descricao: "Gera link de pagamento via Rede"
+    input:
+      plano: str
+      modalidade: str
+    output:
+      url: str
+      parcelas: int
+  
+  dietbox_criar_paciente:
+    descricao: "Cria paciente no Dietbox"
+  
+  dietbox_agendar_consulta:
+    descricao: "Cria agendamento no Dietbox"
+  
+  dietbox_lancar_financeiro:
+    descricao: "Lança transação financeira no Dietbox"
+  
+  encaminhar_comprovante_thaynara:
+    descricao: "Encaminha comprovante PIX + resumo pra Thaynara"
+  
+  encaminhar_pagamento_thaynara:
+    descricao: "Notifica Thaynara sobre pagamento via cartão confirmado"
+
+# ───────────────────────────────────────────────────────────────────────────
+# REMARKETING ASSOCIADO A ESTE FLUXO
+# ───────────────────────────────────────────────────────────────────────────
+remarketing:
+  
+  sumiu_apos_ver_preco:
+    trigger_estado: "concluido_pendente AND ultimo_estado=aguardando_escolha_plano"
+    delay_horas: 24
+  
+  sumiu_apos_link_pagamento:
+    trigger_estado: "concluido_pendente AND ultimo_estado=aguardando_pagamento_cartao"
+    delay_horas: 4
+  
+  sumiu_apos_receber_info:
+    trigger_estado: "concluido_pendente AND ultimo_estado IN [aguardando_escolha_slot, aguardando_pagamento_pix]"
+    delay_horas: 48

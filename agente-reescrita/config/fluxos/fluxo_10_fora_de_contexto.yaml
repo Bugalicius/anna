@@ -1,0 +1,173 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# FLUXO 10 — FORA DE CONTEXTO
+# ═══════════════════════════════════════════════════════════════════════════
+
+fluxo_id: "fora_de_contexto"
+fluxo_nome: "Mensagens fora do escopo do agente"
+
+# ───────────────────────────────────────────────────────────────────────────
+# CONTEXTO DE ENTRADA
+# ───────────────────────────────────────────────────────────────────────────
+# Ativado quando interpreter classifica mensagem como:
+#   - sem relação com agendamento/dúvidas/consulta
+#   - pergunta genérica (capital da França, fofoca, piada)
+#   - mensagens vagas sem contexto
+#
+# REGRA: contador zera quando paciente volta ao fluxo legítimo.
+
+# ───────────────────────────────────────────────────────────────────────────
+# ESTADOS
+# ───────────────────────────────────────────────────────────────────────────
+estados:
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 1 — PRIMEIRA MENSAGEM FORA DE CONTEXTO
+  # ════════════════════════════════════════════════════════════════════════
+  fora_contexto_primeira:
+    descricao: "Primeira mensagem fora de contexto consecutiva"
+    
+    on_enter:
+      resposta: |
+        Eiii! 💚 Tudo bem? Estou aqui para ajudar com agendamentos e dúvidas sobre a consulta com a Thaynara! Posso te ajudar com isso? 😊
+      
+      salva_no_estado:
+        contador_fora_contexto: 1
+      
+      proximo_estado: "aguardando_proxima_mensagem"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 2 — AGUARDANDO PRÓXIMA MENSAGEM (já recebeu 1 fora de contexto)
+  # ════════════════════════════════════════════════════════════════════════
+  aguardando_proxima_mensagem:
+    descricao: "Aguardando próxima mensagem do paciente — pode voltar ao fluxo ou não"
+    
+    situacoes:
+      
+      voltou_para_fluxo_legitimo:
+        trigger: "intent IN [agendar_consulta, duvida_operacional, remarcar, cancelar, consultar_status]"
+        # Zera contador e segue o fluxo apropriado
+        salva_no_estado:
+          contador_fora_contexto: 0
+        acao: "redirecionar_para_fluxo_apropriado"
+      
+      mais_uma_mensagem_fora_de_contexto:
+        trigger: "intent=fora_de_contexto"
+        proximo_estado: "fora_contexto_segunda"
+      
+      mensagem_ambigua:
+        trigger: "confidence < 0.6"
+        # Trata como fora de contexto pra ser conservador
+        proximo_estado: "fora_contexto_segunda"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 3 — SEGUNDA MENSAGEM FORA DE CONTEXTO (ESCALAR)
+  # ════════════════════════════════════════════════════════════════════════
+  fora_contexto_segunda:
+    descricao: "2ª mensagem fora de contexto consecutiva — escala silenciosamente"
+    
+    on_enter:
+      acao: "escalar_breno_silencioso"
+      
+      mensagem_breno_template: |
+        🔔 Paciente fora de contexto — 2 mensagens
+        
+        Telefone: {telefone}
+        Nome: {nome_se_houver}
+        
+        Última mensagem: "{ultima_mensagem}"
+        Mensagem anterior: "{mensagem_anterior}"
+        
+        Aguardo orientação.
+      
+      resposta_paciente: |
+        Deixa eu verificar isso pra você. Um instante! 💚
+      
+      salva_no_estado:
+        contador_fora_contexto: 2
+      
+      proximo_estado: "aguardando_orientacao_breno"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 4 — AGUARDANDO ORIENTAÇÃO DO BRENO
+  # ════════════════════════════════════════════════════════════════════════
+  aguardando_orientacao_breno:
+    descricao: "Breno foi notificado — sistema aguarda orientação"
+    
+    situacoes:
+      
+      breno_respondeu:
+        trigger: "comando_interno_breno_responder_paciente"
+        permite_improviso: true
+        instrucao_para_llm: |
+          Adapte a resposta do Breno pro tom da Ana — curto, caloroso.
+          Não mencione Breno em nenhum momento.
+        salva_no_estado:
+          contador_fora_contexto: 0
+        proximo_estado: "fora_contexto_resolvido"
+      
+      paciente_volta_ao_fluxo_antes_breno_responder:
+        trigger: "intent IN [agendar_consulta, duvida_operacional, remarcar, cancelar]"
+        salva_no_estado:
+          contador_fora_contexto: 0
+        acao: "redirecionar_para_fluxo_apropriado"
+        acao_paralela: "cancelar_escalacao_pendente"
+      
+      paciente_manda_mais_mensagens_aleatorias:
+        trigger: "intent=fora_de_contexto"
+        # Sistema não responde mais — só registra
+        acao: "registrar_mensagem_sem_responder"
+      
+      timeout_15_minutos:
+        trigger: "tempo_sem_resposta_breno > 15min"
+        resposta: |
+          A equipe está verificando e vai retornar em breve, tá? 💚
+        proximo_estado: "fora_contexto_resolvido"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # ESTADO 5 — FORA DE CONTEXTO RESOLVIDO
+  # ════════════════════════════════════════════════════════════════════════
+  fora_contexto_resolvido:
+    descricao: "Caso resolvido"
+    on_enter:
+      acoes:
+        - "registrar_metrica_fora_contexto"
+        - "manter_estado_aguardando_proxima_mensagem_normal"
+
+# ───────────────────────────────────────────────────────────────────────────
+# REGRAS INVIOLÁVEIS
+# ───────────────────────────────────────────────────────────────────────────
+regras_invioláveis:
+  
+  contador_zera_quando_volta_ao_fluxo:
+    descricao: "Sempre que paciente volta ao fluxo legítimo, contador zera"
+    aplica_em_estados:
+      - aguardando_proxima_mensagem
+      - aguardando_orientacao_breno
+  
+  escalar_apos_2_mensagens_consecutivas:
+    descricao: "2 mensagens fora de contexto seguidas = escalar pro Breno"
+    aplica_em_estados:
+      - fora_contexto_segunda
+  
+  nunca_responder_pergunta_fora_de_contexto:
+    descricao: "Mesmo se for pergunta inocente (capital França, etc), NÃO responder o conteúdo — apenas redirecionar"
+    aplica_em_estados:
+      - fora_contexto_primeira
+      - fora_contexto_segunda
+  
+  ignorar_silenciosamente_apos_escalar:
+    descricao: "Após escalar, novas mensagens fora de contexto são apenas registradas (não respondidas)"
+    aplica_em_estados:
+      - aguardando_orientacao_breno
+
+# ───────────────────────────────────────────────────────────────────────────
+# TOOLS
+# ───────────────────────────────────────────────────────────────────────────
+tools:
+  
+  classificar_intent_da_mensagem:
+    descricao: "Decide se a mensagem é fora de contexto ou pertence a algum fluxo"
+    output:
+      intent: enum
+      confidence: float
+      fluxo_sugerido: str

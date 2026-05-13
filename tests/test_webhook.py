@@ -92,7 +92,7 @@ def test_chatwoot_incoming_message_routes_to_debounce():
         "conversation": {"id": 77},
     }
 
-    with patch.dict("os.environ", {"CHATWOOT_WEBHOOK_VERIFY_TOKEN": ""}), \
+    with patch.dict("os.environ", {"CHATWOOT_WEBHOOK_VERIFY_TOKEN": "", "CHATWOOT_PROCESS_INCOMING": "true"}), \
          patch("app.webhook.process_message_debounced", new_callable=AsyncMock) as mock_process, \
          patch("app.chatwoot_bridge.bind_chatwoot_conversation", new_callable=AsyncMock) as mock_bind:
         response = client.post("/webhook/chatwoot", json=payload)
@@ -121,7 +121,7 @@ def test_chatwoot_incoming_attachment_preserves_media_url():
         }],
     }
 
-    with patch.dict("os.environ", {"CHATWOOT_WEBHOOK_VERIFY_TOKEN": ""}), \
+    with patch.dict("os.environ", {"CHATWOOT_WEBHOOK_VERIFY_TOKEN": "", "CHATWOOT_PROCESS_INCOMING": "true"}), \
          patch("app.webhook.process_message_debounced", new_callable=AsyncMock) as mock_process:
         response = client.post("/webhook/chatwoot", json=payload)
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from app.conversation_v2.models import AcaoAutorizada, TipoAcao
-from app.conversation_v2.response_writer import escrever
+from app.conversation.models import AcaoAutorizada, TipoAcao
+from app.conversation.response_writer import escrever
 
 
 def test_response_writer_processa_acoes_em_sequencia_dict() -> None:

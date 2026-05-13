@@ -77,7 +77,7 @@ def _state_agendamento_sem_consulta() -> dict:
 @pytest.mark.asyncio
 async def test_preferencia_horario_ignora_draft_generico_do_planner():
     """Pergunta de preferência de horário deve usar tabela fixa, não texto livre do planner."""
-    from app.conversation.responder import gerar_resposta
+    from app.conversation_legacy.responder import gerar_resposta
 
     state = _state_agendamento_sem_consulta()
     state["history"] = [
@@ -175,7 +175,7 @@ def _turno_fora_contexto(msg: str = "Oi") -> dict:
 @pytest.mark.asyncio
 async def test_desistir_sem_consulta_retorna_abandon_process():
     """Paciente sem consulta agendada diz 'quero desistir' → encerra graciosamente."""
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_agendamento_sem_consulta()
     turno = _turno_cancelar()
@@ -191,7 +191,7 @@ async def test_desistir_sem_consulta_retorna_abandon_process():
 @pytest.mark.asyncio
 async def test_desistir_sem_consulta_nao_envia_politica():
     """abandon_process não deve gerar mensagem com política de cancelamento."""
-    from app.conversation.responder import gerar_resposta
+    from app.conversation_legacy.responder import gerar_resposta
 
     state = _state_agendamento_sem_consulta()
     plano = {
@@ -221,7 +221,7 @@ async def test_desistir_sem_consulta_nao_envia_politica():
 @pytest.mark.asyncio
 async def test_cancelar_com_consulta_pede_motivo():
     """Paciente com consulta diz cancelar → ask_motivo_cancelamento."""
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_com_consulta_existente()
     turno = _turno_cancelar()
@@ -235,7 +235,7 @@ async def test_cancelar_com_consulta_pede_motivo():
 @pytest.mark.asyncio
 async def test_cancelar_com_consulta_envia_politica():
     """ask_motivo_cancelamento com consulta existente DEVE enviar política."""
-    from app.conversation.responder import gerar_resposta
+    from app.conversation_legacy.responder import gerar_resposta
 
     state = _state_com_consulta_existente()
     plano = {
@@ -263,7 +263,7 @@ async def test_cancelar_com_consulta_envia_politica():
 @pytest.mark.asyncio
 async def test_motivo_cancelamento_avanca_para_executar_cancelar():
     """Após dar motivo, planner deve avançar para executar tool cancelar."""
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_cancelamento_aguardando_motivo()
     turno = _turno_cancelar()
@@ -280,7 +280,7 @@ async def test_motivo_cancelamento_avanca_para_executar_cancelar():
 @pytest.mark.asyncio
 async def test_motivo_cancelamento_nao_repete_pergunta():
     """Após dar motivo, NÃO deve repetir ask_motivo_cancelamento."""
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_cancelamento_aguardando_motivo()
     turno = _turno_cancelar()
@@ -293,7 +293,7 @@ async def test_motivo_cancelamento_nao_repete_pergunta():
 @pytest.mark.asyncio
 async def test_cancelamento_com_reembolso_ou_conflito_escala_sem_executar_tool():
     """Pedido de reembolso/conflito no motivo deve ir para humano, não tentar cancelar."""
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_cancelamento_aguardando_motivo()
     state["history"][-1]["content"] = "vc é muito burro. queor meu dinheiro de volta"
@@ -313,13 +313,13 @@ async def test_cancelamento_com_reembolso_ou_conflito_escala_sem_executar_tool()
 @pytest.mark.asyncio
 async def test_trocar_plano_gera_correcao_no_interpreter():
     """'Quero trocar o plano' durante agendamento → correcao com plano=null."""
-    from app.conversation.interpreter import interpretar_turno
+    from app.conversation_legacy.interpreter import interpretar_turno
 
     state = _state_agendamento_sem_consulta()
     state["status"] = "coletando"
 
     # LLM pode errar e classificar como remarcar
-    with patch("app.conversation.interpreter.llm_client.complete_text", return_value='{"intent":"remarcar","confirmou_pagamento":false,"tem_pergunta":false}'):
+    with patch("app.conversation_legacy.interpreter.llm_client.complete_text", return_value='{"intent":"remarcar","confirmou_pagamento":false,"tem_pergunta":false}'):
         turno = await interpretar_turno("quero trocar o plano", state)
 
     assert turno["intent"] == "agendar"
@@ -331,11 +331,11 @@ async def test_trocar_plano_gera_correcao_no_interpreter():
 @pytest.mark.asyncio
 async def test_trocar_plano_nao_dispara_para_cancelar():
     """'Trocar plano' não deve gerar intent=cancelar."""
-    from app.conversation.interpreter import interpretar_turno
+    from app.conversation_legacy.interpreter import interpretar_turno
 
     state = _state_agendamento_sem_consulta()
 
-    with patch("app.conversation.interpreter.llm_client.complete_text", return_value='{"intent":"cancelar","confirmou_pagamento":false,"tem_pergunta":false}'):
+    with patch("app.conversation_legacy.interpreter.llm_client.complete_text", return_value='{"intent":"cancelar","confirmou_pagamento":false,"tem_pergunta":false}'):
         turno = await interpretar_turno("Não quero apenas trocar o plano", state)
 
     assert turno["intent"] == "agendar"
@@ -345,11 +345,11 @@ async def test_trocar_plano_nao_dispara_para_cancelar():
 @pytest.mark.asyncio
 async def test_mudar_plano_variacao():
     """'Mudar o plano' também deve funcionar."""
-    from app.conversation.interpreter import interpretar_turno
+    from app.conversation_legacy.interpreter import interpretar_turno
 
     state = _state_agendamento_sem_consulta()
 
-    with patch("app.conversation.interpreter.llm_client.complete_text", return_value='{"intent":"fora_de_contexto","confirmou_pagamento":false,"tem_pergunta":false}'):
+    with patch("app.conversation_legacy.interpreter.llm_client.complete_text", return_value='{"intent":"fora_de_contexto","confirmou_pagamento":false,"tem_pergunta":false}'):
         turno = await interpretar_turno("quero mudar a opção", state)
 
     assert turno["intent"] == "agendar"
@@ -361,7 +361,7 @@ async def test_mudar_plano_variacao():
 
 def test_correcao_plano_none_reseta_estado_dependente():
     """Correção plano=None deve limpar plano, forma_pagamento, slots, flags."""
-    from app.conversation.state import apply_correction, create_state
+    from app.conversation_legacy.state import apply_correction, create_state
 
     state = create_state("hash001", "5531999990000")
     state["collected_data"]["plano"] = "premium"
@@ -385,7 +385,7 @@ def test_correcao_plano_none_reseta_estado_dependente():
 
 def test_correcao_plano_com_valor_seta_normalmente():
     """Correção plano='ouro' deve setar normalmente."""
-    from app.conversation.state import apply_correction, create_state
+    from app.conversation_legacy.state import apply_correction, create_state
 
     state = create_state("hash001", "5531999990000")
     state["collected_data"]["plano"] = "premium"
@@ -401,7 +401,7 @@ def test_correcao_plano_com_valor_seta_normalmente():
 @pytest.mark.asyncio
 async def test_acertar_no_consultorio_explica_politica():
     """Paciente pede para pagar no consultório → resposta explicando política."""
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_agendamento_sem_consulta()
     turno = _turno_fora_contexto("eu acerto o restante no consultório, pode ser?")
@@ -417,7 +417,7 @@ async def test_acertar_no_consultorio_explica_politica():
 @pytest.mark.asyncio
 async def test_pagar_na_hora_explica_politica():
     """'posso pagar lá na hora?' → resposta explicando política."""
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_agendamento_sem_consulta()
     turno = _turno_fora_contexto("posso pagar lá na hora?")
@@ -432,9 +432,9 @@ async def test_pagar_na_hora_explica_politica():
 @pytest.mark.asyncio
 async def test_horario_funcionamento_responde_sem_escalar():
     """Pergunta operacional sobre funcionamento não pode virar escalação."""
-    from app.conversation.planner import decidir_acao
-    from app.conversation.responder import gerar_resposta
-    from app.conversation.state import create_state
+    from app.conversation_legacy.planner import decidir_acao
+    from app.conversation_legacy.responder import gerar_resposta
+    from app.conversation_legacy.state import create_state
 
     state = create_state("hash", "553186687010")
     state["history"] = [
@@ -460,9 +460,9 @@ async def test_horario_funcionamento_responde_sem_escalar():
 @pytest.mark.asyncio
 async def test_como_e_atendimento_thaynara_responde_sem_escalar():
     """Pergunta sobre o atendimento da profissional não é dúvida clínica."""
-    from app.conversation.planner import decidir_acao
-    from app.conversation.responder import gerar_resposta
-    from app.conversation.state import create_state
+    from app.conversation_legacy.planner import decidir_acao
+    from app.conversation_legacy.responder import gerar_resposta
+    from app.conversation_legacy.state import create_state
 
     state = create_state("hash", "553186687010")
     state["history"] = [
@@ -492,7 +492,7 @@ async def test_como_e_atendimento_thaynara_responde_sem_escalar():
 @pytest.mark.asyncio
 async def test_saudacao_apos_cancelamento_reseta_goal():
     """Paciente diz 'Oi' com goal=cancelar → reseta para desconhecido."""
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_cancelamento_aguardando_motivo()
     turno = _turno_fora_contexto("Oi")
@@ -509,7 +509,7 @@ async def test_saudacao_apos_cancelamento_reseta_goal():
 @pytest.mark.asyncio
 async def test_saudacao_apos_cancelamento_nao_envia_politica():
     """Saudação após cancelamento NÃO deve enviar política de cancelamento."""
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_cancelamento_aguardando_motivo()
     turno = _turno_fora_contexto("Oi")
@@ -522,7 +522,7 @@ async def test_saudacao_apos_cancelamento_nao_envia_politica():
 @pytest.mark.asyncio
 async def test_intent_agendar_apos_cancelamento_reseta():
     """Paciente com goal=cancelar mas intent=agendar → reseta e segue agendamento."""
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_cancelamento_aguardando_motivo()
     turno = _turno_fora_contexto("quero agendar uma consulta")
@@ -540,7 +540,7 @@ async def test_intent_agendar_apos_cancelamento_reseta():
 @pytest.mark.asyncio
 async def test_resposta_livre_bloqueia_confirmacao_alucinada():
     """_resposta_livre deve bloquear respostas que parecem confirmações."""
-    from app.conversation.responder import _resposta_livre
+    from app.conversation_legacy.responder import _resposta_livre
 
     state = {
         "collected_data": {"nome": "Breno"},
@@ -551,7 +551,7 @@ async def test_resposta_livre_bloqueia_confirmacao_alucinada():
         ],
     }
 
-    with patch("app.conversation.responder.llm_client.complete_text", return_value="✅ Consulta remarcada com sucesso!\n\n📅 Nova data: segunda, 27/04 às 19h"):
+    with patch("app.conversation_legacy.responder.llm_client.complete_text", return_value="✅ Consulta remarcada com sucesso!\n\n📅 Nova data: segunda, 27/04 às 19h"):
         resultado = await _resposta_livre(state)
 
     # Deve ter sido bloqueada e retornar mensagem genérica
@@ -562,7 +562,7 @@ async def test_resposta_livre_bloqueia_confirmacao_alucinada():
 @pytest.mark.asyncio
 async def test_resposta_livre_permite_resposta_normal():
     """_resposta_livre deve permitir respostas normais."""
-    from app.conversation.responder import _resposta_livre
+    from app.conversation_legacy.responder import _resposta_livre
 
     state = {
         "collected_data": {"nome": "Breno"},
@@ -571,7 +571,7 @@ async def test_resposta_livre_permite_resposta_normal():
         ],
     }
 
-    with patch("app.conversation.responder.llm_client.complete_text_async", return_value="A Aura Clinic fica na Rua Melo Franco, 204 em Vespasiano 😊"):
+    with patch("app.conversation_legacy.responder.llm_client.complete_text_async", return_value="A Aura Clinic fica na Rua Melo Franco, 204 em Vespasiano 😊"):
         resultado = await _resposta_livre(state)
 
     assert "Aura Clinic" in resultado
@@ -587,8 +587,8 @@ async def test_cenario_desistir_durante_pagamento_novo_paciente():
     aguardando_pagamento, sem ter consulta no sistema.
     Deve encerrar sem pedir motivo e sem enviar política.
     """
-    from app.conversation.planner import decidir_acao
-    from app.conversation.responder import gerar_resposta
+    from app.conversation_legacy.planner import decidir_acao
+    from app.conversation_legacy.responder import gerar_resposta
 
     state = _state_agendamento_sem_consulta()
     turno = _turno_cancelar()
@@ -613,8 +613,8 @@ async def test_cenario_trocar_plano_retorna_ao_fluxo():
     Cenário real: paciente diz 'quero trocar o plano' no meio do agendamento.
     Deve resetar plano e re-perguntar, não cancelar/remarcar.
     """
-    from app.conversation.planner import decidir_acao
-    from app.conversation.state import apply_correction
+    from app.conversation_legacy.planner import decidir_acao
+    from app.conversation_legacy.state import apply_correction
 
     state = _state_agendamento_sem_consulta()
     state["status"] = "coletando"
@@ -653,7 +653,7 @@ async def test_cenario_trocar_plano_retorna_ao_fluxo():
 @pytest.mark.asyncio
 async def test_pergunta_reputacao_nao_escala_duvida_clinica():
     """Pergunta sobre conhecer a profissional/depoimentos não deve enviar contato da nutri."""
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_agendamento_sem_consulta()
     state["goal"] = "desconhecido"
@@ -689,7 +689,7 @@ async def test_pergunta_reputacao_nao_escala_duvida_clinica():
 @pytest.mark.asyncio
 async def test_nova_consulta_sai_do_loop_de_remarcacao_nao_localizada():
     """Pedido explícito de nova consulta deve limpar remarcação não localizada."""
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_agendamento_sem_consulta()
     state["goal"] = "remarcar"
@@ -730,7 +730,7 @@ async def test_nova_consulta_sai_do_loop_de_remarcacao_nao_localizada():
 @pytest.mark.asyncio
 async def test_paciente_retorno_ao_escolher_plano_nao_dispara_dietbox():
     """Escolha explícita de plano no menu deve seguir agendamento, sem detectar remarcação."""
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_agendamento_sem_consulta()
     state["goal"] = "agendar_consulta"
@@ -772,7 +772,7 @@ async def test_paciente_retorno_ao_escolher_plano_nao_dispara_dietbox():
 
 def test_engine_agendar_nova_consulta_reseta_goal_remarcar():
     """O motor deve persistir a troca de goal antes do planner."""
-    from app.conversation.engine import ConversationEngine
+    from app.conversation_legacy.engine import ConversationEngine
 
     engine = ConversationEngine()
     state = _state_agendamento_sem_consulta()
@@ -796,7 +796,7 @@ def test_engine_agendar_nova_consulta_reseta_goal_remarcar():
 
 @pytest.mark.asyncio
 async def test_gestante_recebe_recusa_de_atendimento():
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_agendamento_sem_consulta()
     turno = {
@@ -815,7 +815,7 @@ async def test_gestante_recebe_recusa_de_atendimento():
 
 @pytest.mark.asyncio
 async def test_menor_de_16_recebe_recusa_de_atendimento():
-    from app.conversation.planner import decidir_acao
+    from app.conversation_legacy.planner import decidir_acao
 
     state = _state_agendamento_sem_consulta()
     turno = {

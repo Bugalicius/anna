@@ -41,8 +41,8 @@ async def test_remarcacao_prioriza_semana_seguinte_a_consulta(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_remarcacao_mesma_semana_usa_frase_desistencias():
-    from app.conversation.responder import gerar_resposta
-    from app.conversation.state import create_state
+    from app.conversation_legacy.responder import gerar_resposta
+    from app.conversation_legacy.state import create_state
 
     state = create_state("hash", "5531999990000")
     state["goal"] = "remarcar"
@@ -64,8 +64,8 @@ async def test_remarcacao_mesma_semana_usa_frase_desistencias():
 
 @pytest.mark.asyncio
 async def test_remarcacao_slots_sem_aviso_envia_apenas_botoes():
-    from app.conversation.responder import gerar_resposta
-    from app.conversation.state import create_state
+    from app.conversation_legacy.responder import gerar_resposta
+    from app.conversation_legacy.state import create_state
 
     state = create_state("hash", "5531999990000")
     state["goal"] = "remarcar"
@@ -86,8 +86,8 @@ async def test_remarcacao_slots_sem_aviso_envia_apenas_botoes():
 
 @pytest.mark.asyncio
 async def test_fallback_preferencia_remarcacao_envia_uma_mensagem_humana():
-    from app.conversation.responder import gerar_resposta
-    from app.conversation.state import create_state
+    from app.conversation_legacy.responder import gerar_resposta
+    from app.conversation_legacy.state import create_state
 
     state = create_state("hash", "5531999990000")
     state["goal"] = "remarcar"

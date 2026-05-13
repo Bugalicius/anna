@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.conversation_v2.tools.notifications import (
+from app.conversation.tools.notifications import (
     escalar_breno_silencioso,
     notificar_thaynara,
 )
@@ -28,11 +28,11 @@ async def test_notificar_thaynara_usa_mime_type(monkeypatch) -> None:
 @pytest.mark.asyncio
 async def test_escalar_breno_silencioso_cria_registro(monkeypatch) -> None:
     async def _fake_notificar_breno(mensagem: str):
-        from app.conversation_v2.tools import ToolResult
+        from app.conversation.tools import ToolResult
 
         return ToolResult(sucesso=True, dados={"destino": "breno"})
 
-    monkeypatch.setattr("app.conversation_v2.tools.notifications.notificar_breno", _fake_notificar_breno)
+    monkeypatch.setattr("app.conversation.tools.notifications.notificar_breno", _fake_notificar_breno)
 
     result = await escalar_breno_silencioso({"paciente": "Maria", "motivo": "duvida"})
 

@@ -34,6 +34,16 @@ def _make_db_mock(contact):
     return db
 
 
+def _make_resultado(msgs: list):
+    """Cria mock de ResultadoTurno com lista de mensagens."""
+    resultado = MagicMock()
+    resultado.mensagens_enviadas = [MagicMock(conteudo=m) for m in msgs]
+    resultado.sucesso = True
+    resultado.novo_estado = "inicio"
+    resultado.erro = None
+    return resultado
+
+
 @pytest.fixture
 def state_mgr_mock():
     mgr = MagicMock()
@@ -85,14 +95,17 @@ async def test_engine_chamado_com_args_corretos():
     with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.meta_api.MetaAPIClient", return_value=meta), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.conversation.engine.engine.handle_message",
-               new_callable=AsyncMock, return_value=["oi"]) as mock_engine, \
-         patch("app.conversation.state.load_state",
+         patch("app.router.processar_turno",
+               new_callable=AsyncMock, return_value=_make_resultado(["oi"])) as mock_engine, \
+         patch("app.conversation_legacy.state.load_state",
                new_callable=AsyncMock, return_value=_make_state()), \
-         patch("app.conversation.state.save_state", new_callable=AsyncMock):
+         patch("app.conversation_legacy.state.save_state", new_callable=AsyncMock):
         await route_message("5511999", "hash123", "oi", "msg-id-1")
 
-    mock_engine.assert_called_once_with("hash123", "oi", phone="5511999")
+    mock_engine.assert_called_once_with(
+        phone="5511999",
+        mensagem={"type": "text", "text": "oi", "from": "5511999", "id": "msg-id-1"},
+    )
 
 
 # ── Test 2: respostas de texto enviadas ao paciente ──────────────────────────
@@ -110,11 +123,11 @@ async def test_respostas_texto_enviadas():
     with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.meta_api.MetaAPIClient", return_value=meta), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.conversation.engine.engine.handle_message",
-               new_callable=AsyncMock, return_value=["msg A", "msg B"]), \
-         patch("app.conversation.state.load_state",
+         patch("app.router.processar_turno",
+               new_callable=AsyncMock, return_value=_make_resultado(["msg A", "msg B"])), \
+         patch("app.conversation_legacy.state.load_state",
                new_callable=AsyncMock, return_value=_make_state()), \
-         patch("app.conversation.state.save_state", new_callable=AsyncMock):
+         patch("app.conversation_legacy.state.save_state", new_callable=AsyncMock):
         await route_message("5511999", "hash123", "oi", "msg-id-1")
 
     assert meta.send_text.call_count == 2
@@ -126,7 +139,7 @@ async def test_respostas_texto_enviadas():
 
 @pytest.mark.asyncio
 async def test_sentinel_escalacao():
-    """Sentinel {"_meta_action": "escalate"} deve acionar escalar_duvida (cria PendingEscalation)."""
+    """v2 trata escalação internamente — route_message deve completar sem crash."""
     from app.router import route_message
 
     contact = _make_contact(stage="presenting")
@@ -137,15 +150,14 @@ async def test_sentinel_escalacao():
     with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.meta_api.MetaAPIClient", return_value=meta), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.conversation.engine.engine.handle_message",
-               new_callable=AsyncMock, return_value=[{"_meta_action": "escalate"}]), \
-         patch("app.conversation.state.load_state",
+         patch("app.router.processar_turno",
+               new_callable=AsyncMock, return_value=_make_resultado([])) as mock_turno, \
+         patch("app.conversation_legacy.state.load_state",
                new_callable=AsyncMock, return_value=_make_state()), \
-         patch("app.conversation.state.save_state", new_callable=AsyncMock), \
-         patch("app.escalation.escalar_duvida", new_callable=AsyncMock, return_value="relay_breno") as mock_escalar:
+         patch("app.conversation_legacy.state.save_state", new_callable=AsyncMock):
         await route_message("5511999", "hash123", "tenho diabetes", "msg-id-1")
 
-    mock_escalar.assert_called_once()
+    mock_turno.assert_awaited_once()
 
 
 # ── Test 4: paciente de retorno tem nome pré-populado no state ────────────────
@@ -171,11 +183,11 @@ async def test_paciente_retorno_prepopula_nome():
     with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.meta_api.MetaAPIClient", return_value=meta), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.conversation.engine.engine.handle_message",
-               new_callable=AsyncMock, return_value=["olá"]), \
-         patch("app.conversation.state.load_state",
+         patch("app.router.processar_turno",
+               new_callable=AsyncMock, return_value=_make_resultado(["olá"])), \
+         patch("app.conversation_legacy.state.load_state",
                new_callable=AsyncMock, return_value=state_vazio), \
-         patch("app.conversation.state.save_state", side_effect=fake_save):
+         patch("app.conversation_legacy.state.save_state", side_effect=fake_save):
         await route_message("5511999", "hash123", "oi", "msg-id-1")
 
     # _reconhecer_paciente_retorno deve ter preenchido o nome no state
@@ -199,7 +211,7 @@ async def test_contato_nao_encontrado_retorna_sem_crash():
 
     with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.meta_api.MetaAPIClient", return_value=meta), \
-         patch("app.conversation.engine.engine.handle_message",
+         patch("app.router.processar_turno",
                new_callable=AsyncMock) as mock_engine:
         await route_message("5511999", "hash123", "oi", "msg-id-1")
 
@@ -227,11 +239,11 @@ async def test_atualizar_contact_persiste_nome_e_stage():
     with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.meta_api.MetaAPIClient", return_value=meta), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.conversation.engine.engine.handle_message",
-               new_callable=AsyncMock, return_value=["agendado!"]), \
-         patch("app.conversation.state.load_state",
+         patch("app.router.processar_turno",
+               new_callable=AsyncMock, return_value=_make_resultado(["agendado!"])), \
+         patch("app.conversation_legacy.state.load_state",
                new_callable=AsyncMock, return_value=state_concluido), \
-         patch("app.conversation.state.save_state", new_callable=AsyncMock):
+         patch("app.conversation_legacy.state.save_state", new_callable=AsyncMock):
         await route_message("5511999", "hash123", "ok", "msg-id-1")
 
     assert contact.collected_name == "Ana Maria"
@@ -248,8 +260,8 @@ async def test_atualizar_contact_cancelamento_mantem_paciente_reconhecivel():
     state_cancelado = _make_state(goal="cancelar", status="concluido", nome="Ana Maria")
 
     with patch("app.router.SessionLocal", return_value=db_mock), \
-         patch("app.conversation.state.load_state", new_callable=AsyncMock, return_value=state_cancelado), \
-         patch("app.conversation.state.delete_state", new_callable=AsyncMock) as mock_delete:
+         patch("app.conversation_legacy.state.load_state", new_callable=AsyncMock, return_value=state_cancelado), \
+         patch("app.conversation_legacy.state.delete_state", new_callable=AsyncMock) as mock_delete:
         await _atualizar_contact("hash123")
 
     assert contact.stage == "cancelado"
@@ -291,11 +303,11 @@ async def test_remarketing_stage_cancela_fila_pendente():
     with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.meta_api.MetaAPIClient", return_value=meta), \
          patch("app.router.cancel_pending_remarketing") as mock_cancel, \
-         patch("app.conversation.engine.engine.handle_message",
-               new_callable=AsyncMock, return_value=["olá"]), \
-         patch("app.conversation.state.load_state",
+         patch("app.router.processar_turno",
+               new_callable=AsyncMock, return_value=_make_resultado(["olá"])), \
+         patch("app.conversation_legacy.state.load_state",
                new_callable=AsyncMock, return_value=_make_state()), \
-         patch("app.conversation.state.save_state", new_callable=AsyncMock):
+         patch("app.conversation_legacy.state.save_state", new_callable=AsyncMock):
         await route_message("5511999", "hash123", "oi", "msg-id-1")
 
     mock_cancel.assert_called_once()
@@ -316,11 +328,11 @@ async def test_redis_failure_nao_trava():
     with patch("app.router.SessionLocal", return_value=db_mock), \
          patch("app.meta_api.MetaAPIClient", return_value=meta), \
          patch("app.remarketing.cancel_pending_remarketing"), \
-         patch("app.conversation.engine.engine.handle_message",
-               new_callable=AsyncMock, return_value=["Olá! Bem-vinda!"]), \
-         patch("app.conversation.state.load_state",
+         patch("app.router.processar_turno",
+               new_callable=AsyncMock, return_value=_make_resultado(["Olá! Bem-vinda!"])), \
+         patch("app.conversation_legacy.state.load_state",
                new_callable=AsyncMock, return_value=_make_state()), \
-         patch("app.conversation.state.save_state", new_callable=AsyncMock):
+         patch("app.conversation_legacy.state.save_state", new_callable=AsyncMock):
         # Não deve lançar exceção
         await route_message("5511999", "hash123", "oi", "msg-id-1")
 
