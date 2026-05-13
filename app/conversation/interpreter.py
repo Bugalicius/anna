@@ -85,6 +85,23 @@ def _primeiro_nome(nome: str | None) -> str:
     return (nome or "").strip().split()[0].capitalize() if (nome or "").strip() else ""
 
 
+def _normalizar_entities_llm(raw: Any) -> dict[str, Any]:
+    if isinstance(raw, dict):
+        return raw
+    if not isinstance(raw, list):
+        return {}
+    entities: dict[str, Any] = {}
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        key = item.get("type") or item.get("name") or item.get("key")
+        if not key:
+            continue
+        value = item.get("value", item.get("text"))
+        entities[str(key)] = value
+    return entities
+
+
 def _extrair_nome(texto: str) -> str | None:
     raw = texto.strip()
     if not raw:
@@ -312,11 +329,11 @@ async def _interpretar_gemini(
         return Interpretacao(
             intent=str(data.get("intent") or "ambigua"),
             confidence=float(data.get("confidence") or 0.5),
-            entities=data.get("entities") or {},
+            entities=_normalizar_entities_llm(data.get("entities")),
             botao_id=data.get("botao_id"),
             message_type=_message_type(mensagem),
             patient_message_type=_message_type(mensagem),
-            validacoes=data.get("validacoes") or {},
+            validacoes=_normalizar_entities_llm(data.get("validacoes")),
             texto_original=_texto_mensagem(mensagem),
         )
     except Exception as exc:
@@ -333,8 +350,31 @@ async def interpretar(
     fluxo = config.get_fluxo("agendamento_paciente_novo")
     estado = fluxo.estados.get(estado_atual)
     intents = estado.intents_aceitas if estado else []
+    heuristic = _heuristica(mensagem, estado_atual, state)
+    deterministic_states = {
+        "aguardando_nome",
+        "aguardando_status_paciente",
+        "aguardando_objetivo",
+        "aguardando_escolha_plano",
+        "oferecendo_upsell",
+        "aguardando_modalidade",
+        "aguardando_preferencia_horario",
+        "aguardando_escolha_slot",
+        "aguardando_forma_pagamento",
+        "aguardando_pagamento_pix",
+        "aguardando_pagamento_cartao",
+        "aguardando_cadastro",
+    }
+    if estado_atual in deterministic_states and heuristic.intent != "ambigua":
+        return heuristic
     gemini = await _interpretar_gemini(mensagem, estado_atual, historico or [], intents)
-    if gemini is not None:
+    if gemini is not None and (not intents or gemini.intent in intents):
         return gemini
-    return _heuristica(mensagem, estado_atual, state)
-
+    if gemini is not None:
+        logger.info(
+            "Interpreter Gemini retornou intent fora do estado; usando heurística. estado=%s intent=%s aceitas=%s",
+            estado_atual,
+            gemini.intent,
+            intents,
+        )
+    return heuristic

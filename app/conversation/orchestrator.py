@@ -447,6 +447,29 @@ def _aplicar_efeitos_especiais(state: dict[str, Any], acao: AcaoAutorizada) -> N
         state["rodada_negociacao"] = int(state.get("rodada_negociacao") or 0) + 1
 
 
+async def _escalar_agendamento_inviavel(
+    *,
+    state: dict[str, Any],
+    phone: str,
+    motivo: str,
+    estado_antes: str,
+    ultima_mensagem: str,
+) -> None:
+    await call_tool(
+        "escalar_breno_silencioso",
+        {
+            "contexto": {
+                "motivo": motivo,
+                "telefone": phone,
+                "estado": estado_antes,
+                "rodada_negociacao": state.get("rodada_negociacao"),
+                "invalid_preferencia_count": state.get("invalid_preferencia_count"),
+                "ultima_mensagem": ultima_mensagem,
+            }
+        },
+    )
+
+
 def _acao_navegacao(acao: AcaoAutorizada) -> str | None:
     action = (acao.dados or {}).get("action")
     return ACTION_NEXT_STATE.get(str(action or ""))
@@ -1271,6 +1294,18 @@ async def processar_turno(phone: str, mensagem: dict[str, Any]) -> ResultadoTurn
                 tool_a_executar="analisar_comprovante",
                 proximo_estado="validando_comprovante",
             )
+        if acao is None and estado_antes == "oferecendo_upsell":
+            texto_norm = _norm_text(interpretacao.texto_original)
+            if any(t in texto_norm for t in ("presencial", "online", "fica", "manter", "esse mesmo")):
+                destino = "aguardando_preferencia_horario" if state["collected_data"].get("modalidade") else "aguardando_modalidade"
+                acao = AcaoAutorizada(
+                    tipo=TipoAcao.enviar_mensagem,
+                    proximo_estado=destino,
+                    salvar_no_estado={
+                        "flags.upsell_oferecido": True,
+                        "flags.upsell_aceito": False,
+                    },
+                )
         if acao is None:
             acao = state_machine.proxima_acao(
                 estado_atual=estado_antes,
@@ -1319,6 +1354,52 @@ async def processar_turno(phone: str, mensagem: dict[str, Any]) -> ResultadoTurn
             mensagens.extend(tool_msgs)
         else:
             mensagens.extend(await response_writer.escrever_async(acao, _contexto_template(state, entidades)))
+
+        if estado_antes == "aguardando_preferencia_horario":
+            invalidas = {
+                "pediu_sexta_noite",
+                "pediu_fim_de_semana",
+                "pediu_horario_fora_grade",
+                "pediu_mesmo_dia",
+                "resposta_vaga",
+            }
+            if acao.situacao_nome in invalidas:
+                state["invalid_preferencia_count"] = int(state.get("invalid_preferencia_count") or 0) + 1
+            elif acao.tool_a_executar == "consultar_slots":
+                state["invalid_preferencia_count"] = 0
+            if int(state.get("invalid_preferencia_count") or 0) >= 4:
+                tools_chamadas.append("escalar_breno_silencioso")
+                await _escalar_agendamento_inviavel(
+                    state=state,
+                    phone=phone,
+                    motivo="preferencia_horario_inviavel_repetida",
+                    estado_antes=estado_antes,
+                    ultima_mensagem=interpretacao.texto_original,
+                )
+                mensagens.append(
+                    Mensagem(
+                        tipo="texto",
+                        conteudo="Vou pedir pra alguém da equipe te ajudar a encontrar a melhor opção, tá? Um momento 💚",
+                    )
+                )
+                target = "concluido_escalado"
+
+        if acao.situacao_nome == "rejeitou_todos" and int(state.get("rodada_negociacao") or 0) > 3:
+            tools_chamadas.append("escalar_breno_silencioso")
+            await _escalar_agendamento_inviavel(
+                state=state,
+                phone=phone,
+                motivo="slots_rejeitados_tres_rodadas",
+                estado_antes=estado_antes,
+                ultima_mensagem=interpretacao.texto_original,
+            )
+            mensagens.append(
+                Mensagem(
+                    tipo="texto",
+                    conteudo="Vou pedir pra alguém da equipe te ajudar a encontrar a melhor opção, tá? Um momento 💚",
+                )
+            )
+            target = "concluido_escalado"
 
         if target == "aguardando_modalidade" and state["collected_data"].get("modalidade"):
             target = "aguardando_preferencia_horario"

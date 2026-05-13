@@ -307,3 +307,34 @@ async def test_mensagens_estranhas_nao_quebram_o_turno(mensagem):
     assert "99205" not in texto
     assert "Breno" not in texto
 
+
+async def test_preferencia_horario_inviavel_repetida_escala(isolate):
+    phone = _phone()
+    await _seed(phone, "aguardando_preferencia_horario", collected_data={"nome": "Teste", "modalidade": "presencial"})
+    for msg in ["domingo às 14h", "sábado então", "sexta às 22h", "13h"]:
+        result = await _send(msg, phone=phone)
+    texto = _texto(result)
+    assert result.novo_estado == "concluido_escalado"
+    assert "equipe" in texto.lower()
+    assert "escalar_breno_silencioso" in isolate
+    assert "Breno" not in texto
+
+
+async def test_rejeicao_de_slots_tres_rodadas_escala(isolate):
+    phone = _phone()
+    await _seed(
+        phone,
+        "aguardando_escolha_slot",
+        collected_data={"nome": "Teste", "modalidade": "presencial"},
+        rodada_negociacao=3,
+        last_slots_offered=[
+            {"datetime": "2026-05-19T08:00:00", "data_fmt": "terça, 19/05/2026", "hora": "08h"},
+            {"datetime": "2026-05-20T15:00:00", "data_fmt": "quarta, 20/05/2026", "hora": "15h"},
+        ],
+    )
+    result = await _send("nenhum serve, quero outro horário", phone=phone)
+    texto = _texto(result)
+    assert result.novo_estado == "concluido_escalado"
+    assert "equipe" in texto.lower()
+    assert "escalar_breno_silencioso" in isolate
+    assert "Breno" not in texto

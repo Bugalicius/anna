@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import re
+import unicodedata
 from typing import Any
 
 from app.conversation.config_loader import config
@@ -20,6 +21,10 @@ from app.conversation.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _norm_text(texto: Any) -> str:
+    return unicodedata.normalize("NFKD", str(texto or "").lower()).encode("ascii", "ignore").decode("ascii")
 
 
 def _get_nested(ctx: dict[str, Any], key: str) -> Any:
@@ -65,20 +70,20 @@ def _avaliar_condicao(cond: str, ctx: dict[str, Any]) -> bool:
     m = re.match(r"^([\w.]+)\s+IN\s+\[(.+)\]$", cond, flags=re.IGNORECASE)
     if m:
         key, raw = m.group(1), m.group(2)
-        lista = [v.strip().strip('"\'').lower() for v in raw.split(",")]
-        return str(_get_nested(ctx, key) or "").lower() in lista
+        lista = [_norm_text(v.strip().strip('"\'')) for v in raw.split(",")]
+        return _norm_text(_get_nested(ctx, key)) in lista
 
     m = re.match(r"^texto_contem=\[(.+)\]$", cond)
     if m:
-        termos = [t.strip().strip('"\'').lower() for t in m.group(1).split(",")]
-        texto = str(ctx.get("texto_original", "")).lower()
+        termos = [_norm_text(t.strip().strip('"\'')) for t in m.group(1).split(",")]
+        texto = _norm_text(ctx.get("texto_original", ""))
         return any(termo in texto for termo in termos)
 
     m = re.match(r"^([\w.]+)=\[(.+)\]$", cond)
     if m:
         key, raw = m.group(1), m.group(2)
-        lista = [v.strip().strip('"\'').lower() for v in raw.split(",")]
-        return str(_get_nested(ctx, key) or "").lower() in lista
+        lista = [_norm_text(v.strip().strip('"\'')) for v in raw.split(",")]
+        return _norm_text(_get_nested(ctx, key)) in lista
 
     for op in ("!=", "<=", ">=", "=="):
         m = re.match(rf"^([\w.]+)\s*{re.escape(op)}\s*(.+)$", cond)
@@ -91,8 +96,8 @@ def _avaliar_condicao(cond: str, ctx: dict[str, Any]) -> bool:
                 try:
                     return float(atual) == float(raw)
                 except (TypeError, ValueError):
-                    return str(atual).lower() == raw.lower()
-            return str(atual).lower() != raw.lower()
+                    return _norm_text(atual) == _norm_text(raw)
+            return _norm_text(atual) != _norm_text(raw)
         try:
             atual_n = float(atual)
             raw_n = float(raw)
@@ -124,7 +129,7 @@ def _avaliar_condicao(cond: str, ctx: dict[str, Any]) -> bool:
             return atual is True or str(atual).lower() == "true"
         if raw.lower() == "false":
             return atual is False or str(atual).lower() == "false"
-        return str(atual).lower() == raw.lower()
+        return _norm_text(atual) == _norm_text(raw)
 
     if re.match(r"^[\w.]+$", cond):
         return bool(_get_nested(ctx, cond))
