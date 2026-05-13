@@ -11,7 +11,7 @@ Branch: `refactor/agente-inteligente`
 - Regras invioláveis: 16/16 implementadas e cobertas por testes específicos.
 - Replay de conversas reais: 1.063 conversas elegíveis, 4.751 turnos, 4.748 aceitos, score 99,94/100.
 - Stress local mockado: 100 conversas simultâneas, 238 turnos, 0 erros, p95 0,74ms.
-- Deploy VPS: executado em worktree separada `/root/agente-v21` no commit `94a89e1`, container `agente-app-1` iniciado sem erro.
+- Deploy VPS: executado em worktree separada `/root/agente-v21` no commit final `2360bb8`, container `agente-app-1` iniciado sem erro.
 - Smoke tests pós-deploy via `/test/chat`: 10/10 OK.
 
 ## Melhorias Implementadas
