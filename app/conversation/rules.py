@@ -11,6 +11,7 @@ API principal:
 from __future__ import annotations
 
 import re
+import unicodedata
 from datetime import datetime
 from typing import Any
 
@@ -66,6 +67,10 @@ def _hora_para_turno(hora_label: str) -> str | None:
     if h in (18, 19):
         return "noite"
     return None
+
+
+def _norm_ascii(texto: str) -> str:
+    return unicodedata.normalize("NFKD", texto.lower()).encode("ascii", "ignore").decode("ascii")
 
 
 def validar_distribuicao_slots(
@@ -214,7 +219,7 @@ def R4_nunca_oferecer_horario_fora_grade(
     if not dia_semana or not horario:
         return _ok(regra)
 
-    dia = dia_semana.lower().strip()
+    dia = _norm_ascii(dia_semana).strip()
     if dia in ("sabado", "sábado", "domingo"):
         return _bloquear(regra, f"Não atende {dia_semana}.")
 
@@ -255,7 +260,7 @@ def R6_nunca_aceitar_sinal_abaixo_50pct(
     if valor_total <= 0:
         return _ok(regra)
     sinal_minimo = valor_total * 0.50
-    if valor_pago < sinal_minimo - 0.01:
+    if valor_pago + 0.001 < sinal_minimo:
         return _bloquear(
             regra,
             f"Sinal de R${valor_pago:.2f} é menor que o mínimo de "

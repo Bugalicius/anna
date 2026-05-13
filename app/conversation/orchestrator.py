@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -25,6 +26,7 @@ REMARCACAO_ID = "remarcacao"
 CANCELAMENTO_ID = "cancelamento"
 FLUXO_ID = AGENDAMENTO_ID
 LOG_PATH = Path("logs/metrics.jsonl")
+AGGRESSION_LOG_PATH = Path("logs/agressoes.jsonl")
 
 ACTION_NEXT_STATE = {
     "ir_apresentacao_planos": "apresentando_planos",
@@ -129,6 +131,177 @@ def _norm_text(texto: str) -> str:
     import unicodedata
 
     return unicodedata.normalize("NFKD", texto.lower()).encode("ascii", "ignore").decode("ascii")
+
+
+def _is_aggressive_text(texto: str) -> bool:
+    n = _norm_text(texto)
+    termos = (
+        "vai tomar no cu",
+        "tomar no cu",
+        "filha da puta",
+        "filho da puta",
+        "porra",
+        "caralho",
+        "merda",
+        "buceta",
+        "lixo",
+        "burra",
+        "burro",
+        "incompetente",
+        "porcaria",
+        "vagabundo",
+        "vagabunda",
+        "enrolado",
+        "enrolando",
+        "procon",
+        "processar",
+        "denunciar",
+    )
+    return any(t in n for t in termos)
+
+
+def _mentions_pregnancy(texto: str) -> bool:
+    n = _norm_text(texto)
+    return any(t in n for t in ("gravida", "gestante", "gestacao", "gravidez"))
+
+
+def _mentions_clinical_need(texto: str) -> bool:
+    n = _norm_text(texto)
+    termos = (
+        "diabetes",
+        "emagrecer",
+        "dieta",
+        "compulsao",
+        "compulsiva",
+        "comer",
+        "suplement",
+        "ozempic",
+        "remedio",
+        "ansiedade",
+        "depressao",
+        "panico",
+    )
+    return any(t in n for t in termos)
+
+
+def _underage_from_text(texto: str) -> int | None:
+    n = _norm_text(texto)
+    patterns = (
+        r"\b(?:tenho|idade)\s+(\d{1,2})\s+anos\b",
+        r"\b(?:filha|filho|sobrinha|sobrinho|menina|menino|adolescente)\s+(?:de|tem)\s+(\d{1,2})\s+anos\b",
+        r"\b(\d{1,2})\s+anos\b",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, n)
+        if not match:
+            continue
+        idade = int(match.group(1))
+        if idade < 16:
+            return idade
+    return None
+
+
+async def _handle_restriction(
+    state: dict[str, Any],
+    phone: str,
+    texto: str,
+    estado_antes: str,
+) -> tuple[list[Mensagem], str, list[str]] | None:
+    tools_chamadas: list[str] = []
+    gestante = _mentions_pregnancy(texto)
+    menor_idade = _underage_from_text(texto)
+    if not gestante and menor_idade is None:
+        return None
+
+    motivo = "gestante" if gestante else "menor_16"
+    state.setdefault("flags", {})["restricao_atendimento"] = motivo
+    state["estado"] = "concluido_escalado"
+
+    deve_escalar = bool(state.get("flags", {}).get("pagamento_confirmado")) or (
+        gestante and _mentions_clinical_need(texto)
+    )
+    if deve_escalar:
+        tools_chamadas.append("escalar_breno_silencioso")
+        await call_tool(
+            "escalar_breno_silencioso",
+            {
+                "contexto": {
+                    "motivo": motivo,
+                    "telefone": phone,
+                    "estado": estado_antes,
+                    "mensagem": texto,
+                    "pagamento_confirmado": bool(state.get("flags", {}).get("pagamento_confirmado")),
+                }
+            },
+        )
+        return [
+            Mensagem(
+                tipo="texto",
+                conteudo="Vou pedir pra equipe te orientar por aqui certinho, tá? Um momento 💚",
+            )
+        ], "concluido_escalado", tools_chamadas
+
+    if gestante:
+        texto_resposta = "Infelizmente a Thaynara não realiza atendimento para gestantes no momento 😔"
+    else:
+        texto_resposta = "Infelizmente a Thaynara não realiza atendimento para menores de 16 anos no momento 😔"
+    return [Mensagem(tipo="texto", conteudo=texto_resposta)], "concluido_escalado", tools_chamadas
+
+
+async def _log_aggression(payload: dict[str, Any]) -> None:
+    try:
+        AGGRESSION_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        line = json.dumps(payload, ensure_ascii=False, default=str)
+        with AGGRESSION_LOG_PATH.open("a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except Exception as exc:
+        logger.warning("Falha ao registrar agressão: %s", exc)
+
+
+async def _handle_aggression(
+    state: dict[str, Any],
+    phone: str,
+    texto: str,
+    estado_antes: str,
+) -> tuple[list[Mensagem], list[str]]:
+    count = int(state.get("agressao_count") or 0) + 1
+    state["agressao_count"] = count
+    tools_chamadas: list[str] = []
+    await _log_aggression(
+        {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "phone_hash": state.get("phone_hash") or _phone_hash(phone),
+            "estado": estado_antes,
+            "count": count,
+            "mensagem": texto[:500],
+        }
+    )
+    if count >= 2:
+        tools_chamadas.append("escalar_breno_silencioso")
+        await call_tool(
+            "escalar_breno_silencioso",
+            {
+                "contexto": {
+                    "motivo": "agressao_reincidente",
+                    "count": count,
+                    "telefone": phone,
+                    "estado": estado_antes,
+                    "ultima_mensagem": texto,
+                }
+            },
+        )
+        return [
+            Mensagem(
+                tipo="texto",
+                conteudo="Vou pedir pra alguém da equipe te dar atenção especial, tá? Um momento 💚",
+            )
+        ], tools_chamadas
+    return [
+        Mensagem(
+            tipo="texto",
+            conteudo="Sinto muito se algo te deixou frustrado(a). 💚 Posso te ajudar com agendamento ou alguma dúvida?",
+        )
+    ], tools_chamadas
 
 
 def _consulta_atual(state: dict[str, Any]) -> dict[str, Any]:
@@ -834,6 +1007,60 @@ async def processar_turno(phone: str, mensagem: dict[str, Any]) -> ResultadoTurn
 
     # ── MÍDIAS NÃO TEXTUAIS (Fluxo 9) ────────────────────────────────────────
     msg_type = str(mensagem.get("type") or "")
+
+    # ── AGRESSÃO / AMEAÇA (interceptador global) ─────────────────────────────
+    texto_entrada = _texto_mensagem(mensagem)
+    if msg_type in ("", "text", "conversation") and _is_aggressive_text(texto_entrada):
+        estado_antes_agressao = state.get("estado", "inicio")
+        msgs, aggression_tools = await _handle_aggression(state, phone, texto_entrada, estado_antes_agressao)
+        add_message(state, "user", texto_entrada)
+        add_message(state, "assistant", "\n".join(m.conteudo for m in msgs if m.conteudo))
+        await save_state(phone_hash, state)
+        await _log_metric({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "phone_hash": phone_hash,
+            "fluxo": state.get("fluxo_id") or AGENDAMENTO_ID,
+            "estado_antes": estado_antes_agressao,
+            "estado_depois": state.get("estado"),
+            "tools_chamadas": aggression_tools,
+            "duracao_ms": int((time.perf_counter() - started) * 1000),
+            "erro": None,
+            "evento": "agressao_interceptada",
+        })
+        return ResultadoTurno(
+            sucesso=True,
+            mensagens_enviadas=msgs,
+            novo_estado=state.get("estado"),
+            fluxo_id=state.get("fluxo_id") or AGENDAMENTO_ID,
+            duracao_ms=int((time.perf_counter() - started) * 1000),
+        )
+
+    if msg_type in ("", "text", "conversation"):
+        estado_antes_restricao = state.get("estado", "inicio")
+        restriction = await _handle_restriction(state, phone, texto_entrada, estado_antes_restricao)
+        if restriction is not None:
+            msgs, novo_estado, restriction_tools = restriction
+            add_message(state, "user", texto_entrada)
+            add_message(state, "assistant", "\n".join(m.conteudo for m in msgs if m.conteudo))
+            await save_state(phone_hash, state)
+            await _log_metric({
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "phone_hash": phone_hash,
+                "fluxo": state.get("fluxo_id") or AGENDAMENTO_ID,
+                "estado_antes": estado_antes_restricao,
+                "estado_depois": novo_estado,
+                "tools_chamadas": restriction_tools,
+                "duracao_ms": int((time.perf_counter() - started) * 1000),
+                "erro": None,
+                "evento": "restricao_atendimento",
+            })
+            return ResultadoTurno(
+                sucesso=True,
+                mensagens_enviadas=msgs,
+                novo_estado=novo_estado,
+                fluxo_id=state.get("fluxo_id") or AGENDAMENTO_ID,
+                duracao_ms=int((time.perf_counter() - started) * 1000),
+            )
 
     # Localização → resposta determinística
     if msg_type == "location":
