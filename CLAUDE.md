@@ -5,11 +5,12 @@
 Agente Ana e um backend FastAPI para atendimento via WhatsApp da nutricionista
 Thaynara Teixeira. O fluxo principal de producao hoje passa por:
 
-`WhatsApp -> app/webhook.py -> app/router.py -> ConversationEngine -> Meta API`
+`WhatsApp -> app/webhook.py -> app/router.py -> processar_turno (Orchestrator v2) -> Meta API`
 
-A arquitetura antiga com `AgenteAtendimento` e `AgenteRetencao` ainda existe em
-alguns arquivos historicos, mas nao e mais o caminho principal de atendimento.
-Novas mudancas devem priorizar `app/conversation/` e `app/tools/`.
+**v2.0 (reescrita completa)** — o motor conversacional e agora o Orchestrator v2
+em `app/conversation/`. O codigo legado esta preservado em `app/conversation_legacy/`
+para consulta mas nao e mais o caminho ativo.
+Novas mudancas devem priorizar `app/conversation/` (orchestrator, state_machine, rules).
 
 ## Arquitetura Atual
 
@@ -22,24 +23,18 @@ Novas mudancas devem priorizar `app/conversation/` e `app/tools/`.
 - `app/router.py`: carrega/atualiza contato, chama `ConversationEngine` e envia
   respostas pela Meta API.
 
-### Motor Conversacional
+### Motor Conversacional (v2 — ativo em producao)
 
-- `app/conversation/engine.py`: orquestra um turno completo:
-  1. carrega estado no Redis
-  2. interpreta mensagem
-  3. aplica extracoes ao estado
-  4. decide a proxima acao
-  5. executa tool quando necessario
-  6. gera resposta
-  7. salva estado e metricas
-- `app/conversation/interpreter.py`: interpreta intent, campos informados,
-  escolhas de slot, perguntas e restricoes. Usa `app/llm_client.py`.
-- `app/conversation/planner.py`: decide a acao operacional. Primeiro roda
-  overrides deterministicos de seguranca/fluxo; se nao houver override, usa Gemini.
-- `app/conversation/responder.py`: transforma plano e resultado de tool em
-  mensagens finais com tom da Ana.
-- `app/conversation/state.py`: serializa estado de conversa no Redis e reidrata
-  dados persistentes do contato.
+- `app/conversation/orchestrator.py`: ponto de entrada principal (`processar_turno`).
+  Coordena interpretacao, state machine, tools e escrita de resposta.
+- `app/conversation/state_machine.py`: decide proxima acao com base em estado e intent.
+- `app/conversation/rules.py`: 16 regras inviolaveis validadas antes de toda resposta.
+- `app/conversation/interpreter.py`: interpreta intent e extrai entidades via Gemini.
+- `app/conversation/response_writer.py`: gera mensagens finais com tom da Ana.
+- `app/conversation/scheduler.py`: jobs automaticos (confirmacao semanal, lembrete vespera).
+- `app/conversation/tools/`: scheduling, patients, payments, media, notifications, commands.
+- `app/conversation_legacy/`: engine v1 preservado para referencia (nao e o caminho ativo).
+- Estado compartilhado: `app/conversation_legacy/state.py` (Redis, reusado pelo v2).
 
 ### LLM
 
