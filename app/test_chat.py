@@ -148,7 +148,14 @@ async def test_chat(body: ChatRequest):
             captured.append(f"[🖼️ {label}]")
             return {}
 
-    with patch("app.meta_api.MetaAPIClient", CapturingMeta):
+    async def _noop_log_bot_message(phone: str, text: str) -> None:
+        return None
+
+    with (
+        patch("app.meta_api.MetaAPIClient", CapturingMeta),
+        patch("app.router._typing_delay", lambda msg: 0.0),
+        patch("app.router._log_bot_message_safe", _noop_log_bot_message),
+    ):
         await route_message(
             phone=body.phone,
             phone_hash=phone_hash,
