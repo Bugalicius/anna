@@ -11,6 +11,8 @@ Branch: `refactor/agente-inteligente`
 - Regras invioláveis: 16/16 implementadas e cobertas por testes específicos.
 - Replay de conversas reais: 1.063 conversas elegíveis, 4.751 turnos, 4.748 aceitos, score 99,94/100.
 - Stress local mockado: 100 conversas simultâneas, 238 turnos, 0 erros, p95 0,74ms.
+- Deploy VPS: executado em worktree separada `/root/agente-v21` no commit `94a89e1`, container `agente-app-1` iniciado sem erro.
+- Smoke tests pós-deploy via `/test/chat`: 10/10 OK.
 
 ## Melhorias Implementadas
 
@@ -73,6 +75,8 @@ pytest tests/ -q --tb=short
 - `tests/test_test_chat.py` mantém 2 falhas já descritas como não críticas/debug.
 - Docker local não está rodando (`docker compose ps` não listou serviços ativos); logs disponíveis eram antigos.
 - Stress com Gemini real não foi executado porque `GEMINI_API_KEY` não está presente no ambiente local.
+- A pasta principal do VPS `/root/agente` está em `main` com worktree suja; para preservar mudanças locais, o deploy final foi feito por `/root/agente-v21` usando o projeto Docker `agente`.
+- `/health` em produção retornou `status=ok` para Redis e Postgres. O campo `version` aparece `unknown` porque o build em git worktree tem `.git` como arquivo.
 
 ## Métricas Finais
 
@@ -87,4 +91,5 @@ pytest tests/ -q --tb=short
 | Replay turnos aceitos | 4.748/4.751 |
 | Stress erro | 0% |
 | Stress p95 local mockado | 0,74ms |
-
+| Deploy VPS | OK |
+| Smoke pós-deploy | 10/10 |
