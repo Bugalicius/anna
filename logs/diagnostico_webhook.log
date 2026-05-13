@@ -1,0 +1,112 @@
+=== Containers ativos e portas ===
+NAMES                 IMAGE                      PORTS                                         STATUS
+agente-app-1          agente-app                 0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp   Up 6 hours
+agente-postgres-1     postgres:15-alpine         5432/tcp                                      Up 7 hours (healthy)
+agente-redis-1        redis:7-alpine             6379/tcp                                      Up 7 hours (healthy)
+chatwoot-rails-1      chatwoot/chatwoot:latest   0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp   Up 2 days
+chatwoot-sidekiq-1    chatwoot/chatwoot:latest   3000/tcp                                      Up 2 days
+chatwoot-redis-1      redis:alpine               6379/tcp                                      Up 2 days
+chatwoot-postgres-1   pgvector/pgvector:pg16     5432/tcp                                      Up 2 days
+
+=== Todas portas escutando no VPS ===
+State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess                                                
+LISTEN 0      4096         0.0.0.0:8000      0.0.0.0:*    users:(("docker-proxy",pid=352845,fd=8))              
+LISTEN 0      4096      127.0.0.54:53        0.0.0.0:*    users:(("systemd-resolve",pid=651,fd=17))             
+LISTEN 0      4096         0.0.0.0:3000      0.0.0.0:*    users:(("docker-proxy",pid=1457,fd=8))                
+LISTEN 0      4096   127.0.0.53%lo:53        0.0.0.0:*    users:(("systemd-resolve",pid=651,fd=15))             
+LISTEN 0      4096         0.0.0.0:22        0.0.0.0:*    users:(("sshd",pid=1697,fd=3),("systemd",pid=1,fd=94))
+LISTEN 0      4096            [::]:8000         [::]:*    users:(("docker-proxy",pid=352851,fd=8))              
+LISTEN 0      4096            [::]:3000         [::]:*    users:(("docker-proxy",pid=1466,fd=8))                
+LISTEN 0      4096            [::]:22           [::]:*    users:(("sshd",pid=1697,fd=4),("systemd",pid=1,fd=95))
+
+=== Processos escutando em 80/443/8000 ===
+LISTEN 0      4096         0.0.0.0:8000      0.0.0.0:*    users:(("docker-proxy",pid=352845,fd=8))              
+LISTEN 0      4096            [::]:8000         [::]:*    users:(("docker-proxy",pid=352851,fd=8))              
+
+=== Nginx? ===
+
+=== Cloudflare Tunnel? ===
+
+=== Traefik? Caddy? ===
+
+=== docker-compose.yml na pasta agente ===
+services:
+  app:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    env_file: .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+      - ./tests:/app/tests
+      - ./knowledge_base:/app/knowledge_base:ro
+      - ./docs:/app/docs:ro
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: agente
+      POSTGRES_PASSWORD: agente123
+      POSTGRES_DB: agente_ana
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agente"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot_www:/var/www/certbot:ro
+      - certbot_conf:/etc/letsencrypt:ro
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  redisdata:
+  certbot_www:
+  certbot_conf:
+
+=== iptables (regras de NAT) ===
+Chain PREROUTING (policy ACCEPT 13M packets, 1337M bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+15326 1037K DOCKER     0    --  *      *       0.0.0.0/0            0.0.0.0/0            ADDRTYPE match dst-type LOCAL
+
+Chain INPUT (policy ACCEPT 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+
+Chain OUTPUT (policy ACCEPT 5465 packets, 437K bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+    0     0 DOCKER     0    --  *      *       0.0.0.0/0           !127.0.0.0/8          ADDRTYPE match dst-type LOCAL
+
+Chain POSTROUTING (policy ACCEPT 5501 packets, 439K bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+  282 33972 MASQUERADE  0    --  *      !br-d94936a18b26  172.18.0.0/16        0.0.0.0/0           
+   72  4688 MASQUERADE  0    --  *      !docker0  172.17.0.0/16        0.0.0.0/0           
+   50  3000 MASQUERADE  0    --  *      !br-e928b7e6206a  172.19.0.0/16        0.0.0.0/0           
+
+Chain DOCKER (2 references)
+ pkts bytes target     prot opt in     out     source               destination         
+   23  1380 DNAT       6    --  !br-e928b7e6206a *       0.0.0.0/0            0.0.0.0/0            tcp dpt:3000 to:172.19.0.4:3000
+    0     0 DNAT       6    --  !br-d94936a18b26 *       0.0.0.0/0            0.0.0.0/0            tcp dpt:8000 to:172.18.0.4:8000

@@ -101,6 +101,6 @@ Para deploy:
 
 ```bash
 git push
-ssh root@anna.vps-kinghost.net "cd /root/agente && git pull && docker compose -p agente up --build -d app"
+ssh root@anna.vps-kinghost.net "cd /root/agente && git pull && docker compose -p agente up --build -d app nginx"
 ssh root@anna.vps-kinghost.net "cd /root/agente && docker compose -p agente logs --tail=50 app"
 ```

@@ -1,0 +1,8 @@
+[2026-05-13T13:32:08.1596196-03:00] Início do diagnóstico profundo do webhook público.
+[2026-05-13T13:32:52.6774414-03:00] Diagnóstico inicial: nginx definido no compose, config TLS presente, serviço nginx não estava rodando; validando DNS/certs/logs antes de subir.
+[2026-05-13T13:33:14.0871747-03:00] Estado externo antes da correção: DNS 187.45.255.62; 80/443 recusando; :8000 /health OK; certbot_conf com certificados para anna e chat.
+[2026-05-13T13:33:36.7053703-03:00] Correção aplicada: docker compose -p agente up -d nginx. Portas 80/443 agora escutando via agente-nginx-1.
+[2026-05-13T13:34:48.7113776-03:00] Script scripts/simular_webhook_meta.py criado; docker-compose ajustado com restart: unless-stopped e deploy doc atualizado para subir app+nginx.
+[2026-05-13T13:35:27.0453737-03:00] Simulação assinada inicial retornou 200; logs do app registraram WEBHOOK PAYLOAD e route phone=0123. Envio ao número fake falhou por política Meta 24h, esperado para simulação.
+[2026-05-13T13:45:04.8961392-03:00] Validação longa concluída: 10/10 POSTs assinados retornaram 200; latência média 892,07ms; max 1298,95ms. GET verify retornou challenge correto.
+[2026-05-13T13:45:29.5122140-03:00] Evidências coletadas: nginx recebeu 10 POSTs /webhook 200 e app registrou WEBHOOK PAYLOAD/route phone; Meta também enviou status callbacks ao alias /webhooks/whatsapp.

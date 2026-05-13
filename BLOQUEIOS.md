@@ -10,5 +10,6 @@ Data: 2026-05-13
 
 ## Atenção Operacional
 
-- O container definitivo roda em `/root/agente` e expõe HTTP em `:8000`.
-- O VPS não tem serviço escutando em `:80` ou `:443` no momento da validação. O `/webhook` respondeu 200 com assinatura válida via `localhost:8000`; a URL pública HTTPS `https://anna.vps-kinghost.net` não aceitou conexão no stress. Se a Meta estiver configurada para HTTPS sem porta/proxy, precisa ajustar proxy/TLS ou confirmar a URL cadastrada.
+- O container definitivo roda em `/root/agente`.
+- Resolvido em 2026-05-13: o serviço `nginx` do Docker Compose foi reativado e agora escuta em `:80` e `:443`, encaminhando `https://anna.vps-kinghost.net/webhook` para o app em `app:8000`.
+- Simulações assinadas do webhook Meta retornaram 200 via HTTPS público. Como os testes usam número fictício, as respostas outbound ao paciente fake recebem status Meta `131047` (janela de 24h fechada), esperado para esse tipo de simulação e não indicativo de falha do recebimento do webhook.
