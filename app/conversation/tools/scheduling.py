@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from datetime import datetime
 from typing import Any, Literal
 
@@ -12,6 +13,10 @@ from app.conversation.rules import validar_distribuicao_slots
 from app.conversation.tools import ToolResult
 
 logger = logging.getLogger(__name__)
+
+_SLOTS_CACHE_TTL_SECONDS = 60
+_slots_cache: dict[tuple[str, int], tuple[float, list[dict[str, Any]]]] = {}
+_slots_cache_lock = asyncio.Lock()
 
 
 class Slot(BaseModel):
@@ -76,13 +81,26 @@ async def consultar_slots(input: ConsultarSlotsInput) -> ToolResult:
 
     loop = asyncio.get_event_loop()
     try:
-        pool = await loop.run_in_executor(
-            None,
-            lambda: consultar_slots_disponiveis(
-                modalidade=input.modalidade,
-                dias_a_frente=input.janela_max_dias,
-            ),
-        )
+        cache_key = (input.modalidade, input.janela_max_dias)
+        now = time.monotonic()
+        cached = _slots_cache.get(cache_key)
+        if cached and now - cached[0] <= _SLOTS_CACHE_TTL_SECONDS:
+            pool = [dict(slot) for slot in cached[1]]
+        else:
+            async with _slots_cache_lock:
+                now = time.monotonic()
+                cached = _slots_cache.get(cache_key)
+                if cached and now - cached[0] <= _SLOTS_CACHE_TTL_SECONDS:
+                    pool = [dict(slot) for slot in cached[1]]
+                else:
+                    pool = await loop.run_in_executor(
+                        None,
+                        lambda: consultar_slots_disponiveis(
+                            modalidade=input.modalidade,
+                            dias_a_frente=input.janela_max_dias,
+                        ),
+                    )
+                    _slots_cache[cache_key] = (time.monotonic(), [dict(slot) for slot in pool])
         selecionados, aviso_preferencia = legacy_scheduling._selecionar_slots(
             slots=pool,
             preferencia=input.preferencia,
