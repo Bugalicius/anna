@@ -1,0 +1,20 @@
+2026-05-13 00:00 - Início da consolidação v2.2 na branch refactor/agente-inteligente.
+2026-05-13 00:01 - git pull local executado; repositório já estava atualizado.
+2026-05-13 06:10 - Diagnóstico VPS: container agente-app-1 estava rodando com working_dir /root/agente-v21.
+2026-05-13 06:11 - Consolidação executada: /root/agente antigo movido para backup e /root/agente recriado limpo na branch refactor/agente-inteligente.
+2026-05-13 06:11 - Backups VPS: /root/agente-OLD-v1-backup-20260513-061057 e /root/agente-v21-backup-20260513-061057.
+[2026-05-13T06:43:51.4259052-03:00] Correção do validador de slots do stress: horas agora exigem sufixo h ou :00 para evitar falsos positivos em datas.
+[2026-05-13T06:44:29.1335198-03:00] Stress local mockado concluído: 5/5 cenários de agendamento passaram, p95 global abaixo de 1ms, 1 escalação esperada.
+[2026-05-13T06:45:00.7910421-03:00] Stress 50 agendamentos paralelos local concluído: 50/50 sucesso, p95 0,79ms, 0 erros.
+[2026-05-13T06:45:35.1206077-03:00] Commit cf66d14 criado: feat(v2.2): harden scheduling stress flow.
+[2026-05-13T06:46:17.8686645-03:00] Deploy VPS atualizado para commit cf66d14 em /root/agente; scheduler iniciou sem erros no tail inicial.
+[2026-05-13T06:47:54.8749575-03:00] Validação VPS: /test/chat respondeu, webhook assinado retornou 200, container em /root/agente commit cf66d14.
+[2026-05-13T06:49:15.4572670-03:00] Stress produção direto no container concluído: 5/5 cenários, p95 global 2202ms, 0 erros, 1 escalação esperada; outlier Dietbox 42s observado.
+[2026-05-13T06:49:38.9562700-03:00] Stress 50 agendamentos paralelos no VPS concluído: 50/50 sucesso, p95 0,71ms, 0 erros.
+[2026-05-13T06:56:55.3268156-03:00] Cache curto de 60s adicionado em consultar_slots para reduzir p95 sob stress HTTP concorrente.
+[2026-05-13T06:57:43.0061173-03:00] Commit 922de7f implantado no VPS com cache de slots; repetindo stress HTTP público.
+[2026-05-13T07:01:25.1333347-03:00] Stress HTTP público com cache: 30 conversas/330 turnos, 0 erros, p95 7070ms; análise por turno aponta piso de rede pública ~2s e turnos de slots ~7s.
+[2026-05-13T07:05:49.8163921-03:00] /test/chat ajustado para remover typing_delay e log Chatwoot no endpoint interno de stress; WhatsApp real preserva delay humano.
+[2026-05-13T07:10:09.2994047-03:00] Commit abf8350 implantado; /test/chat sem delay artificial para stress interno.
+[2026-05-13T07:10:37.7944810-03:00] Stress HTTP público final: 30 conversas/330 turnos, 0 erros, 0 vazias, p95 1047,66ms, p99 1460,12ms.
+[2026-05-13T07:17:57.4911163-03:00] Relatórios RELATORIO_CONSOLIDACAO.md e RELATORIO_STRESS_AGENDAMENTO.md criados; CLAUDE.md e BLOQUEIOS.md atualizados.

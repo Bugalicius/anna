@@ -1,0 +1,693 @@
+{
+  "gemini_api_key_presente": true,
+  "mock_tools": true,
+  "cenarios": [
+    {
+      "nome": "Paciente recusa 3x, aceita 4a",
+      "turnos": [
+        {
+          "turno": 1,
+          "paciente": "oi",
+          "respostas": [
+            "Olá! Que bom ter você por aqui 💚\n\nSou a Ana, responsável pelos agendamentos da nutricionista Thaynara Teixeira.\n\nPra começar, qual é o seu nome?\n"
+          ],
+          "estado": "aguardando_nome",
+          "latencia_ms": 2.402900005108677,
+          "erro": null
+        },
+        {
+          "turno": 2,
+          "paciente": "Maria Silva",
+          "respostas": [
+            "Prazer, Maria! 💚\n\nÉ sua primeira consulta com a Thaynara ou você já é paciente?\n"
+          ],
+          "estado": "aguardando_status_paciente",
+          "latencia_ms": 1.4583000011043623,
+          "erro": null
+        },
+        {
+          "turno": 3,
+          "paciente": "primeira consulta",
+          "respostas": [
+            "Que bom te receber, Maria! 💚\n\nAntes de te apresentar nossos planos, me conta: qual seu principal objetivo agora?\n"
+          ],
+          "estado": "aguardando_objetivo",
+          "latencia_ms": 0.6166999955894426,
+          "erro": null
+        },
+        {
+          "turno": 4,
+          "paciente": "emagrecer",
+          "respostas": [
+            "Aqui está nosso material completo 💚\n\nA Thaynara trabalha com o método #NutriTransforma — acompanhamento real, ajustes constantes e resultados sustentáveis, sem dietas extremas nem recomeços frustrantes.\n",
+            "Hoje temos estas opções. Qual faz mais sentido pra você agora?\n"
+          ],
+          "estado": "aguardando_escolha_plano",
+          "latencia_ms": 0.644800005829893,
+          "erro": null
+        },
+        {
+          "turno": 5,
+          "paciente": "plano ouro",
+          "respostas": [
+            "Ótima escolha! Posso te dar uma dica? Por +R$510 você sobe para Plano Premium. Quer trocar ou manter sua escolha?"
+          ],
+          "estado": "oferecendo_upsell",
+          "latencia_ms": 0.629700007266365,
+          "erro": null
+        },
+        {
+          "turno": 6,
+          "paciente": "presencial",
+          "respostas": [
+            "Para seguirmos com o agendamento, me informe qual horário atende melhor à sua rotina:\n\nSegunda a Sexta-feira:\nManhã: 08h, 09h e 10h\nTarde: 15h, 16h e 17h\nNoite: 18h e 19h (exceto sexta à noite)\n\nImportante: só realizamos o agendamento do dia e horário da consulta mediante a confirmação do pagamento. Quanto antes o sinal for enviado, maior a chance de garantir o horário de sua preferência.\n"
+          ],
+          "estado": "aguardando_preferencia_horario",
+          "latencia_ms": 0.628800000413321,
+          "erro": null
+        },
+        {
+          "turno": 7,
+          "paciente": "segunda às 8h",
+          "respostas": [
+            "Encontrei essas opções:\n\n1. segunda, 18/05/2026 08h\n2. terça, 19/05/2026 15h\n3. quarta, 20/05/2026 18h\n\nQual prefere?"
+          ],
+          "estado": "aguardando_escolha_slot",
+          "latencia_ms": 0.719599993317388,
+          "erro": null
+        },
+        {
+          "turno": 8,
+          "paciente": "nenhum serve, quero outra opção",
+          "respostas": [
+            "Sem problema! Quer que eu olhe outro turno ou outra semana?\n"
+          ],
+          "estado": "aguardando_preferencia_horario",
+          "latencia_ms": 0.6261999951675534,
+          "erro": null
+        },
+        {
+          "turno": 9,
+          "paciente": "outro turno, por favor",
+          "respostas": [
+            "Pode me mandar de outro jeito para eu entender certinho?"
+          ],
+          "estado": "aguardando_preferencia_horario",
+          "latencia_ms": 0.7035999879008159,
+          "erro": null
+        },
+        {
+          "turno": 10,
+          "paciente": "nenhum desses também",
+          "respostas": [
+            "Pode me mandar de outro jeito para eu entender certinho?"
+          ],
+          "estado": "aguardando_preferencia_horario",
+          "latencia_ms": 0.712199995177798,
+          "erro": null
+        },
+        {
+          "turno": 11,
+          "paciente": "outra semana",
+          "respostas": [
+            "Pode me mandar de outro jeito para eu entender certinho?"
+          ],
+          "estado": "aguardando_preferencia_horario",
+          "latencia_ms": 0.8161000005202368,
+          "erro": null
+        },
+        {
+          "turno": 12,
+          "paciente": "nenhum serve ainda",
+          "respostas": [
+            "Pode me mandar de outro jeito para eu entender certinho?"
+          ],
+          "estado": "aguardando_preferencia_horario",
+          "latencia_ms": 0.681100005749613,
+          "erro": null
+        },
+        {
+          "turno": 13,
+          "paciente": "qualquer horário",
+          "respostas": [
+            "Encontrei essas opções:\n\n1. quinta, 21/05/2026 09h\n2. sexta, 22/05/2026 10h\n3. segunda, 25/05/2026 16h\n\nQual prefere?"
+          ],
+          "estado": "aguardando_escolha_slot",
+          "latencia_ms": 0.6989999965298921,
+          "erro": null
+        },
+        {
+          "turno": 14,
+          "paciente": "essa primeira eu aceito",
+          "respostas": [
+            "Perfeito! Para confirmar seu agendamento, é necessário realizar o pagamento antecipado:\n\n💸 PIX: sinal de 50% do valor escolhido\n💳 Cartão: pagamento integral (parcelamento disponível em até 10x)\n\nEssa é uma política da clínica devido à alta procura e para garantir que seu horário fique reservado pra você.\n\nQual opção prefere?\n"
+          ],
+          "estado": "aguardando_forma_pagamento",
+          "latencia_ms": 0.8219000010285527,
+          "erro": null
+        }
+      ],
+      "erros": 0,
+      "latencia_media_ms": 0.8686357136217079,
+      "latencia_p95_ms": 1.4583000011043623,
+      "escalou": false,
+      "slots_invalidos": [],
+      "slots_repetidos": [],
+      "passou": true
+    },
+    {
+      "nome": "Paciente impossivel escala",
+      "turnos": [
+        {
+          "turno": 1,
+          "paciente": "oi",
+          "respostas": [
+            "Olá! Que bom ter você por aqui 💚\n\nSou a Ana, responsável pelos agendamentos da nutricionista Thaynara Teixeira.\n\nPra começar, qual é o seu nome?\n"
+          ],
+          "estado": "aguardando_nome",
+          "latencia_ms": 0.4434000002220273,
+          "erro": null
+        },
+        {
+          "turno": 2,
+          "paciente": "João Santos",
+          "respostas": [
+            "Prazer, João! 💚\n\nÉ sua primeira consulta com a Thaynara ou você já é paciente?\n"
+          ],
+          "estado": "aguardando_status_paciente",
+          "latencia_ms": 0.5728999967686832,
+          "erro": null
+        },
+        {
+          "turno": 3,
+          "paciente": "primeira consulta",
+          "respostas": [
+            "Que bom te receber, João! 💚\n\nAntes de te apresentar nossos planos, me conta: qual seu principal objetivo agora?\n"
+          ],
+          "estado": "aguardando_objetivo",
+          "latencia_ms": 0.5051000043749809,
+          "erro": null
+        },
+        {
+          "turno": 4,
+          "paciente": "ganhar massa",
+          "respostas": [
+            "Aqui está nosso material completo 💚\n\nA Thaynara trabalha com o método #NutriTransforma — acompanhamento real, ajustes constantes e resultados sustentáveis, sem dietas extremas nem recomeços frustrantes.\n",
+            "Hoje temos estas opções. Qual faz mais sentido pra você agora?\n"
+          ],
+          "estado": "aguardando_escolha_plano",
+          "latencia_ms": 0.6033999961800873,
+          "erro": null
+        },
+        {
+          "turno": 5,
+          "paciente": "premium",
+          "respostas": [
+            "Vamos definir a modalidade: como você prefere fazer sua consulta com a Thaynara?\n"
+          ],
+          "estado": "aguardando_modalidade",
+          "latencia_ms": 0.6136000010883436,
+          "erro": null
+        },
+        {
+          "turno": 6,
+          "paciente": "online",
+          "respostas": [
+            "Para seguirmos com o agendamento, me informe qual horário atende melhor à sua rotina:\n\nSegunda a Sexta-feira:\nManhã: 08h, 09h e 10h\nTarde: 15h, 16h e 17h\nNoite: 18h e 19h (exceto sexta à noite)\n\nImportante: só realizamos o agendamento do dia e horário da consulta mediante a confirmação do pagamento. Quanto antes o sinal for enviado, maior a chance de garantir o horário de sua preferência.\n"
+          ],
+          "estado": "aguardando_preferencia_horario",
+          "latencia_ms": 0.6154000002425164,
+          "erro": null
+        },
+        {
+          "turno": 7,
+          "paciente": "domingo às 14h",
+          "respostas": [
+            "Sábado e domingo a Thaynara não atende 😔\nO atendimento é de segunda a sexta. Tem algum dia da semana que funciona pra você?\n"
+          ],
+          "estado": "aguardando_preferencia_horario",
+          "latencia_ms": 0.6436000112444162,
+          "erro": null
+        },
+        {
+          "turno": 8,
+          "paciente": "sábado então",
+          "respostas": [
+            "Sábado e domingo a Thaynara não atende 😔\nO atendimento é de segunda a sexta. Tem algum dia da semana que funciona pra você?\n"
+          ],
+          "estado": "aguardando_preferencia_horario",
+          "latencia_ms": 0.6680000078631565,
+          "erro": null
+        },
+        {
+          "turno": 9,
+          "paciente": "sexta às 22h",
+          "respostas": [
+            "Esse horário tá fora da agenda da Thaynara 😔\n\nOs horários disponíveis são: manhã 08h, 09h ou 10h | tarde 15h, 16h ou 17h | noite 18h ou 19h (exceto sexta).\n\nQual atende melhor pra você?\n"
+          ],
+          "estado": "aguardando_preferencia_horario",
+          "latencia_ms": 0.6732000038027763,
+          "erro": null
+        },
+        {
+          "turno": 10,
+          "paciente": "11h",
+          "respostas": [
+            "Esse horário tá fora da agenda da Thaynara 😔\n\nOs horários disponíveis são: manhã 08h, 09h ou 10h | tarde 15h, 16h ou 17h | noite 18h ou 19h (exceto sexta).\n\nQual atende melhor pra você?\n",
+            "Vou pedir pra alguém da equipe te ajudar a encontrar a melhor opção, tá? Um momento 💚"
+          ],
+          "estado": "concluido_escalado",
+          "latencia_ms": 0.674000009894371,
+          "erro": null
+        },
+        {
+          "turno": 11,
+          "paciente": "13h",
+          "respostas": [
+            "Pode me mandar de outro jeito para eu entender certinho?"
+          ],
+          "estado": "concluido_escalado",
+          "latencia_ms": 2143.954200000735,
+          "erro": null
+        },
+        {
+          "turno": 12,
+          "paciente": "12h",
+          "respostas": [
+            "Pode me mandar de outro jeito para eu entender certinho?"
+          ],
+          "estado": "concluido_escalado",
+          "latencia_ms": 2125.5097999965074,
+          "erro": null
+        },
+        {
+          "turno": 13,
+          "paciente": "qualquer horário",
+          "respostas": [
+            "Pode me mandar de outro jeito para eu entender certinho?"
+          ],
+          "estado": "concluido_escalado",
+          "latencia_ms": 1953.1938000000082,
+          "erro": null
+        }
+      ],
+      "erros": 0,
+      "latencia_media_ms": 479.1284923099178,
+      "latencia_p95_ms": 2125.5097999965074,
+      "escalou": true,
+      "slots_invalidos": [],
+      "slots_repetidos": [],
+      "passou": true
+    },
+    {
+      "nome": "Paciente preco sensivel",
+      "turnos": [
+        {
+          "turno": 1,
+          "paciente": "oi",
+          "respostas": [
+            "Olá! Que bom ter você por aqui 💚\n\nSou a Ana, responsável pelos agendamentos da nutricionista Thaynara Teixeira.\n\nPra começar, qual é o seu nome?\n"
+          ],
+          "estado": "aguardando_nome",
+          "latencia_ms": 0.5338999908417463,
+          "erro": null
+        },
+        {
+          "turno": 2,
+          "paciente": "Ana Costa",
+          "respostas": [
+            "Prazer, Ana! 💚\n\nÉ sua primeira consulta com a Thaynara ou você já é paciente?\n"
+          ],
+          "estado": "aguardando_status_paciente",
+          "latencia_ms": 0.5762000073445961,
+          "erro": null
+        },
+        {
+          "turno": 3,
+          "paciente": "primeira consulta",
+          "respostas": [
+            "Que bom te receber, Ana! 💚\n\nAntes de te apresentar nossos planos, me conta: qual seu principal objetivo agora?\n"
+          ],
+          "estado": "aguardando_objetivo",
+          "latencia_ms": 0.523299997439608,
+          "erro": null
+        },
+        {
+          "turno": 4,
+          "paciente": "emagrecer",
+          "respostas": [
+            "Aqui está nosso material completo 💚\n\nA Thaynara trabalha com o método #NutriTransforma — acompanhamento real, ajustes constantes e resultados sustentáveis, sem dietas extremas nem recomeços frustrantes.\n",
+            "Hoje temos estas opções. Qual faz mais sentido pra você agora?\n"
+          ],
+          "estado": "aguardando_escolha_plano",
+          "latencia_ms": 0.5909999890718609,
+          "erro": null
+        },
+        {
+          "turno": 5,
+          "paciente": "qual o valor mais barato?",
+          "respostas": [],
+          "estado": "aguardando_escolha_plano",
+          "latencia_ms": 0.6236000044737011,
+          "erro": null
+        },
+        {
+          "turno": 6,
+          "paciente": "tá caro",
+          "respostas": [],
+          "estado": "aguardando_escolha_plano",
+          "latencia_ms": 0.5610999942291528,
+          "erro": null
+        },
+        {
+          "turno": 7,
+          "paciente": "tem desconto?",
+          "respostas": [],
+          "estado": "aguardando_escolha_plano",
+          "latencia_ms": 0.569799987715669,
+          "erro": null
+        },
+        {
+          "turno": 8,
+          "paciente": "plano única então",
+          "respostas": [
+            "Ótima escolha! Posso te dar uma dica? Por +R$180 você sobe para Com Retorno. Quer trocar ou manter sua escolha?"
+          ],
+          "estado": "oferecendo_upsell",
+          "latencia_ms": 0.564500005566515,
+          "erro": null
+        },
+        {
+          "turno": 9,
+          "paciente": "online",
+          "respostas": [
+            "Para seguirmos com o agendamento, me informe qual horário atende melhor à sua rotina:\n\nSegunda a Sexta-feira:\nManhã: 08h, 09h e 10h\nTarde: 15h, 16h e 17h\nNoite: 18h e 19h (exceto sexta à noite)\n\nImportante: só realizamos o agendamento do dia e horário da consulta mediante a confirmação do pagamento. Quanto antes o sinal for enviado, maior a chance de garantir o horário de sua preferência.\n"
+          ],
+          "estado": "aguardando_preferencia_horario",
+          "latencia_ms": 0.552199999219738,
+          "erro": null
+        },
+        {
+          "turno": 10,
+          "paciente": "terça às 9h",
+          "respostas": [
+            "Encontrei essas opções:\n\n1. segunda, 18/05/2026 08h\n2. terça, 19/05/2026 15h\n3. quarta, 20/05/2026 18h\n\nQual prefere?"
+          ],
+          "estado": "aguardando_escolha_slot",
+          "latencia_ms": 0.5458000086946413,
+          "erro": null
+        },
+        {
+          "turno": 11,
+          "paciente": "ok essa serve",
+          "respostas": [
+            "Perfeito! Para confirmar seu agendamento, é necessário realizar o pagamento antecipado:\n\n💸 PIX: sinal de 50% do valor escolhido\n💳 Cartão: pagamento integral (parcelamento disponível em até 10x)\n\nEssa é uma política da clínica devido à alta procura e para garantir que seu horário fique reservado pra você.\n\nQual opção prefere?\n"
+          ],
+          "estado": "aguardando_forma_pagamento",
+          "latencia_ms": 0.6334999925456941,
+          "erro": null
+        },
+        {
+          "turno": 12,
+          "paciente": "PIX",
+          "respostas": [
+            "Valor total: R$ 220,00\nSinal (50%): R$ 110,00\n\nChave PIX (CPF): 14994735670\n(Nome: Thaynara Teixeira)\n\nFeito, envie o comprovante que retorno com a confirmação e orientações 👈✅\n"
+          ],
+          "estado": "aguardando_pagamento_pix",
+          "latencia_ms": 0.62600000819657,
+          "erro": null
+        }
+      ],
+      "erros": 0,
+      "latencia_media_ms": 0.575074998778291,
+      "latencia_p95_ms": 0.62600000819657,
+      "escalou": false,
+      "slots_invalidos": [],
+      "slots_repetidos": [],
+      "passou": true
+    },
+    {
+      "nome": "Paciente muda de ideia",
+      "turnos": [
+        {
+          "turno": 1,
+          "paciente": "oi",
+          "respostas": [
+            "Olá! Que bom ter você por aqui 💚\n\nSou a Ana, responsável pelos agendamentos da nutricionista Thaynara Teixeira.\n\nPra começar, qual é o seu nome?\n"
+          ],
+          "estado": "aguardando_nome",
+          "latencia_ms": 0.5193999968469143,
+          "erro": null
+        },
+        {
+          "turno": 2,
+          "paciente": "Carla Mendes",
+          "respostas": [
+            "Prazer, Carla! 💚\n\nÉ sua primeira consulta com a Thaynara ou você já é paciente?\n"
+          ],
+          "estado": "aguardando_status_paciente",
+          "latencia_ms": 0.524200004292652,
+          "erro": null
+        },
+        {
+          "turno": 3,
+          "paciente": "primeira consulta",
+          "respostas": [
+            "Que bom te receber, Carla! 💚\n\nAntes de te apresentar nossos planos, me conta: qual seu principal objetivo agora?\n"
+          ],
+          "estado": "aguardando_objetivo",
+          "latencia_ms": 0.5162999877939001,
+          "erro": null
+        },
+        {
+          "turno": 4,
+          "paciente": "emagrecer",
+          "respostas": [
+            "Aqui está nosso material completo 💚\n\nA Thaynara trabalha com o método #NutriTransforma — acompanhamento real, ajustes constantes e resultados sustentáveis, sem dietas extremas nem recomeços frustrantes.\n",
+            "Hoje temos estas opções. Qual faz mais sentido pra você agora?\n"
+          ],
+          "estado": "aguardando_escolha_plano",
+          "latencia_ms": 0.5705999938072637,
+          "erro": null
+        },
+        {
+          "turno": 5,
+          "paciente": "plano ouro",
+          "respostas": [
+            "Ótima escolha! Posso te dar uma dica? Por +R$510 você sobe para Plano Premium. Quer trocar ou manter sua escolha?"
+          ],
+          "estado": "oferecendo_upsell",
+          "latencia_ms": 0.590000010561198,
+          "erro": null
+        },
+        {
+          "turno": 6,
+          "paciente": "espera, qual é mesmo o premium?",
+          "respostas": [
+            "Pode me mandar de outro jeito para eu entender certinho?"
+          ],
+          "estado": "oferecendo_upsell",
+          "latencia_ms": 0.5741999921156093,
+          "erro": null
+        },
+        {
+          "turno": 7,
+          "paciente": "fica ouro mesmo",
+          "respostas": [
+            "Vamos definir a modalidade: como você prefere fazer sua consulta com a Thaynara?\n"
+          ],
+          "estado": "aguardando_modalidade",
+          "latencia_ms": 0.5018999945605174,
+          "erro": null
+        },
+        {
+          "turno": 8,
+          "paciente": "online",
+          "respostas": [
+            "Para seguirmos com o agendamento, me informe qual horário atende melhor à sua rotina:\n\nSegunda a Sexta-feira:\nManhã: 08h, 09h e 10h\nTarde: 15h, 16h e 17h\nNoite: 18h e 19h (exceto sexta à noite)\n\nImportante: só realizamos o agendamento do dia e horário da consulta mediante a confirmação do pagamento. Quanto antes o sinal for enviado, maior a chance de garantir o horário de sua preferência.\n"
+          ],
+          "estado": "aguardando_preferencia_horario",
+          "latencia_ms": 0.6031999946571887,
+          "erro": null
+        },
+        {
+          "turno": 9,
+          "paciente": "ah não, presencial",
+          "respostas": [
+            "Pode me mandar de outro jeito para eu entender certinho?"
+          ],
+          "estado": "aguardando_preferencia_horario",
+          "latencia_ms": 0.7031999994069338,
+          "erro": null
+        },
+        {
+          "turno": 10,
+          "paciente": "segunda às 8h",
+          "respostas": [
+            "Encontrei essas opções:\n\n1. segunda, 18/05/2026 08h\n2. terça, 19/05/2026 15h\n3. quarta, 20/05/2026 18h\n\nQual prefere?"
+          ],
+          "estado": "aguardando_escolha_slot",
+          "latencia_ms": 0.5778000049758703,
+          "erro": null
+        },
+        {
+          "turno": 11,
+          "paciente": "terça às 8h",
+          "respostas": [
+            "Perfeito! Para confirmar seu agendamento, é necessário realizar o pagamento antecipado:\n\n💸 PIX: sinal de 50% do valor escolhido\n💳 Cartão: pagamento integral (parcelamento disponível em até 10x)\n\nEssa é uma política da clínica devido à alta procura e para garantir que seu horário fique reservado pra você.\n\nQual opção prefere?\n"
+          ],
+          "estado": "aguardando_forma_pagamento",
+          "latencia_ms": 1.0688000038499013,
+          "erro": null
+        },
+        {
+          "turno": 12,
+          "paciente": "essa ok",
+          "respostas": [
+            "Pode me mandar de outro jeito para eu entender certinho?"
+          ],
+          "estado": "aguardando_forma_pagamento",
+          "latencia_ms": 0.6219000060809776,
+          "erro": null
+        }
+      ],
+      "erros": 0,
+      "latencia_media_ms": 0.6142916657457439,
+      "latencia_p95_ms": 0.7031999994069338,
+      "escalou": false,
+      "slots_invalidos": [],
+      "slots_repetidos": [],
+      "passou": true
+    },
+    {
+      "nome": "Paciente agressivo no meio",
+      "turnos": [
+        {
+          "turno": 1,
+          "paciente": "oi",
+          "respostas": [
+            "Olá! Que bom ter você por aqui 💚\n\nSou a Ana, responsável pelos agendamentos da nutricionista Thaynara Teixeira.\n\nPra começar, qual é o seu nome?\n"
+          ],
+          "estado": "aguardando_nome",
+          "latencia_ms": 0.4622999986167997,
+          "erro": null
+        },
+        {
+          "turno": 2,
+          "paciente": "Pedro Lima",
+          "respostas": [
+            "Prazer, Pedro! 💚\n\nÉ sua primeira consulta com a Thaynara ou você já é paciente?\n"
+          ],
+          "estado": "aguardando_status_paciente",
+          "latencia_ms": 0.6015999970259145,
+          "erro": null
+        },
+        {
+          "turno": 3,
+          "paciente": "primeira consulta",
+          "respostas": [
+            "Que bom te receber, Pedro! 💚\n\nAntes de te apresentar nossos planos, me conta: qual seu principal objetivo agora?\n"
+          ],
+          "estado": "aguardando_objetivo",
+          "latencia_ms": 0.5549999914364889,
+          "erro": null
+        },
+        {
+          "turno": 4,
+          "paciente": "ganhar massa",
+          "respostas": [
+            "Aqui está nosso material completo 💚\n\nA Thaynara trabalha com o método #NutriTransforma — acompanhamento real, ajustes constantes e resultados sustentáveis, sem dietas extremas nem recomeços frustrantes.\n",
+            "Hoje temos estas opções. Qual faz mais sentido pra você agora?\n"
+          ],
+          "estado": "aguardando_escolha_plano",
+          "latencia_ms": 0.6305999995674938,
+          "erro": null
+        },
+        {
+          "turno": 5,
+          "paciente": "plano ouro",
+          "respostas": [
+            "Ótima escolha! Posso te dar uma dica? Por +R$510 você sobe para Plano Premium. Quer trocar ou manter sua escolha?"
+          ],
+          "estado": "oferecendo_upsell",
+          "latencia_ms": 0.5848000000696629,
+          "erro": null
+        },
+        {
+          "turno": 6,
+          "paciente": "presencial",
+          "respostas": [
+            "Para seguirmos com o agendamento, me informe qual horário atende melhor à sua rotina:\n\nSegunda a Sexta-feira:\nManhã: 08h, 09h e 10h\nTarde: 15h, 16h e 17h\nNoite: 18h e 19h (exceto sexta à noite)\n\nImportante: só realizamos o agendamento do dia e horário da consulta mediante a confirmação do pagamento. Quanto antes o sinal for enviado, maior a chance de garantir o horário de sua preferência.\n"
+          ],
+          "estado": "aguardando_preferencia_horario",
+          "latencia_ms": 0.5506000015884638,
+          "erro": null
+        },
+        {
+          "turno": 7,
+          "paciente": "segunda às 9h",
+          "respostas": [
+            "Encontrei essas opções:\n\n1. segunda, 18/05/2026 08h\n2. terça, 19/05/2026 15h\n3. quarta, 20/05/2026 18h\n\nQual prefere?"
+          ],
+          "estado": "aguardando_escolha_slot",
+          "latencia_ms": 0.5756999889854342,
+          "erro": null
+        },
+        {
+          "turno": 8,
+          "paciente": "DEMORA DEMAIS PORRA",
+          "respostas": [
+            "Sinto muito se algo te deixou frustrado(a). 💚 Posso te ajudar com agendamento ou alguma dúvida?"
+          ],
+          "estado": "aguardando_escolha_slot",
+          "latencia_ms": 0.7656999950995669,
+          "erro": null
+        },
+        {
+          "turno": 9,
+          "paciente": "tá brincando que custa isso?",
+          "respostas": [
+            "Perfeito! Para confirmar seu agendamento, é necessário realizar o pagamento antecipado:\n\n💸 PIX: sinal de 50% do valor escolhido\n💳 Cartão: pagamento integral (parcelamento disponível em até 10x)\n\nEssa é uma política da clínica devido à alta procura e para garantir que seu horário fique reservado pra você.\n\nQual opção prefere?\n"
+          ],
+          "estado": "aguardando_forma_pagamento",
+          "latencia_ms": 0.6553999992320314,
+          "erro": null
+        },
+        {
+          "turno": 10,
+          "paciente": "plano único então",
+          "respostas": [
+            "Pode me mandar de outro jeito para eu entender certinho?"
+          ],
+          "estado": "aguardando_forma_pagamento",
+          "latencia_ms": 0.5977999971946701,
+          "erro": null
+        },
+        {
+          "turno": 11,
+          "paciente": "segunda às 9h",
+          "respostas": [
+            "Pode me mandar de outro jeito para eu entender certinho?"
+          ],
+          "estado": "aguardando_forma_pagamento",
+          "latencia_ms": 0.5746000097133219,
+          "erro": null
+        }
+      ],
+      "erros": 0,
+      "latencia_media_ms": 0.5958272707754407,
+      "latencia_p95_ms": 0.7656999950995669,
+      "escalou": false,
+      "slots_invalidos": [],
+      "slots_repetidos": [],
+      "passou": true
+    }
+  ],
+  "resumo": {
+    "total": 5,
+    "passando": 5,
+    "p95_global_ms": 2.402900005108677,
+    "erros": 0,
+    "escalacoes": 1
+  }
+}

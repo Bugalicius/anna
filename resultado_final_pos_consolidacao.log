@@ -1,0 +1,94 @@
+........................................................................ [ 11%]
+........................................................................ [ 22%]
+........................................................................ [ 34%]
+.........s.............................................................. [ 45%]
+.....................x.................................................. [ 57%]
+........................................................................ [ 68%]
+.........................................................s.............. [ 80%]
+........................................................................ [ 91%]
+.................................FF.................                     [100%]
+================================== FAILURES ===================================
+_______________ test_test_chat_oferece_slots_sem_duplo_waiting ________________
+tests\test_test_chat.py:68: in test_test_chat_oferece_slots_sem_duplo_waiting
+    assert len(payload["responses"]) == 2
+E   AssertionError: assert 1 == 2
+E    +  where 1 = len(['Ol\xe1! Que bom ter voc\xea por aqui \U0001f49a\\n\\nSou a Ana, respons\xe1vel pelos agendamentos da nutricionista Thaynara Teixeira.\\n\\nPra come\xe7ar, qual \xe9 o seu nome?\\n'])
+------------------------------ Captured log call ------------------------------
+WARNING  app.chatwoot_bridge:chatwoot_bridge.py:94 Falha ao consultar handoff humano no Redis: Error 22 connecting to localhost:6379. O computador remoto recusou a conex�o de rede.
+WARNING  app.conversation_legacy.state:state.py:113 Redis load failed, usando fallback in-memory: Error 22 connecting to localhost:6379. O computador remoto recusou a conex�o de rede.
+WARNING  app.conversation_legacy.state:state.py:130 Redis save failed, usando fallback in-memory: Error 22 connecting to localhost:6379. O computador remoto recusou a conex�o de rede.
+_____________ test_test_chat_cancelamento_funciona_em_dois_turnos _____________
+tests\test_test_chat.py:102: in test_test_chat_cancelamento_funciona_em_dois_turnos
+    assert any("cancelad" in resp.lower() for resp in respostas)
+E   assert False
+E    +  where False = any(<generator object test_test_chat_cancelamento_funciona_em_dois_turnos.<locals>.<genexpr> at 0x000002B23955E4D0>)
+------------------------------ Captured log call ------------------------------
+WARNING  app.chatwoot_bridge:chatwoot_bridge.py:94 Falha ao consultar handoff humano no Redis: Error 22 connecting to localhost:6379. O computador remoto recusou a conex�o de rede.
+WARNING  app.conversation_legacy.state:state.py:113 Redis load failed, usando fallback in-memory: Error 22 connecting to localhost:6379. O computador remoto recusou a conex�o de rede.
+WARNING  app.conversation_legacy.state:state.py:130 Redis save failed, usando fallback in-memory: Error 22 connecting to localhost:6379. O computador remoto recusou a conex�o de rede.
+============================== warnings summary ===============================
+tests/conversation_v2/e2e/test_e2e_reais.py::test_selecao_quantidade_minima
+  tests\conversation_v2\e2e\test_e2e_reais.py:56: PytestWarning: The test <Function test_selecao_quantidade_minima> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_selecao_quantidade_minima(conversas_selecionadas):
+
+tests/conversation_v2/e2e/test_e2e_reais.py::test_selecao_tem_agendamentos
+  tests\conversation_v2\e2e\test_e2e_reais.py:63: PytestWarning: The test <Function test_selecao_tem_agendamentos> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_selecao_tem_agendamentos(conversas_selecionadas):
+
+tests/conversation_v2/e2e/test_e2e_reais.py::test_selecao_tem_remarcacoes
+  tests\conversation_v2\e2e\test_e2e_reais.py:68: PytestWarning: The test <Function test_selecao_tem_remarcacoes> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_selecao_tem_remarcacoes(conversas_selecionadas):
+
+tests/conversation_v2/e2e/test_e2e_reais.py::test_selecao_tem_cancelamentos
+  tests\conversation_v2\e2e\test_e2e_reais.py:73: PytestWarning: The test <Function test_selecao_tem_cancelamentos> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_selecao_tem_cancelamentos(conversas_selecionadas):
+
+tests/conversation_v2/e2e/test_e2e_reais.py::test_selecao_reproducivel
+  tests\conversation_v2\e2e\test_e2e_reais.py:78: PytestWarning: The test <Function test_selecao_reproducivel> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_selecao_reproducivel(conversas_export):
+
+tests/conversation_v2/e2e/test_e2e_reais.py::test_todas_conversas_tem_msgs_paciente
+  tests\conversation_v2\e2e\test_e2e_reais.py:87: PytestWarning: The test <Function test_todas_conversas_tem_msgs_paciente> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_todas_conversas_tem_msgs_paciente(conversas_selecionadas):
+
+tests/conversation_v2/e2e/test_e2e_reais.py::test_taxa_sucesso_global
+  tests\conversation_v2\e2e\test_e2e_reais.py:105: PytestWarning: The test <Function test_taxa_sucesso_global> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_taxa_sucesso_global(resultado_bateria: RunnerResult):
+
+tests/conversation_v2/e2e/test_e2e_reais.py::test_sem_erros_criticos
+  tests\conversation_v2\e2e\test_e2e_reais.py:114: PytestWarning: The test <Function test_sem_erros_criticos> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_sem_erros_criticos(resultado_bateria: RunnerResult):
+
+tests/conversation_v2/e2e/test_e2e_reais.py::test_taxa_sucesso_agendamentos
+  tests\conversation_v2\e2e\test_e2e_reais.py:121: PytestWarning: The test <Function test_taxa_sucesso_agendamentos> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_taxa_sucesso_agendamentos(resultado_bateria: RunnerResult):
+
+tests/conversation_v2/e2e/test_e2e_reais.py::test_taxa_sucesso_remarcacoes
+  tests\conversation_v2\e2e\test_e2e_reais.py:132: PytestWarning: The test <Function test_taxa_sucesso_remarcacoes> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_taxa_sucesso_remarcacoes(resultado_bateria: RunnerResult):
+
+tests/conversation_v2/e2e/test_e2e_reais.py::test_taxa_sucesso_cancelamentos
+  tests\conversation_v2\e2e\test_e2e_reais.py:143: PytestWarning: The test <Function test_taxa_sucesso_cancelamentos> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_taxa_sucesso_cancelamentos(resultado_bateria: RunnerResult):
+
+tests/conversation_v2/e2e/test_e2e_reais.py::test_nenhuma_resposta_expoe_breno
+  tests\conversation_v2\e2e\test_e2e_reais.py:154: PytestWarning: The test <Function test_nenhuma_resposta_expoe_breno> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_nenhuma_resposta_expoe_breno(resultado_bateria: RunnerResult):
+
+tests/conversation_v2/e2e/test_e2e_reais.py::test_latencia_media_aceitavel
+  tests\conversation_v2\e2e\test_e2e_reais.py:165: PytestWarning: The test <Function test_latencia_media_aceitavel> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_latencia_media_aceitavel(resultado_bateria: RunnerResult):
+
+tests/conversation_v2/e2e/test_e2e_reais.py::test_turnos_totais_minimo
+  tests\conversation_v2\e2e\test_e2e_reais.py:173: PytestWarning: The test <Function test_turnos_totais_minimo> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_turnos_totais_minimo(resultado_bateria: RunnerResult):
+
+tests/conversation_v2/e2e/test_e2e_reais.py::test_falhas_nao_sao_sistematicas
+  tests\conversation_v2\e2e\test_e2e_reais.py:183: PytestWarning: The test <Function test_falhas_nao_sao_sistematicas> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_falhas_nao_sao_sistematicas(resultado_bateria: RunnerResult):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_test_chat.py::test_test_chat_oferece_slots_sem_duplo_waiting
+FAILED tests/test_test_chat.py::test_test_chat_cancelamento_funciona_em_dois_turnos
+2 failed, 623 passed, 2 skipped, 1 xfailed, 15 warnings in 329.81s (0:05:29)

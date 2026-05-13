@@ -7,6 +7,10 @@ Thaynara Teixeira. O fluxo principal de producao hoje passa por:
 
 `WhatsApp -> app/webhook.py -> app/router.py -> processar_turno (Orchestrator v2) -> Meta API`
 
+Producao consolidada no VPS: `root@anna.vps-kinghost.net:/root/agente`.
+Backups preservados em `/root/agente-OLD-v1-backup-20260513-061057` e
+`/root/agente-v21-backup-20260513-061057`.
+
 **v2.0 (reescrita completa)** — o motor conversacional e agora o Orchestrator v2
 em `app/conversation/`. O codigo legado esta preservado em `app/conversation_legacy/`
 para consulta mas nao e mais o caminho ativo.
@@ -97,6 +101,6 @@ Para deploy:
 
 ```bash
 git push
-ssh root@anna.vps-kinghost.net "cd /root/agente && git pull && docker compose up --build -d app"
-ssh root@anna.vps-kinghost.net "cd /root/agente && docker compose logs --tail=50 app"
+ssh root@anna.vps-kinghost.net "cd /root/agente && git pull && docker compose -p agente up --build -d app"
+ssh root@anna.vps-kinghost.net "cd /root/agente && docker compose -p agente logs --tail=50 app"
 ```
