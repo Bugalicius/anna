@@ -10,9 +10,12 @@ Uso standalone:
 from __future__ import annotations
 
 import asyncio
+import argparse
+import dataclasses
 import json
 import random
 import re
+import sys
 import time
 import unicodedata
 from dataclasses import dataclass, field
@@ -20,9 +23,13 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
+ROOT = Path(__file__).parents[3]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 # ─── Caminhos ────────────────────────────────────────────────────────────────
 
-CONVERSAS_PATH = Path(__file__).parents[3] / "conversas_export.json"
+CONVERSAS_PATH = ROOT / "conversas_export.json"
 
 # ─── Mocks de tools ──────────────────────────────────────────────────────────
 
@@ -101,6 +108,10 @@ class ConversaResult:
         if not self.total_turnos:
             return 0.0
         return self.turnos_aceitos / self.total_turnos
+
+    @property
+    def score(self) -> float:
+        return round(self.taxa_sucesso * 100, 2)
 
 
 @dataclass
@@ -455,15 +466,63 @@ async def executar_bateria(
 # ─── Standalone ──────────────────────────────────────────────────────────────
 
 async def _main() -> None:
+    parser = argparse.ArgumentParser(description="Replay E2E de conversas reais no orchestrator v2.")
+    parser.add_argument("--batch-size", type=int, default=0, help="Tamanho de batch para executar todas as conversas.")
+    parser.add_argument("--output", type=Path, default=None, help="Arquivo JSON de saída.")
+    parser.add_argument("--all", action="store_true", help="Replayar todas as conversas elegíveis.")
+    parser.add_argument("--limit", type=int, default=0, help="Limite máximo de conversas.")
+    parser.add_argument("--concurrent", action="store_true", help="Executar replay concorrente dentro do batch.")
+    args = parser.parse_args()
+
     print("Carregando conversas...")
     conversas = load_conversas()
     print(f"Total no arquivo: {len(conversas)} conversas")
 
-    selecionadas = selecionar_conversas(conversas)
+    if args.all or args.batch_size:
+        selecionadas = [c for c in conversas if len(_mensagens_paciente(c)) >= 1]
+    else:
+        selecionadas = selecionar_conversas(conversas)
+    if args.limit:
+        selecionadas = selecionadas[: args.limit]
     print(f"Selecionadas: {len(selecionadas)} conversas para replay\n")
 
-    result = await executar_bateria(selecionadas)
+    if args.batch_size and args.batch_size > 0:
+        acumuladas: list[ConversaResult] = []
+        erros: list[str] = []
+        for inicio in range(0, len(selecionadas), args.batch_size):
+            batch = selecionadas[inicio: inicio + args.batch_size]
+            print(f"Batch {inicio // args.batch_size + 1}: {inicio + 1}-{inicio + len(batch)}")
+            parcial = await executar_bateria(batch, concorrente=args.concurrent)
+            acumuladas.extend(parcial.conversas)
+            erros.extend(parcial.erros)
+        turnos_totais = sum(c.total_turnos for c in acumuladas)
+        turnos_aceitos = sum(c.turnos_aceitos for c in acumuladas)
+        latencias = [t.duracao_ms for c in acumuladas for t in c.turnos]
+        por_tipo: dict[str, int] = {}
+        for c in acumuladas:
+            por_tipo[c.tipo] = por_tipo.get(c.tipo, 0) + 1
+        result = RunnerResult(
+            total_conversas=len(acumuladas),
+            conversas_por_tipo=por_tipo,
+            taxa_sucesso_global=turnos_aceitos / turnos_totais if turnos_totais else 0.0,
+            turnos_totais=turnos_totais,
+            turnos_aceitos=turnos_aceitos,
+            latencia_media_ms=sum(latencias) / len(latencias) if latencias else 0.0,
+            erros=erros,
+            conversas=acumuladas,
+        )
+    else:
+        result = await executar_bateria(selecionadas, concorrente=args.concurrent)
     print(result.resumo())
+
+    if args.output:
+        payload = dataclasses.asdict(result)
+        payload["score_medio"] = round(result.taxa_sucesso_global * 100, 2)
+        for conv in payload["conversas"]:
+            total = conv.get("total_turnos") or 0
+            conv["score"] = round((conv.get("turnos_aceitos") or 0) / total * 100, 2) if total else 0.0
+        args.output.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"\nRelatório salvo em: {args.output}")
 
     # Detalhes de falhas
     falhas = [

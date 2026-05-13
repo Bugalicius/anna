@@ -1,0 +1,794 @@
+{
+  "stats": {
+    "total_conversas": 1283,
+    "total_mensagens": 20386,
+    "tipos": {
+      "cancelamento": 28,
+      "outro": 627,
+      "agendamento": 375,
+      "duvida": 197,
+      "remarcacao": 52,
+      "confirmacao": 4
+    },
+    "problemas": {
+      "agressao_ameaca": 105,
+      "negocio_incomum": 15,
+      "gestante": 41,
+      "conversa_longa": 169,
+      "complexidade_baixa": 1009,
+      "midia_ou_mensagem_curta": 117,
+      "manipulacao_negociacao": 24,
+      "emocional_clinico": 1,
+      "menor_16": 1
+    },
+    "tons": {
+      "agressivo": 105,
+      "neutro": 990,
+      "confuso_longo": 188
+    },
+    "resultados": {
+      "cancelou_ou_tentou_cancelar": 57,
+      "sem_resultado_claro": 975,
+      "converteu_ou_confirmou": 251
+    }
+  },
+  "criticas": [
+    {
+      "conversa_id": "cmn0o2un200onn379xnomj521",
+      "tipo": "cancelamento",
+      "score_complexidade": 1307,
+      "problemas": [
+        "agressao_ameaca",
+        "emocional_clinico",
+        "manipulacao_negociacao",
+        "midia_ou_mensagem_curta",
+        "negocio_incomum",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 1251,
+      "mensagens_total": 3202,
+      "exemplo_paciente": "aline bernardes n consegue vir hj 15h?",
+      "resposta_ana_referencia": "dps vc preenche la",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmn0o30qg00p1n379zmgwn7ke",
+      "tipo": "cancelamento",
+      "score_complexidade": 361,
+      "problemas": [
+        "agressao_ameaca",
+        "manipulacao_negociacao",
+        "midia_ou_mensagem_curta",
+        "negocio_incomum",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 313,
+      "mensagens_total": 459,
+      "exemplo_paciente": "Eii! No momento, estou fora do meu horário de atendimento. Vou responder assim que possível.  Agradeço sua compreensão e paciência! 💚",
+      "resposta_ana_referencia": "Fiquei maluco",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmoip6e8t03kwn379eevpg79c",
+      "tipo": "cancelamento",
+      "score_complexidade": 123,
+      "problemas": [
+        "agressao_ameaca",
+        "negocio_incomum",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 91,
+      "mensagens_total": 204,
+      "exemplo_paciente": "Olá! Que bom ter você por aqui 💚\n\nSou a Ana, responsável pelos agendamentos da nutricionista Thaynara Teixeira.\n\nPra começar, você poderia me informar:\n• Qual seu nome e sobrenome?\n• É sua primeira consulta ou você já é paciente?\n\nAh, um av",
+      "resposta_ana_referencia": "não tenho email cadastrado",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmnn9vybi0176n379i9oa26i5",
+      "tipo": "confirmacao",
+      "score_complexidade": 98,
+      "problemas": [
+        "agressao_ameaca",
+        "midia_ou_mensagem_curta",
+        "negocio_incomum",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 66,
+      "mensagens_total": 125,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "olá, conseguiu encontrar?",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmn0olv3i00vpn379p0nc29sd",
+      "tipo": "confirmacao",
+      "score_complexidade": 97,
+      "problemas": [
+        "agressao_ameaca",
+        "manipulacao_negociacao",
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 65,
+      "mensagens_total": 125,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "ela só consegue ás 16H pq tem outro paciente na agenda.",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmnt3nnf900q5n3799i5x5fe6",
+      "tipo": "remarcacao",
+      "score_complexidade": 90,
+      "problemas": [
+        "manipulacao_negociacao",
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 66,
+      "mensagens_total": 152,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "Por nada. Disponha! 💚🥰",
+      "resposta_v2_esperada": "Mantém regra de pagamento/sinal/agenda sem conceder exceção fora dos YAMLs."
+    },
+    {
+      "conversa_id": "cmnj3qeiq05h4n37960ys478m",
+      "tipo": "agendamento",
+      "score_complexidade": 86,
+      "problemas": [
+        "agressao_ameaca",
+        "midia_ou_mensagem_curta",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 54,
+      "mensagens_total": 100,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "Alterado ✅",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmn69cauo01h9n379xvufzage",
+      "tipo": "agendamento",
+      "score_complexidade": 81,
+      "problemas": [
+        "agressao_ameaca",
+        "manipulacao_negociacao",
+        "midia_ou_mensagem_curta",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 41,
+      "mensagens_total": 112,
+      "exemplo_paciente": "Boa tarde Ana",
+      "resposta_ana_referencia": "Perfeitoooo. Obrigadaaa 💚🥰",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmnxizbya0004n37942429mck",
+      "tipo": "remarcacao",
+      "score_complexidade": 79,
+      "problemas": [
+        "agressao_ameaca",
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 55,
+      "mensagens_total": 114,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "Fiz a alteração da data e horário da consulta, tá bom? \nsexta, 12/06/2026 08:00\n\nQualquer coisa estou a disposição!  💚💚",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmohsyb8z0214n379tbkmk2q3",
+      "tipo": "remarcacao",
+      "score_complexidade": 78,
+      "problemas": [
+        "agressao_ameaca",
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 54,
+      "mensagens_total": 126,
+      "exemplo_paciente": "Eu queria agendar uma consulta pra minha mãe, com retorno",
+      "resposta_ana_referencia": "Perfeitoooo. Obrigadaaa 💚🥰",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmn3oud0j012xn37913sra2wv",
+      "tipo": "cancelamento",
+      "score_complexidade": 78,
+      "problemas": [
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 62,
+      "mensagens_total": 118,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "Já solicitei a operadora de cartão, assim que me retornarem te envio o comprovante.",
+      "resposta_v2_esperada": "Segue fluxo normal v2 conforme estado e YAML."
+    },
+    {
+      "conversa_id": "cmoadqegp01rwn379yhlfprez",
+      "tipo": "cancelamento",
+      "score_complexidade": 73,
+      "problemas": [
+        "manipulacao_negociacao",
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 49,
+      "mensagens_total": 93,
+      "exemplo_paciente": "Boa tarde,tb? Me chamo Cynthia o Matheus seu paciente que me indicou vc",
+      "resposta_ana_referencia": "Não esquece de mandar a foto no número da Nutri, por favor. Elas são muito importantes na realização da consulta.  Obrigadaaa 💚",
+      "resposta_v2_esperada": "Mantém regra de pagamento/sinal/agenda sem conceder exceção fora dos YAMLs."
+    },
+    {
+      "conversa_id": "cmnz23l6601dvn379ost7yzh0",
+      "tipo": "duvida",
+      "score_complexidade": 69,
+      "problemas": [
+        "agressao_ameaca",
+        "midia_ou_mensagem_curta",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 37,
+      "mensagens_total": 80,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "siga as seguintes orientações ☝🏻",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmohnutcv000jn379kguvdpgl",
+      "tipo": "duvida",
+      "score_complexidade": 69,
+      "problemas": [
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 53,
+      "mensagens_total": 97,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "Daiane? Bom dia",
+      "resposta_v2_esperada": "Segue fluxo normal v2 conforme estado e YAML."
+    },
+    {
+      "conversa_id": "cmo38aw2g01lsn379th7iiixr",
+      "tipo": "duvida",
+      "score_complexidade": 67,
+      "problemas": [
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 51,
+      "mensagens_total": 115,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "Confirmado então! Obrigadaaa 💚😉",
+      "resposta_v2_esperada": "Segue fluxo normal v2 conforme estado e YAML."
+    },
+    {
+      "conversa_id": "cmn0nwpty00ken379n4qvhafw",
+      "tipo": "agendamento",
+      "score_complexidade": 67,
+      "problemas": [
+        "agressao_ameaca",
+        "midia_ou_mensagem_curta",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 35,
+      "mensagens_total": 73,
+      "exemplo_paciente": "Boa tarde",
+      "resposta_ana_referencia": "Olá, Glaucilene. Tudo bem? Como posso te ajudar?",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "127895720718357@lid",
+      "tipo": "duvida",
+      "score_complexidade": 67,
+      "problemas": [
+        "agressao_ameaca",
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 43,
+      "mensagens_total": 97,
+      "exemplo_paciente": "Olá! Bom dia",
+      "resposta_ana_referencia": "siga as seguintes orientações ☝🏻",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmn0nsioa00i6n379qg2ruams",
+      "tipo": "duvida",
+      "score_complexidade": 66,
+      "problemas": [
+        "agressao_ameaca",
+        "midia_ou_mensagem_curta",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 34,
+      "mensagens_total": 71,
+      "exemplo_paciente": "Bom dia",
+      "resposta_ana_referencia": "Confirmado então! Obrigadaaa 💚😉",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmn0pt0aw014rn379a1rrzi4y",
+      "tipo": "cancelamento",
+      "score_complexidade": 63,
+      "problemas": [
+        "agressao_ameaca",
+        "manipulacao_negociacao",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 39,
+      "mensagens_total": 45,
+      "exemplo_paciente": "ei Ana, boa tarde! tudo bem sim e com você?",
+      "resposta_ana_referencia": "Segue o link:\nhttps://www.userede.com.br/pagamentos/pt/je7l8a4i\n\nFeito, envie o comprovante que retorno com a confirmação e orientações. 👈✅",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmn0of1qo00ufn379enhi64pn",
+      "tipo": "remarcacao",
+      "score_complexidade": 63,
+      "problemas": [
+        "manipulacao_negociacao",
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 39,
+      "mensagens_total": 95,
+      "exemplo_paciente": "Boa tarde",
+      "resposta_ana_referencia": "Perfeitoooo. Obrigadaaa 💚🥰",
+      "resposta_v2_esperada": "Mantém regra de pagamento/sinal/agenda sem conceder exceção fora dos YAMLs."
+    },
+    {
+      "conversa_id": "cmnd5h55l00drn379qmirnkzf",
+      "tipo": "duvida",
+      "score_complexidade": 62,
+      "problemas": [
+        "agressao_ameaca",
+        "manipulacao_negociacao",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 38,
+      "mensagens_total": 111,
+      "exemplo_paciente": "Oie boa tarde \nOs valores estão quanto?",
+      "resposta_ana_referencia": "Confirmado então! Obrigadaaa 💚😉",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmo3czevd020cn3798a70gjpx",
+      "tipo": "confirmacao",
+      "score_complexidade": 60,
+      "problemas": [
+        "agressao_ameaca",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 36,
+      "mensagens_total": 90,
+      "exemplo_paciente": "Boa noite",
+      "resposta_ana_referencia": "Perfeitoooo. Obrigadaaa 💚🥰",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmndkpg0d013in379irwg3vht",
+      "tipo": "duvida",
+      "score_complexidade": 60,
+      "problemas": [
+        "agressao_ameaca",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 36,
+      "mensagens_total": 39,
+      "exemplo_paciente": "Boa tarde, como vai?",
+      "resposta_ana_referencia": "Entendi. Acho que dá certo sim, já encaminhei pra ela e te retorno hoje ainda.",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmn3uaouk01e9n379c09bjnhi",
+      "tipo": "agendamento",
+      "score_complexidade": 59,
+      "problemas": [
+        "agressao_ameaca",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 35,
+      "mensagens_total": 77,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "Tudo bem, você me fala?",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmn7ex02o0034n3797eiebgr1",
+      "tipo": "duvida",
+      "score_complexidade": 58,
+      "problemas": [
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 42,
+      "mensagens_total": 81,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "Perfeitoooo. Obrigadaaa 💚🥰",
+      "resposta_v2_esperada": "Recusa atendimento de gestante ou escala silenciosamente se houver dúvida clínica."
+    },
+    {
+      "conversa_id": "269750437474417@lid",
+      "tipo": "agendamento",
+      "score_complexidade": 58,
+      "problemas": [
+        "agressao_ameaca",
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 34,
+      "mensagens_total": 60,
+      "exemplo_paciente": "Olá, boa tarde! Tudo bem?",
+      "resposta_ana_referencia": "Obrigada por avisar 🙏🏼🥹",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "181398379954263@lid",
+      "tipo": "agendamento",
+      "score_complexidade": 58,
+      "problemas": [
+        "agressao_ameaca",
+        "midia_ou_mensagem_curta",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 26,
+      "mensagens_total": 58,
+      "exemplo_paciente": "Boa Noite!",
+      "resposta_ana_referencia": "Oi, Ilair! Tudo bem?\nAqui é a Ana, assistente da Nutri Thaynara.\n\nPassando para te lembrar da sua consulta presencial na segunda, 26/01/2026 18:00. *Posso confirmar?*\n\n👉 Caso precise cancelar ou remarcar, é necessário avisar com mínimo de 2",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "553183264684@s.whatsapp.net",
+      "tipo": "agendamento",
+      "score_complexidade": 56,
+      "problemas": [
+        "agressao_ameaca",
+        "manipulacao_negociacao",
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 24,
+      "mensagens_total": 65,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "Ela realmente essa semana não está atendendo. Mas smeana q vem volta ao normal.",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmodg6o2m01hcn379vtqwhiz7",
+      "tipo": "remarcacao",
+      "score_complexidade": 55,
+      "problemas": [
+        "midia_ou_mensagem_curta",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 31,
+      "mensagens_total": 70,
+      "exemplo_paciente": "Boa tarde Ana, tudo bem e você? \nFeliz 2026. \nPode sim. \nMuito obrigada!!",
+      "resposta_ana_referencia": "🥰💚",
+      "resposta_v2_esperada": "Recusa atendimento de gestante ou escala silenciosamente se houver dúvida clínica."
+    },
+    {
+      "conversa_id": "cmnoe5l1002j8n379teafs02f",
+      "tipo": "remarcacao",
+      "score_complexidade": 55,
+      "problemas": [
+        "agressao_ameaca",
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 31,
+      "mensagens_total": 71,
+      "exemplo_paciente": "Quero agendar para esse mês",
+      "resposta_ana_referencia": "Perfeitoooo. Obrigadaaa 💚🥰",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmn0f1p550063n3792xbvi1h7",
+      "tipo": "duvida",
+      "score_complexidade": 55,
+      "problemas": [
+        "agressao_ameaca",
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 31,
+      "mensagens_total": 67,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "siga as seguintes orientações ☝🏻",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmo38ijbr01nin379zl1ygs3z",
+      "tipo": "agendamento",
+      "score_complexidade": 54,
+      "problemas": [
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 38,
+      "mensagens_total": 82,
+      "exemplo_paciente": "Olá! Gostaria de agendar um horário com a nutricionista se tiver disponível na quinta-feira seria ótimo",
+      "resposta_ana_referencia": "Confirmado então! Obrigadaaa 💚😉",
+      "resposta_v2_esperada": "Segue fluxo normal v2 conforme estado e YAML."
+    },
+    {
+      "conversa_id": "553193413590@s.whatsapp.net",
+      "tipo": "duvida",
+      "score_complexidade": 53,
+      "problemas": [
+        "agressao_ameaca",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 37,
+      "mensagens_total": 69,
+      "exemplo_paciente": "Bom dia ,tudo bem?\nSou eu de novo 😰🤦🏻‍♀️\n\nMas agora vai kkkk",
+      "resposta_ana_referencia": "Olá! Que bom ter você por aqui 💚\n\nSou a Ana, responsável pelos agendamentos da nutricionista Thaynara Teixeira.\n\nPra começar, você poderia me informar:\n • Qual seu nome e sobrenome?\n • É sua primeira consulta ou você já é paciente?",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "268920837636267@lid",
+      "tipo": "duvida",
+      "score_complexidade": 53,
+      "problemas": [
+        "agressao_ameaca",
+        "manipulacao_negociacao",
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 21,
+      "mensagens_total": 42,
+      "exemplo_paciente": "Olá, bom dia, tudo bem? Gostaria de ver sobre atendimento.  Meu nome é Mariana",
+      "resposta_ana_referencia": "Perfeitoooo. Obrigadaaa 💚🥰",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "67874056081565@lid",
+      "tipo": "agendamento",
+      "score_complexidade": 52,
+      "problemas": [
+        "agressao_ameaca",
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 28,
+      "mensagens_total": 42,
+      "exemplo_paciente": "Oi Ana, boa tarde! Tudo bem?",
+      "resposta_ana_referencia": "Por nada. Disponha! 💚🥰",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "553175151748@s.whatsapp.net",
+      "tipo": "remarcacao",
+      "score_complexidade": 51,
+      "problemas": [
+        "agressao_ameaca",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 27,
+      "mensagens_total": 73,
+      "exemplo_paciente": "Boa tarde! \n\nTudo bem? \n\nEu e o Lucas temos consulta com a Thay dia 13/01. Mas fechamos um contrato pra fazer evento nessa data. Poderia reagendar nossa consulta ? Teria algum horário na semana do dia 26 exceto na quinta.",
+      "resposta_ana_referencia": "Perfeitoooo. Obrigadaaa 💚🥰",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "166752289824906@lid",
+      "tipo": "cancelamento",
+      "score_complexidade": 51,
+      "problemas": [
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 35,
+      "mensagens_total": 75,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "Um instante, já te envio.",
+      "resposta_v2_esperada": "Recusa atendimento de gestante ou escala silenciosamente se houver dúvida clínica."
+    },
+    {
+      "conversa_id": "cmobd29sd000ln379xv41976n",
+      "tipo": "duvida",
+      "score_complexidade": 50,
+      "problemas": [
+        "manipulacao_negociacao",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 26,
+      "mensagens_total": 57,
+      "exemplo_paciente": "*#Quero ser NutriTransforma para garantir meu desconto.”*",
+      "resposta_ana_referencia": "siga as seguintes orientações ☝🏻",
+      "resposta_v2_esperada": "Recusa atendimento de gestante ou escala silenciosamente se houver dúvida clínica."
+    },
+    {
+      "conversa_id": "553189150807@s.whatsapp.net",
+      "tipo": "remarcacao",
+      "score_complexidade": 50,
+      "problemas": [
+        "agressao_ameaca",
+        "manipulacao_negociacao",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 26,
+      "mensagens_total": 55,
+      "exemplo_paciente": "Olá! Vim do story e quero mais informações.",
+      "resposta_ana_referencia": "Tudo bem, Ana.\n\nPodemos remarcar sim, sem problema. Só queria te orientar que no momento, a agenda da Thaynara está bem cheia e não conseguimos garantir horário disponível dentro dos próximos 7 dias, que é o prazo do retorno.\n\nSe você conse",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "5527996522304@s.whatsapp.net",
+      "tipo": "duvida",
+      "score_complexidade": 50,
+      "problemas": [
+        "midia_ou_mensagem_curta",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 26,
+      "mensagens_total": 55,
+      "exemplo_paciente": "Boa tarde! Tudo bem?",
+      "resposta_ana_referencia": "siga as seguintes orientações ☝🏻",
+      "resposta_v2_esperada": "Recusa atendimento de gestante ou escala silenciosamente se houver dúvida clínica."
+    },
+    {
+      "conversa_id": "181642891116615@lid",
+      "tipo": "duvida",
+      "score_complexidade": 50,
+      "problemas": [
+        "agressao_ameaca",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 34,
+      "mensagens_total": 90,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "Perfeitoooo. Obrigadaaa 💚🥰",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "553199121208@s.whatsapp.net",
+      "tipo": "cancelamento",
+      "score_complexidade": 50,
+      "problemas": [
+        "agressao_ameaca",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 26,
+      "mensagens_total": 47,
+      "exemplo_paciente": "Vou precisar remarcar para Janeiro. Se possível",
+      "resposta_ana_referencia": "Ok, Leandra! Obrigada por avisar ☺️",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmniw66n404tfn37928vmypbe",
+      "tipo": "duvida",
+      "score_complexidade": 49,
+      "problemas": [
+        "agressao_ameaca",
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 25,
+      "mensagens_total": 55,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "Por nada. Disponha! 💚🥰",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmn0nw5y500jun379vn82paq6",
+      "tipo": "duvida",
+      "score_complexidade": 48,
+      "problemas": [
+        "manipulacao_negociacao",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 32,
+      "mensagens_total": 72,
+      "exemplo_paciente": "Bom dia",
+      "resposta_ana_referencia": "Confirmado então! Obrigadaaa 💚😉",
+      "resposta_v2_esperada": "Mantém regra de pagamento/sinal/agenda sem conceder exceção fora dos YAMLs."
+    },
+    {
+      "conversa_id": "cmo38i53n01n0n379z0owyzoj",
+      "tipo": "duvida",
+      "score_complexidade": 48,
+      "problemas": [
+        "midia_ou_mensagem_curta",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 24,
+      "mensagens_total": 63,
+      "exemplo_paciente": "Thaynara, estou precisando muito. Mas estou muito apertada 😞. Vou ter que esperar mais um pouco.",
+      "resposta_ana_referencia": "Confirmado então! Obrigadaaa 💚😉",
+      "resposta_v2_esperada": "Recusa atendimento de gestante ou escala silenciosamente se houver dúvida clínica."
+    },
+    {
+      "conversa_id": "553175090292@s.whatsapp.net",
+      "tipo": "remarcacao",
+      "score_complexidade": 48,
+      "problemas": [
+        "agressao_ameaca",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 32,
+      "mensagens_total": 61,
+      "exemplo_paciente": "Ola minha linda",
+      "resposta_ana_referencia": "Perfeitoooo. Obrigadaaa 💚🥰",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmod89jnn014an379ylaqn4pg",
+      "tipo": "duvida",
+      "score_complexidade": 46,
+      "problemas": [
+        "agressao_ameaca",
+        "gestante",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 22,
+      "mensagens_total": 50,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "Confirmado então! Obrigadaaa 💚😉",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "553186799882@s.whatsapp.net",
+      "tipo": "agendamento",
+      "score_complexidade": 46,
+      "problemas": [
+        "agressao_ameaca",
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 22,
+      "mensagens_total": 47,
+      "exemplo_paciente": "Boa tarde!",
+      "resposta_ana_referencia": "Oi, Thais. Tudo bem?\n\nAqui é a Ana, assistente da Nutri Thaynara.\nPassando para te lembrar do seu retorno presencial na Segunda-feira, 13/04/2026, às 09h. *Posso confirmar?*\n\n👉 Caso precise cancelar ou remarcar, é necessário avisar com míni",
+      "resposta_v2_esperada": "Resposta curta e profissional; na reincidência escala silenciosamente para a equipe."
+    },
+    {
+      "conversa_id": "cmn07safh000zn379g3998lm0",
+      "tipo": "agendamento",
+      "score_complexidade": 46,
+      "problemas": [
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 30,
+      "mensagens_total": 76,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "Perfeitoooo. Obrigadaaa 💚🥰",
+      "resposta_v2_esperada": "Segue fluxo normal v2 conforme estado e YAML."
+    },
+    {
+      "conversa_id": "cmnyzdqer017qn379mmck7946",
+      "tipo": "remarcacao",
+      "score_complexidade": 46,
+      "problemas": [
+        "midia_ou_mensagem_curta",
+        "conversa_longa"
+      ],
+      "mensagens_paciente": 30,
+      "mensagens_total": 74,
+      "exemplo_paciente": "Olá! Gostaria de informações sobre o acompanhamento nutricional.",
+      "resposta_ana_referencia": "Sim",
+      "resposta_v2_esperada": "Segue fluxo normal v2 conforme estado e YAML."
+    }
+  ]
+}

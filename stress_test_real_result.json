@@ -1,0 +1,17 @@
+{
+  "conversas": 100,
+  "paralelo": 20,
+  "real_gemini": false,
+  "real_tools": false,
+  "duracao_total_s": 0.129,
+  "turnos": 238,
+  "erros": 0,
+  "taxa_erro": 0.0,
+  "latencia_ms": {
+    "media": 0.52,
+    "p50": 0.46,
+    "p95": 0.74,
+    "p99": 0.96
+  },
+  "erros_amostra": []
+}
