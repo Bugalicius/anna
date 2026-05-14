@@ -20,6 +20,39 @@ services:
       - ./tests:/app/tests
       - ./knowledge_base:/app/knowledge_base:ro
       - ./docs:/app/docs:ro
+      - ./logs:/app/logs
+
+  monitor:
+    build: .
+    command: python -m app.monitor.main
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MONITOR_ENABLED: ${MONITOR_ENABLED:-true}
+      MONITOR_INTERVAL_SECONDS: ${MONITOR_INTERVAL_SECONDS:-60}
+      MONITOR_ALERTS_TO: ${MONITOR_ALERTS_TO:-5531992059211}
+      MONITOR_CRITICAL_DEDUP_MINUTES: ${MONITOR_CRITICAL_DEDUP_MINUTES:-5}
+      MONITOR_ALERT_DEDUP_MINUTES: ${MONITOR_ALERT_DEDUP_MINUTES:-30}
+      MONITOR_STATUS_UPDATE_MINUTES: ${MONITOR_STATUS_UPDATE_MINUTES:-60}
+      MONITOR_CHECK_TIMEOUT_SECONDS: ${MONITOR_CHECK_TIMEOUT_SECONDS:-10}
+      MONITOR_EXTERNAL_CHECKS_ENABLED: ${MONITOR_EXTERNAL_CHECKS_ENABLED:-true}
+      MONITOR_APP_HEALTH_URL: ${MONITOR_APP_HEALTH_URL:-http://app:8000/health}
+      MONITOR_METRICS_PATH: ${MONITOR_METRICS_PATH:-logs/metrics.jsonl}
+      MONITOR_LOG_DIR: ${MONITOR_LOG_DIR:-logs/monitor}
+      MONITOR_ACTIVE_START_HOUR: ${MONITOR_ACTIVE_START_HOUR:-8}
+      MONITOR_ACTIVE_END_HOUR: ${MONITOR_ACTIVE_END_HOUR:-22}
+      MONITOR_DRY_RUN: ${MONITOR_DRY_RUN:-false}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_started
+    volumes:
+      - ./logs:/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   postgres:
     image: postgres:15-alpine

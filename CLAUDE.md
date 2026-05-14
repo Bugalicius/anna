@@ -73,6 +73,22 @@ mudancas devem priorizar `app/conversation/` (orchestrator, state_machine, rules
 - O orchestrator usa lock por telefone (`agente:lock:processing:{phone}`) com TTL
   de 60s para evitar duas execucoes paralelas do pipeline.
 
+### Monitoramento
+
+- Servico Docker: `monitor`, comando `python -m app.monitor.main`.
+- Roda checks a cada `MONITOR_INTERVAL_SECONDS` (padrao 60s) e grava JSONL em
+  `logs/monitor/YYYY-MM-DD.jsonl`.
+- Alertas WhatsApp vao para `MONITOR_ALERTS_TO` (padrao `BRENO_PHONE`) usando
+  `app.meta_api.MetaAPIClient`.
+- Dedup Redis:
+  - critico: `MONITOR_CRITICAL_DEDUP_MINUTES` (padrao 5)
+  - alerta: `MONITOR_ALERT_DEDUP_MINUTES` (padrao 30)
+  - persistente: status a cada `MONITOR_STATUS_UPDATE_MINUTES` (padrao 60)
+- Dry-run:
+  `MONITOR_DRY_RUN=true docker compose run --rm monitor python -m app.monitor.main --once`
+- Check individual:
+  `docker compose run --rm monitor python -m app.monitor.main --once --check redis`
+
 ## Regras Importantes
 
 - Nunca expor o numero interno do Breno/Thaynara para pacientes.
