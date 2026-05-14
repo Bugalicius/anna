@@ -184,6 +184,94 @@ def _mentions_clinical_need(texto: str) -> bool:
     return any(t in n for t in termos)
 
 
+def _is_bioimpedancia_question(texto: str) -> bool:
+    n = _norm_text(texto)
+    return any(t in n for t in ("bioimpedancia", "bio impedancia", "biopendencia", "impedancia"))
+
+
+def _status_paciente_from_text(texto: str) -> str | None:
+    n = _norm_text(texto)
+    if any(t in n for t in ("primeira", "primeira vez", "nunca", "novo", "nova")):
+        return "novo"
+    if any(t in n for t in ("ja sou", "paciente", "retorno", "voltar")):
+        return "retorno"
+    return None
+
+
+def _bioimpedancia_answer() -> str:
+    try:
+        from app.knowledge_base import kb
+
+        for item in kb.faq_combinado():
+            pergunta = _norm_text(item.get("pergunta") or item.get("question") or "")
+            if "bioimpedancia" in pergunta:
+                resposta = item.get("resposta") or item.get("answer") or ""
+                if resposta:
+                    return str(resposta)
+    except Exception:
+        pass
+    return (
+        "A Thaynara não usa bioimpedância porque ela pode apresentar muitas variações e precisa de preparo específico. "
+        "No lugar, ela usa adipômetro, circunferências corporais e fotos para acompanhar sua evolução 💚"
+    )
+
+
+def _mensagens_retomada_duvida_operacional(state: dict[str, Any], estado: str, resposta: str) -> list[Mensagem]:
+    nome = _primeiro_nome(state)
+    if estado == "aguardando_status_paciente":
+        return [
+            Mensagem(tipo="texto", conteudo=resposta),
+            Mensagem(
+                tipo="botoes",
+                conteudo="E sobre a consulta: é sua primeira consulta com a Thaynara ou você já é paciente?",
+                botoes=[  # type: ignore[list-item]
+                    {"id": "primeira_consulta", "label": "Primeira consulta"},
+                    {"id": "ja_paciente", "label": "Já sou paciente"},
+                ],
+            ),
+        ]
+    if estado == "aguardando_objetivo":
+        return [
+            Mensagem(tipo="texto", conteudo=resposta),
+            Mensagem(
+                tipo="botoes",
+                conteudo=f"{nome + ', ' if nome else ''}me conta: qual seu principal objetivo agora?",
+                botoes=[  # type: ignore[list-item]
+                    {"id": "obj_emagrecer", "label": "Emagrecer"},
+                    {"id": "obj_ganhar_massa", "label": "Ganhar massa"},
+                    {"id": "obj_lipedema", "label": "Lipedema"},
+                    {"id": "obj_outro", "label": "Outro objetivo"},
+                ],
+            ),
+        ]
+    if estado in {"inicio", "aguardando_nome"}:
+        return [
+            Mensagem(tipo="texto", conteudo=resposta),
+            Mensagem(tipo="texto", conteudo="Pra começar, qual é o seu nome?"),
+        ]
+    return [Mensagem(tipo="texto", conteudo=resposta)]
+
+
+def _mensagens_bioimpedancia_com_status(
+    state: dict[str, Any],
+    texto: str,
+    resposta: str,
+) -> tuple[list[Mensagem], str] | None:
+    status = _status_paciente_from_text(texto)
+    if not status:
+        return None
+    state.setdefault("collected_data", {})["status_paciente"] = status
+    if status == "novo":
+        return _mensagens_retomada_duvida_operacional(state, "aguardando_objetivo", resposta), "aguardando_objetivo"
+    return [
+        Mensagem(tipo="texto", conteudo=resposta),
+        Mensagem(
+            tipo="texto",
+            conteudo="Que bom te ver de novo! 💚 Pra eu localizar seu cadastro, pode me mandar seu nome completo?",
+        ),
+    ], "aguardando_nome_completo_retorno"
+
+
 def _underage_from_text(texto: str) -> int | None:
     n = _norm_text(texto)
     patterns = (
@@ -1084,6 +1172,47 @@ async def processar_turno(phone: str, mensagem: dict[str, Any]) -> ResultadoTurn
                 fluxo_id=state.get("fluxo_id") or AGENDAMENTO_ID,
                 duracao_ms=int((time.perf_counter() - started) * 1000),
             )
+
+    if msg_type in ("", "text", "conversation") and _is_bioimpedancia_question(texto_entrada):
+        estado_antes_duvida = state.get("estado", "inicio")
+        resposta_bioimpedancia = _bioimpedancia_answer()
+        status_batched = (
+            _mensagens_bioimpedancia_com_status(state, texto_entrada, resposta_bioimpedancia)
+            if estado_antes_duvida == "aguardando_status_paciente"
+            else None
+        )
+        if status_batched is not None:
+            msgs, novo_estado_duvida = status_batched
+            state["estado"] = novo_estado_duvida
+        else:
+            msgs = _mensagens_retomada_duvida_operacional(
+                state,
+                estado_antes_duvida,
+                resposta_bioimpedancia,
+            )
+            if estado_antes_duvida == "inicio":
+                state["estado"] = "aguardando_nome"
+        add_message(state, "user", texto_entrada)
+        add_message(state, "assistant", "\n".join(m.conteudo for m in msgs if m.conteudo))
+        await save_state(phone_hash, state)
+        await _log_metric({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "phone_hash": phone_hash,
+            "fluxo": state.get("fluxo_id") or AGENDAMENTO_ID,
+            "estado_antes": estado_antes_duvida,
+            "estado_depois": state.get("estado"),
+            "tools_chamadas": [],
+            "duracao_ms": int((time.perf_counter() - started) * 1000),
+            "erro": None,
+            "evento": "duvida_operacional_bioimpedancia",
+        })
+        return ResultadoTurno(
+            sucesso=True,
+            mensagens_enviadas=msgs,
+            novo_estado=state.get("estado"),
+            fluxo_id=state.get("fluxo_id") or AGENDAMENTO_ID,
+            duracao_ms=int((time.perf_counter() - started) * 1000),
+        )
 
     # Localização → resposta determinística
     if msg_type == "location":

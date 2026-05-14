@@ -144,6 +144,8 @@ estados:
             label: "Ganhar massa"
           - id: "obj_lipedema"
             label: "Lipedema"
+          - id: "obj_outro"
+            label: "Outro objetivo"
         salva_no_estado:
           collected_data.status_paciente: "novo"
         proximo_estado: "aguardando_objetivo"

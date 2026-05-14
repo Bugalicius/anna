@@ -414,7 +414,7 @@ async def process_message_debounced(message: dict, metadata: dict):
     token = str(message.get("id") or _hashlib.sha256(repr(message).encode()).hexdigest())
     queue_key = f"debounce:queue:{phone}"
     token_key = f"debounce:token:{phone}"
-    delay = float(os.environ.get("MESSAGE_DEBOUNCE_SECONDS", "4.0"))
+    delay = float(os.environ.get("MESSAGE_DEBOUNCE_SECONDS", "30.0"))
 
     try:
         r = aioredis.Redis.from_url(redis_url, decode_responses=True)

@@ -15,7 +15,9 @@ import asyncio
 import hashlib as _hashlib
 import logging
 from datetime import datetime, UTC
+from typing import Any
 
+from app.conversation.models import Mensagem
 from app.conversation.orchestrator import processar_turno
 from app.database import SessionLocal
 from app.models import Contact
@@ -106,7 +108,7 @@ async def route_message(phone: str, phone_hash: str, text: str, meta_message_id:
         phone=phone,
         mensagem={"type": "text", "text": text, "from": phone, "id": meta_message_id},
     )
-    respostas = [m.conteudo for m in resultado.mensagens_enviadas if m.conteudo]
+    respostas = resultado.mensagens_enviadas
 
     # 4. Envia respostas
     await _enviar_respostas(meta, phone, phone_hash, respostas, contact, meta_message_id)
@@ -222,7 +224,10 @@ async def _enviar_respostas(
             except Exception:
                 pass
             await asyncio.sleep(_typing_delay(msg))
-            if isinstance(msg, dict):
+            if _is_mensagem_v2(msg):
+                await _enviar_mensagem_v2(meta, phone, msg)
+                await _log_mensagem_v2(phone, msg)
+            elif isinstance(msg, dict):
                 if msg.get("_meta_action") == "escalate":
                     await _handle_escalation(
                         meta,
@@ -252,6 +257,99 @@ async def _enviar_respostas(
                 await _log_bot_message_safe(phone, msg)
         except Exception as e:
             logger.error("Falha ao enviar para %s: %s", phone[-4:], e)
+
+
+def _is_mensagem_v2(msg: Any) -> bool:
+    if isinstance(msg, (str, dict)):
+        return False
+    tipo = getattr(msg, "tipo", None)
+    conteudo = getattr(msg, "conteudo", None)
+    return isinstance(tipo, str) or isinstance(conteudo, str)
+
+
+def _attr_mensagem(msg: Any, attr: str, default: Any = None) -> Any:
+    if isinstance(msg, Mensagem):
+        return getattr(msg, attr)
+    value = getattr(msg, attr, default)
+    if type(value).__module__.startswith("unittest.mock"):
+        return default
+    return value
+
+
+def _botao_para_meta(botao: Any) -> dict[str, str]:
+    if hasattr(botao, "model_dump"):
+        botao = botao.model_dump()
+    if isinstance(botao, dict):
+        botao_id = str(botao.get("id") or "")
+        title = str(botao.get("title") or botao.get("label") or botao_id)
+        return {"id": botao_id, "title": title[:24]}
+    botao_id = str(getattr(botao, "id", "") or "")
+    title = str(getattr(botao, "title", None) or getattr(botao, "label", None) or botao_id)
+    return {"id": botao_id, "title": title[:24]}
+
+
+def _media_payload_from_mensagem(msg: Any) -> dict[str, str] | None:
+    tipo = str(_attr_mensagem(msg, "tipo", "texto") or "texto").lower()
+    arquivo = str(_attr_mensagem(msg, "arquivo", "") or "")
+    conteudo = str(_attr_mensagem(msg, "conteudo", "") or "")
+    if not arquivo:
+        return None
+
+    arquivo_norm = arquivo.lower()
+    if arquivo_norm in {"pdf_thaynara", "thaynara - nutricionista.pdf", "midia_kit.jpg"}:
+        return {"media_type": "document", "media_key": "pdf_thaynara", "caption": conteudo}
+    if "online" in arquivo_norm and "circunfer" in arquivo_norm:
+        return {"media_type": "document", "media_key": "pdf_guia_circunf_mulher", "caption": conteudo}
+    if "homens" in arquivo_norm and "circunfer" in arquivo_norm:
+        return {"media_type": "document", "media_key": "pdf_guia_circunf_homem", "caption": conteudo}
+    if "mulheres" in arquivo_norm and "circunfer" in arquivo_norm:
+        return {"media_type": "document", "media_key": "pdf_guia_circunf_mulher", "caption": conteudo}
+    if "preparar---online" in arquivo_norm or "preparo_online" in arquivo_norm:
+        return {"media_type": "image", "media_key": "img_preparo_online", "caption": conteudo}
+    if "preparar---presencial" in arquivo_norm or "preparo_presencial" in arquivo_norm:
+        return {"media_type": "image", "media_key": "img_preparo_presencial", "caption": conteudo}
+    if tipo in {"pdf", "document", "documento"}:
+        return {"media_type": "document", "media_key": arquivo, "caption": conteudo}
+    if tipo in {"imagem", "image"}:
+        return {"media_type": "image", "media_key": arquivo, "caption": conteudo}
+    return None
+
+
+async def _enviar_mensagem_v2(meta, phone: str, msg: Any) -> None:
+    tipo = str(_attr_mensagem(msg, "tipo", "texto") or "texto").lower()
+    conteudo = str(_attr_mensagem(msg, "conteudo", "") or "")
+    botoes_raw = _attr_mensagem(msg, "botoes", []) or []
+    botoes = [_botao_para_meta(b) for b in botoes_raw] if isinstance(botoes_raw, list) else []
+
+    if tipo == "delay":
+        await asyncio.sleep(float(_attr_mensagem(msg, "delay_segundos", 1) or 1))
+        return
+    if tipo == "botoes" and botoes:
+        if len(botoes) > 3:
+            await meta.send_interactive_list(phone, conteudo, "Escolher", botoes)
+        else:
+            await meta.send_interactive_buttons(phone, conteudo, botoes)
+        return
+    if tipo in {"contato", "contact"}:
+        numero = str(_attr_mensagem(msg, "numero_contato", "") or "")
+        if numero:
+            await meta.send_contact(phone, conteudo or "Contato", numero)
+        return
+    media_payload = _media_payload_from_mensagem(msg)
+    if media_payload:
+        await _enviar_midia(meta, phone, media_payload)
+        return
+    if conteudo:
+        await meta.send_text(phone, conteudo)
+
+
+async def _log_mensagem_v2(phone: str, msg: Any) -> None:
+    tipo = str(_attr_mensagem(msg, "tipo", "texto") or "texto").lower()
+    if tipo == "delay":
+        return
+    conteudo = str(_attr_mensagem(msg, "conteudo", "") or "")
+    if conteudo:
+        await _log_bot_message_safe(phone, conteudo)
 
 
 async def _log_bot_message_safe(phone: str, text: str) -> None:

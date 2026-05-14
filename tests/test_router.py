@@ -288,6 +288,79 @@ async def test_enviar_respostas_registra_interativos_no_chatwoot():
     mock_log.assert_awaited_once_with("5511999", "Escolha uma opção")
 
 
+@pytest.mark.asyncio
+async def test_enviar_respostas_mensagem_v2_com_quatro_opcoes_usa_lista():
+    from app.conversation.models import Mensagem
+    from app.router import _enviar_respostas
+
+    meta = MagicMock()
+    meta.send_interactive_list = AsyncMock()
+
+    msg = Mensagem(
+        tipo="botoes",
+        conteudo="Qual seu objetivo?",
+        botoes=[
+            {"id": "obj_emagrecer", "label": "Emagrecer"},
+            {"id": "obj_ganhar_massa", "label": "Ganhar massa"},
+            {"id": "obj_lipedema", "label": "Lipedema"},
+            {"id": "obj_outro", "label": "Outro objetivo"},
+        ],
+    )
+
+    with patch("app.router._log_bot_message_safe", new_callable=AsyncMock):
+        await _enviar_respostas(meta, "5511999", "hash123", [msg], {})
+
+    meta.send_interactive_list.assert_awaited_once()
+    rows = meta.send_interactive_list.await_args.args[3]
+    assert [r["title"] for r in rows] == ["Emagrecer", "Ganhar massa", "Lipedema", "Outro objetivo"]
+
+
+@pytest.mark.asyncio
+async def test_bioimpedancia_durante_status_responde_e_retoma_botoes():
+    from app.conversation import orchestrator
+    from app.conversation.state import delete_state
+
+    phone = "559999000222"
+    await delete_state(orchestrator._phone_hash(phone))
+    await orchestrator.processar_turno(phone, {"type": "text", "text": "oi", "from": phone, "id": "1"})
+    await orchestrator.processar_turno(phone, {"type": "text", "text": "Ana Teste", "from": phone, "id": "2"})
+
+    result = await orchestrator.processar_turno(
+        phone,
+        {"type": "text", "text": "a thay faz biopendencia?", "from": phone, "id": "3"},
+    )
+
+    assert result.novo_estado == "aguardando_status_paciente"
+    assert "bioimpedância" in result.mensagens_enviadas[0].conteudo
+    assert result.mensagens_enviadas[1].tipo == "botoes"
+
+
+@pytest.mark.asyncio
+async def test_bioimpedancia_e_primeira_consulta_agrupadas_avanca_para_objetivo():
+    from app.conversation import orchestrator
+    from app.conversation.state import delete_state
+
+    phone = "559999000333"
+    await delete_state(orchestrator._phone_hash(phone))
+    await orchestrator.processar_turno(phone, {"type": "text", "text": "oi", "from": phone, "id": "1"})
+    await orchestrator.processar_turno(phone, {"type": "text", "text": "Ana Teste", "from": phone, "id": "2"})
+
+    result = await orchestrator.processar_turno(
+        phone,
+        {"type": "text", "text": "a thay faz biopendencia?\nprimeira consulta", "from": phone, "id": "3"},
+    )
+
+    assert result.novo_estado == "aguardando_objetivo"
+    assert "bioimpedância" in result.mensagens_enviadas[0].conteudo
+    assert result.mensagens_enviadas[1].tipo == "botoes"
+    assert [b.id for b in result.mensagens_enviadas[1].botoes] == [
+        "obj_emagrecer",
+        "obj_ganhar_massa",
+        "obj_lipedema",
+        "obj_outro",
+    ]
+
+
 # ── Test 7: remarketing — contato no stage remarketing cancela fila ───────────
 
 @pytest.mark.asyncio
