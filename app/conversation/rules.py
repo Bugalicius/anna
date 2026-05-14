@@ -152,13 +152,22 @@ def validar_distribuicao_slots(
 # R1 — R16
 # ─────────────────────────────────────────────────────────────────────────────
 
-def R1_nunca_expor_breno(texto: str) -> RuleResult:
-    """Bloqueia se texto contém nome ou número do Breno."""
+def R1_nunca_expor_breno(texto: str, nome_paciente: str = "") -> RuleResult:
+    """Bloqueia se texto contém nome ou número do Breno.
+
+    nome_paciente: primeiro nome do paciente atual. Quando for "Breno",
+    a verificação pelo nome é isentada (o agente pode cumprimentar o
+    próprio paciente pelo nome sem bloquear a mensagem).
+    Os números de contato são sempre bloqueados, independentemente do nome.
+    """
     regra = "R1_nunca_expor_breno"
     texto_lower = texto.lower()
+    paciente_chama_breno = (nome_paciente or "").strip().lower().split()[:1] == ["breno"]
     for palavra in _PALAVRAS_BRENO:
         palavra_lower = palavra.lower()
         if palavra_lower == "breno":
+            if paciente_chama_breno:
+                continue
             if re.search(r"\bbreno\b", texto_lower, flags=re.IGNORECASE):
                 return _bloquear(regra, f"Texto contém referência proibida ao Breno: {palavra!r}")
             continue
@@ -451,8 +460,9 @@ def validar_resposta_completa(
     """
     resultados: list[RuleResult] = []
 
-    # R1 — nunca expor Breno
-    resultados.append(R1_nunca_expor_breno(texto))
+    # R1 — nunca expor Breno (isenta o primeiro nome quando o próprio paciente se chama Breno)
+    nome_paciente = contexto.get("primeiro_nome") or contexto.get("nome_paciente") or ""
+    resultados.append(R1_nunca_expor_breno(texto, nome_paciente=str(nome_paciente)))
 
     # R2 — contato Thaynara só pra paciente existente
     resultados.append(R2_contato_thaynara_apenas_paciente_existente(

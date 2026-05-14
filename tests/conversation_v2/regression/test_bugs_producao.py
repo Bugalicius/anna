@@ -244,6 +244,60 @@ async def test_bug3_mensagens_paralelas_nao_duplicam(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_bug5_paciente_chamado_breno_avanca_estado(monkeypatch):
+    """
+    GIVEN: paciente está em aguardando_nome
+    WHEN: manda "Breno" como nome
+    THEN: estado avança para aguardando_status_paciente (não cai em fallback).
+
+    Regressão: R1_nunca_expor_breno bloqueava "Prazer, Breno!" e o
+    regenerador retornava o fallback genérico.
+    """
+    from app.conversation import orchestrator
+    from app.conversation import state as legacy_state
+
+    phone = "5531999990005"
+    phone_hash = _phone_hash(phone)
+    legacy_state._mem_store[f"conv_state:{phone_hash}"] = json.dumps(
+        {
+            "phone": phone,
+            "phone_hash": phone_hash,
+            "fluxo_id": "agendamento_paciente_novo",
+            "estado": "aguardando_nome",
+            "collected_data": {k: None for k in (
+                "nome", "nome_completo", "status_paciente", "objetivo",
+                "plano", "modalidade", "preferencia_horario",
+                "preferencia_horario_nova", "forma_pagamento", "data_nascimento",
+                "email", "whatsapp_contato", "instagram", "profissao",
+                "cep_endereco", "indicacao_origem", "motivo_cancelamento",
+            )},
+            "history": [{"role": "assistant", "content": "Qual é o seu nome e sobrenome?"}],
+            "flags": {"pagamento_confirmado": False},
+            "last_message_at": datetime.now(timezone.utc).isoformat(),
+        },
+        ensure_ascii=False,
+    )
+
+    monkeypatch.setattr(orchestrator, "_acquire_processing_lock", AsyncMock(return_value=True), raising=False)
+    monkeypatch.setattr(orchestrator, "_release_processing_lock", AsyncMock(), raising=False)
+
+    result = await orchestrator.processar_turno(
+        phone=phone,
+        mensagem={"type": "text", "text": "Breno", "from": phone, "id": "m5"},
+    )
+
+    assert result.novo_estado == "aguardando_status_paciente", (
+        f"Estado esperado: aguardando_status_paciente, obtido: {result.novo_estado}"
+    )
+    textos = "\n".join(m.conteudo for m in result.mensagens_enviadas)
+    assert "mais detalhes" not in textos.lower(), (
+        "Agente caiu no fallback genérico em vez de aceitar o nome Breno"
+    )
+    saved = json.loads(legacy_state._mem_store[f"conv_state:{phone_hash}"])
+    assert saved["collected_data"]["nome"] == "Breno"
+
+
+@pytest.mark.asyncio
 async def test_bug4_debounce_15s_apos_ultima(monkeypatch):
     """
     GIVEN: paciente manda msg em t=0, t=5s, t=10s

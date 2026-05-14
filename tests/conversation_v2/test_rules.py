@@ -17,6 +17,24 @@ def test_r1_nao_bloqueia_sobrenome() -> None:
     assert result.passou is True
 
 
+def test_r1_nao_bloqueia_saudacao_quando_paciente_chama_breno() -> None:
+    # Agente cumprimentando paciente cujo nome é Breno — não deve bloquear
+    result = R1_nunca_expor_breno("Prazer, Breno! É sua primeira consulta?", nome_paciente="Breno")
+    assert result.passou is True
+
+
+def test_r1_ainda_bloqueia_numero_mesmo_paciente_breno() -> None:
+    # Número de contato sempre bloqueado, mesmo que o paciente se chame Breno
+    result = R1_nunca_expor_breno("Fale com o Breno no 5531992059211", nome_paciente="Breno")
+    assert result.passou is False
+
+
+def test_r1_bloqueia_nome_breno_sem_contexto_paciente() -> None:
+    # Sem nome_paciente informado, a proteção original continua ativa
+    result = R1_nunca_expor_breno("Fale com o Breno")
+    assert result.passou is False
+
+
 def test_r3_bloqueia_valor_divergente() -> None:
     result = R3_nunca_inventar_valor(
         "O valor é R$ 999,00 para esse plano.",
