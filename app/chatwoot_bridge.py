@@ -267,10 +267,9 @@ def chatwoot_event_sets_handoff(payload: dict[str, Any]) -> bool | None:
     status = str(payload.get("status") or payload.get("conversation", {}).get("status") or "")
 
     if event in ("conversation_status_changed", "conversation_updated"):
-        if status in ("open", "pending"):
-            return True
         if status == "resolved":
             return False
+        return None
 
     if event == "message_created":
         message_type = str(payload.get("message_type", ""))

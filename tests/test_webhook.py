@@ -196,6 +196,29 @@ def test_chatwoot_resolved_uses_conversation_mapping_when_phone_missing():
     mock_set.assert_awaited_once_with("553171893255", False, reason="chatwoot:conversation_updated")
 
 
+def test_chatwoot_open_status_nao_pausa_ana():
+    from app.chatwoot_bridge import chatwoot_event_sets_handoff
+
+    payload = {
+        "event": "conversation_updated",
+        "conversation": {"id": 99, "status": "open"},
+    }
+
+    assert chatwoot_event_sets_handoff(payload) is None
+
+
+def test_chatwoot_pending_status_nao_pausa_ana():
+    from app.chatwoot_bridge import chatwoot_event_sets_handoff
+
+    payload = {
+        "event": "conversation_status_changed",
+        "status": "pending",
+        "conversation": {"id": 99},
+    }
+
+    assert chatwoot_event_sets_handoff(payload) is None
+
+
 # ── Testes de dedup Redis ─────────────────────────────────────────────────────
 
 MESSAGE_FIXTURE = {
