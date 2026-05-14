@@ -82,51 +82,6 @@ async def test_fora_do_horario_responde_uma_vez(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_menor_de_16_anos_recusa_atendimento():
-    from app.conversation_legacy.planner import decidir_acao
-    from app.conversation_legacy.state import create_state
-
-    plano = await decidir_acao(
-        {"intent": "tirar_duvida", "_raw_message": "tenho 15 anos, posso consultar?"},
-        create_state("hash-menor", "5531999990003"),
-    )
-
-    assert plano["action"] == "answer_question"
-    assert "menores de 16 anos" in plano["draft_message"]
-
-
-@pytest.mark.asyncio
-async def test_gestante_recusa_atendimento():
-    from app.conversation_legacy.planner import decidir_acao
-    from app.conversation_legacy.state import create_state
-
-    plano = await decidir_acao(
-        {"intent": "tirar_duvida", "_raw_message": "estou gestante, queria marcar"},
-        create_state("hash-gestante", "5531999990004"),
-    )
-
-    assert plano["action"] == "answer_question"
-    assert "gestantes" in plano["draft_message"]
-
-
-@pytest.mark.asyncio
-async def test_timeout_de_turno_retorna_fallback(monkeypatch):
-    from app.conversation_legacy.engine import ConversationEngine
-
-    async def lento(self, phone_hash: str, message: str, phone: str = ""):
-        await asyncio.sleep(0.05)
-        return ["nao deveria chegar aqui"]
-
-    monkeypatch.setenv("TURN_TIMEOUT_SECONDS", "0.01")
-    monkeypatch.setattr("app.conversation_legacy.engine.record_turn_error", lambda phone_hash, reason: asyncio.sleep(0, result=1))
-    monkeypatch.setattr("app.conversation_legacy.engine.ConversationEngine._handle_message_impl", lento)
-
-    resposta = await ConversationEngine().handle_message("hash-timeout", "oi")
-
-    assert "instabilidade" in resposta[0]
-
-
-@pytest.mark.asyncio
 async def test_remarcacao_com_prazo_vencido(monkeypatch):
     from app.integrations import dietbox
     from app.tools.patients import detectar_tipo_remarcacao

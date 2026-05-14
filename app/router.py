@@ -43,7 +43,7 @@ def init_state_manager(redis_url: str) -> None:
     Chamado no lifespan do FastAPI (main.py) — interface preservada para
     compatibilidade com o código existente.
     """
-    from app.conversation_legacy.state import init_state_manager as _init
+    from app.conversation.state import init_state_manager as _init
     _init(redis_url)
     logger.info("ConversationEngine Redis inicializado: %s", redis_url)
 
@@ -169,7 +169,7 @@ async def _reconhecer_paciente_retorno(
     Executa apenas uma vez — se collected_data.nome já estiver preenchido
     (estado carregado do Redis), não sobrescreve.
     """
-    from app.conversation_legacy.state import load_state, save_state
+    from app.conversation.state import load_state, save_state
 
     # Só pré-popula quando o contato forneceu o nome em conversa anterior
     # (collected_name). Push_name do WhatsApp não indica paciente de retorno.
@@ -370,7 +370,7 @@ async def _handle_escalation(
     Cria PendingEscalation no banco para habilitar relay bidirecional (D-06/D-07).
     """
     from app.escalation import escalar_duvida
-    from app.conversation_legacy.state import load_state
+    from app.conversation.state import load_state
 
     state = await load_state(phone_hash)
     historico = state.get("history", [])
@@ -490,7 +490,7 @@ async def _atualizar_contact(phone_hash: str) -> None:
       status=coletando + nome       → stage=presenting
       status=coletando              → stage=collecting_info
     """
-    from app.conversation_legacy.state import load_state, delete_state
+    from app.conversation.state import load_state, delete_state
 
     _recusou = False
     status = None
@@ -556,7 +556,7 @@ async def _pos_turn_remarketing(phone_hash: str, contact: dict) -> None:
     Evita re-agendamento usando flags no estado.
     Verifica loop de remarcação (remarcacoes_count >= 3) e notifica Breno.
     """
-    from app.conversation_legacy.state import load_state, save_state
+    from app.conversation.state import load_state, save_state
     from app.database import SessionLocal
     from app.models import Contact as ContactModel
     from app.remarketing import schedule_situacao_remarketing

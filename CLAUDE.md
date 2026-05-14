@@ -11,10 +11,9 @@ Producao consolidada no VPS: `root@anna.vps-kinghost.net:/root/agente`.
 Backups preservados em `/root/agente-OLD-v1-backup-20260513-061057` e
 `/root/agente-v21-backup-20260513-061057`.
 
-**v2.0 (reescrita completa)** — o motor conversacional e agora o Orchestrator v2
-em `app/conversation/`. O codigo legado esta preservado em `app/conversation_legacy/`
-para consulta mas nao e mais o caminho ativo.
-Novas mudancas devem priorizar `app/conversation/` (orchestrator, state_machine, rules).
+**v2.0 (reescrita completa)** — o motor conversacional ativo e o Orchestrator v2
+em `app/conversation/`. O agente antigo foi removido do repositorio; novas
+mudancas devem priorizar `app/conversation/` (orchestrator, state_machine, rules).
 
 ## Arquitetura Atual
 
@@ -37,8 +36,7 @@ Novas mudancas devem priorizar `app/conversation/` (orchestrator, state_machine,
 - `app/conversation/response_writer.py`: gera mensagens finais com tom da Ana.
 - `app/conversation/scheduler.py`: jobs automaticos (confirmacao semanal, lembrete vespera).
 - `app/conversation/tools/`: scheduling, patients, payments, media, notifications, commands.
-- `app/conversation_legacy/`: engine v1 preservado para referencia (nao e o caminho ativo).
-- Estado compartilhado: `app/conversation_legacy/state.py` (Redis, reusado pelo v2).
+- Estado persistente: `app/conversation/state.py` (Redis com fallback in-memory).
 
 ### LLM
 

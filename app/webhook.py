@@ -314,7 +314,7 @@ async def _encaminhar_comprovante_thaynara(
     modalidade = "—"
     valor_esperado: float | None = None
     try:
-        from app.conversation_legacy.state import load_state
+        from app.conversation.state import load_state
         state = await load_state(phone_hash)
         cd = state.get("collected_data", {})
         nome = cd.get("nome") or nome

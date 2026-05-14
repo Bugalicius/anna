@@ -24,7 +24,7 @@ def _phone_hash(phone: str) -> str:
 
 async def main() -> None:
     from app.conversation import orchestrator
-    from app.conversation_legacy import state as legacy_state
+    from app.conversation import state as legacy_state
     from app.conversation.tools import ToolResult
 
     phone = "5511999990001"

@@ -141,7 +141,7 @@ Arquivos provaveis para revisar/remover:
 Impacto: aumenta custo de manutencao e chance de corrigir o arquivo errado.
 
 Correcao sugerida:
-- Criar pasta `legacy/` fora do pacote `app` ou remover apos migrar testes.
+- Legado de conversa removido apos migracao do estado para `app/conversation/state.py`.
 - Manter apenas um modulo por responsabilidade.
 - Bloquear novos imports legados com teste estatico simples.
 
@@ -351,4 +351,3 @@ Terceira semana:
 - Adicionar metricas de custo/LLM por etapa.
 - Expandir overrides deterministicos para reduzir chamadas LLM.
 - Criar dashboard operacional com handoff, falhas por integracao e funil.
-

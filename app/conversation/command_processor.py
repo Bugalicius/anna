@@ -91,7 +91,7 @@ async def _cmd_consultar_status(params: dict[str, Any], operador: dict[str, Any]
 
     try:
         import hashlib
-        from app.conversation_legacy.state import load_state
+        from app.conversation.state import load_state
 
         if telefone:
             phone_hash = hashlib.sha256(telefone.encode()).hexdigest()[:64]
@@ -221,7 +221,7 @@ async def _cmd_remarcar(params: dict[str, Any], operador: dict[str, Any]) -> Com
     # Ativa o fluxo de remarcação no estado do paciente
     try:
         import hashlib
-        from app.conversation_legacy.state import load_state, save_state
+        from app.conversation.state import load_state, save_state
 
         phone_hash = hashlib.sha256(telefone.encode()).hexdigest()[:64]
         state = await load_state(phone_hash, telefone)

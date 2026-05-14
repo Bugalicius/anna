@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 def test_apply_tool_result_nova_consulta_converte_goal_de_remarcacao():
-    from app.conversation_legacy.state import apply_tool_result, create_state
+    from app.conversation.state import apply_tool_result, create_state
 
     state = create_state("hash123", "5531999999999")
     state["goal"] = "remarcar"

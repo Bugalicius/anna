@@ -26,7 +26,7 @@ Arquivos principais em `app/conversation/`:
 | `tools/scheduling.py` | 244 |
 | `interceptors/image_interceptor.py` | 203 |
 
-Legacy preservado em `app/conversation_legacy/`, usado ainda como implementação de estado persistente.
+Agente antigo removido. Estado persistente consolidado em `app/conversation/state.py`.
 
 ## Dívidas Técnicas
 
@@ -86,4 +86,3 @@ Observações adicionais:
 | R14 cancelamento PUT | Sim | Ação pré-envio | Sim | Mantido |
 | R15 não falar perda de valor | Sim | Sim | Sim | Output validator reforçado em testes |
 | R16 comprovante encaminhado | Sim | Regra pura/tool | Sim | Mantido |
-

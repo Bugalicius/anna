@@ -30,7 +30,7 @@ async def test_bug1_contexto_nao_expira(monkeypatch):
     THEN: agente reseta e trata como nova conversa.
     """
     from app.conversation import orchestrator
-    from app.conversation_legacy import state as legacy_state
+    from app.conversation import state as legacy_state
 
     phone = "5531999990001"
     phone_hash = _phone_hash(phone)
@@ -73,7 +73,7 @@ async def test_bug2_loop_fallback_escala(monkeypatch):
     """
     from app.conversation import orchestrator
     from app.conversation.models import Interpretacao
-    from app.conversation_legacy import state as legacy_state
+    from app.conversation import state as legacy_state
 
     phone = "5531999990002"
     phone_hash = _phone_hash(phone)
@@ -133,7 +133,7 @@ async def test_bug3_mensagens_paralelas_nao_duplicam(monkeypatch):
     THEN: só uma entra no pipeline; a outra retorna sem resposta.
     """
     from app.conversation import orchestrator
-    from app.conversation_legacy import state as legacy_state
+    from app.conversation import state as legacy_state
 
     phone = "5531999990003"
     phone_hash = _phone_hash(phone)

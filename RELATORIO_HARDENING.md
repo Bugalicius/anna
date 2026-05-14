@@ -17,7 +17,7 @@ Branch: `refactor/agente-inteligente`
 ## Melhorias Implementadas
 
 1. Compatibilidade de estado v2:
-   - Criado `app/conversation/state.py` reexportando a implementação persistente de `app.conversation_legacy.state`.
+   - `app/conversation/state.py` concentra a implementação persistente de estado usada pelo v2.
    - Desbloqueou a suíte adversarial v2 existente.
 
 2. Agressão e ameaça:
