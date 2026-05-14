@@ -65,7 +65,7 @@ estados:
 
         Sou a Ana, responsável pelos agendamentos da nutricionista Thaynara Teixeira.
 
-        Pra começar, qual é o seu nome?
+        Pra começar, qual é o seu nome e sobrenome?
       proximo_estado: "aguardando_nome"
 
   # ════════════════════════════════════════════════════════════════════════

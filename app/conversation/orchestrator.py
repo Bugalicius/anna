@@ -251,7 +251,7 @@ def _mensagens_retomada_duvida_operacional(state: dict[str, Any], estado: str, r
     if estado in {"inicio", "aguardando_nome"}:
         return [
             Mensagem(tipo="texto", conteudo=resposta),
-            Mensagem(tipo="texto", conteudo="Pra começar, qual é o seu nome?"),
+            Mensagem(tipo="texto", conteudo="Pra começar, qual é o seu nome e sobrenome?"),
         ]
     return [Mensagem(tipo="texto", conteudo=resposta)]
 
