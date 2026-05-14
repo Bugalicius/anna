@@ -153,6 +153,7 @@ async def receive_chatwoot_webhook(request: Request, background_tasks: Backgroun
         chatwoot_event_sets_handoff,
         extract_conversation_id_from_chatwoot_payload,
         extract_phone_from_chatwoot_payload,
+        phone_hash as chatwoot_phone_hash,
         resolve_phone_from_chatwoot_conversation,
         set_human_handoff,
     )
@@ -190,6 +191,10 @@ async def receive_chatwoot_webhook(request: Request, background_tasks: Backgroun
         await set_human_handoff(phone, action, reason=f"chatwoot:{payload.get('event', 'event')}")
         if action:
             await bind_chatwoot_conversation(conversation_id, phone)
+        else:
+            from app.conversation.state import delete_state
+
+            await delete_state(chatwoot_phone_hash(phone))
         logger.info("Chatwoot handoff %s para telefone %s", "ON" if action else "OFF", phone[-4:])
     elif action is not None:
         logger.warning(

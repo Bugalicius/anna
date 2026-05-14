@@ -188,12 +188,14 @@ def test_chatwoot_resolved_uses_conversation_mapping_when_phone_missing():
 
     with patch.dict("os.environ", {"CHATWOOT_WEBHOOK_VERIFY_TOKEN": ""}), \
          patch("app.chatwoot_bridge.resolve_phone_from_chatwoot_conversation", new_callable=AsyncMock, return_value="553171893255") as mock_resolve, \
-         patch("app.chatwoot_bridge.set_human_handoff", new_callable=AsyncMock) as mock_set:
+         patch("app.chatwoot_bridge.set_human_handoff", new_callable=AsyncMock) as mock_set, \
+         patch("app.conversation.state.delete_state", new_callable=AsyncMock) as mock_delete:
         response = client.post("/webhook/chatwoot", json=payload)
 
     assert response.status_code == 200
     mock_resolve.assert_awaited_once_with("99")
     mock_set.assert_awaited_once_with("553171893255", False, reason="chatwoot:conversation_updated")
+    mock_delete.assert_awaited_once()
 
 
 def test_chatwoot_open_status_nao_pausa_ana():

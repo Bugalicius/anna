@@ -17,7 +17,7 @@ from app.conversation.config_loader import config
 from app.conversation.interpreter import _extrair_nome, _extrair_preferencia, interpretar
 from app.conversation.locks import acquire_processing_lock, release_processing_lock
 from app.conversation.models import AcaoAutorizada, Mensagem, ResultadoTurno, TipoAcao
-from app.conversation.state import add_message, load_state, maybe_reset_stale_state, save_state
+from app.conversation.state import add_message, create_state, load_state, maybe_reset_stale_state, save_state
 from app.conversation.tools.registry import call_tool
 
 logger = logging.getLogger(__name__)
@@ -1115,6 +1115,41 @@ def _is_fallback_like(text: str) -> bool:
     return any(t in n for t in termos)
 
 
+def _is_retomada_after_handoff(text: str) -> bool:
+    n = _norm_text(text)
+    if not n:
+        return False
+    saudacoes = {
+        "oi",
+        "ola",
+        "olá",
+        "bom dia",
+        "boa tarde",
+        "boa noite",
+        "tudo bem",
+    }
+    if n in saudacoes:
+        return True
+    if any(n.startswith(f"{s} ") for s in saudacoes):
+        return True
+    termos_fluxo = (
+        "agendar",
+        "marcar",
+        "consulta",
+        "remarcar",
+        "cancelar",
+        "valor",
+        "valores",
+        "preco",
+        "preço",
+        "plano",
+        "planos",
+        "presencial",
+        "online",
+    )
+    return any(t in n for t in termos_fluxo)
+
+
 async def _aplicar_controle_loop_fallback(
     *,
     state: dict[str, Any],
@@ -1259,6 +1294,70 @@ async def _processar_turno_locked(phone: str, mensagem: dict[str, Any]) -> Resul
 
     # ── AGRESSÃO / AMEAÇA (interceptador global) ─────────────────────────────
     texto_entrada = _texto_mensagem(mensagem)
+
+    if state.get("estado") == "aguardando_orientacao_breno":
+        estado_antes_handoff = state.get("estado")
+        if msg_type in ("", "text", "conversation") and _is_retomada_after_handoff(texto_entrada):
+            nome_preservado = (state.get("collected_data") or {}).get("nome")
+            state = create_state(phone_hash, phone)
+            if nome_preservado:
+                state["collected_data"]["nome"] = nome_preservado
+            state["last_message_at"] = datetime.now(timezone.utc).isoformat()
+            state["reset_reason"] = "retomada_apos_handoff"
+            enter_msgs, prox = await _mensagens_on_enter(state, "inicio")
+            state["estado"] = prox or "aguardando_nome"
+            add_message(state, "user", texto_entrada)
+            add_message(state, "assistant", "\n".join(m.conteudo for m in enter_msgs if m.conteudo))
+            await save_state(phone_hash, state)
+            await _log_metric({
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "phone_hash": phone_hash,
+                "fluxo": state.get("fluxo_id") or AGENDAMENTO_ID,
+                "estado_antes": estado_antes_handoff,
+                "estado_depois": state.get("estado"),
+                "tools_chamadas": [],
+                "duracao_ms": int((time.perf_counter() - started) * 1000),
+                "erro": None,
+                "evento": "handoff_retomado_pelo_paciente",
+            })
+            return ResultadoTurno(
+                sucesso=True,
+                mensagens_enviadas=enter_msgs,
+                novo_estado=state.get("estado"),
+                fluxo_id=state.get("fluxo_id") or AGENDAMENTO_ID,
+                duracao_ms=int((time.perf_counter() - started) * 1000),
+            )
+
+        msgs_handoff = [
+            Mensagem(
+                tipo="texto",
+                conteudo="A equipe já foi chamada e vai te responder por aqui, tá? 💚",
+            )
+        ]
+        add_message(state, "user", texto_entrada or "[mensagem]")
+        add_message(state, "assistant", msgs_handoff[0].conteudo)
+        state["fallback_streak"] = 0
+        state["last_response_hash"] = None
+        await save_state(phone_hash, state)
+        await _log_metric({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "phone_hash": phone_hash,
+            "fluxo": state.get("fluxo_id") or AGENDAMENTO_ID,
+            "estado_antes": estado_antes_handoff,
+            "estado_depois": state.get("estado"),
+            "tools_chamadas": [],
+            "duracao_ms": int((time.perf_counter() - started) * 1000),
+            "erro": None,
+            "evento": "handoff_mensagem_registrada_com_espera",
+        })
+        return ResultadoTurno(
+            sucesso=True,
+            mensagens_enviadas=msgs_handoff,
+            novo_estado=state.get("estado"),
+            fluxo_id=state.get("fluxo_id") or AGENDAMENTO_ID,
+            duracao_ms=int((time.perf_counter() - started) * 1000),
+        )
+
     if msg_type in ("", "text", "conversation") and _is_aggressive_text(texto_entrada):
         estado_antes_agressao = state.get("estado", "inicio")
         msgs, aggression_tools = await _handle_aggression(state, phone, texto_entrada, estado_antes_agressao)

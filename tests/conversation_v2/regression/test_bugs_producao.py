@@ -126,6 +126,95 @@ async def test_bug2_loop_fallback_escala(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_bug2b_handoff_nao_repete_escalacao(monkeypatch):
+    """
+    GIVEN: paciente ja esta aguardando orientacao humana
+    WHEN: manda mais uma mensagem aleatoria
+    THEN: Ana nao repete a escala inicial nem cria nova escalacao.
+    """
+    from app.conversation import orchestrator
+    from app.conversation import state as legacy_state
+
+    phone = "5531999990202"
+    phone_hash = _phone_hash(phone)
+    legacy_state._mem_store[f"conv_state:{phone_hash}"] = json.dumps(
+        {
+            "phone": phone,
+            "phone_hash": phone_hash,
+            "fluxo_id": "agendamento_paciente_novo",
+            "estado": "aguardando_orientacao_breno",
+            "collected_data": {},
+            "history": [],
+            "fallback_streak": 0,
+            "last_message_at": datetime.now(timezone.utc).isoformat(),
+        },
+        ensure_ascii=False,
+    )
+
+    monkeypatch.setattr(orchestrator, "_acquire_processing_lock", AsyncMock(return_value=True), raising=False)
+    monkeypatch.setattr(orchestrator, "_release_processing_lock", AsyncMock(), raising=False)
+    mock_tool = AsyncMock()
+    monkeypatch.setattr(orchestrator, "call_tool", mock_tool)
+
+    result = await orchestrator.processar_turno(
+        phone=phone,
+        mensagem={"type": "text", "text": "???", "from": phone, "id": "m2b"},
+    )
+
+    textos = "\n".join(m.conteudo for m in result.mensagens_enviadas)
+    assert "Deixa eu chamar" not in textos
+    assert "equipe já foi chamada" in textos
+    mock_tool.assert_not_awaited()
+    saved = json.loads(legacy_state._mem_store[f"conv_state:{phone_hash}"])
+    assert saved["estado"] == "aguardando_orientacao_breno"
+
+
+@pytest.mark.asyncio
+async def test_bug2c_handoff_saudacao_reinicia_conversa(monkeypatch):
+    """
+    GIVEN: conversa ficou presa em aguardando orientacao humana
+    WHEN: paciente volta com saudacao
+    THEN: Ana reinicia a conversa em vez de repetir a escala.
+    """
+    from app.conversation import orchestrator
+    from app.conversation import state as legacy_state
+
+    phone = "5531999990203"
+    phone_hash = _phone_hash(phone)
+    legacy_state._mem_store[f"conv_state:{phone_hash}"] = json.dumps(
+        {
+            "phone": phone,
+            "phone_hash": phone_hash,
+            "fluxo_id": "agendamento_paciente_novo",
+            "estado": "aguardando_orientacao_breno",
+            "collected_data": {},
+            "history": [],
+            "fallback_streak": 0,
+            "last_message_at": datetime.now(timezone.utc).isoformat(),
+        },
+        ensure_ascii=False,
+    )
+
+    monkeypatch.setattr(orchestrator, "_acquire_processing_lock", AsyncMock(return_value=True), raising=False)
+    monkeypatch.setattr(orchestrator, "_release_processing_lock", AsyncMock(), raising=False)
+    mock_tool = AsyncMock()
+    monkeypatch.setattr(orchestrator, "call_tool", mock_tool)
+
+    result = await orchestrator.processar_turno(
+        phone=phone,
+        mensagem={"type": "text", "text": "boa tarde", "from": phone, "id": "m2c"},
+    )
+
+    textos = "\n".join(m.conteudo for m in result.mensagens_enviadas)
+    assert result.novo_estado == "aguardando_nome"
+    assert "Deixa eu chamar" not in textos
+    assert textos
+    mock_tool.assert_not_awaited()
+    saved = json.loads(legacy_state._mem_store[f"conv_state:{phone_hash}"])
+    assert saved["reset_reason"] == "retomada_apos_handoff"
+
+
+@pytest.mark.asyncio
 async def test_bug3_mensagens_paralelas_nao_duplicam(monkeypatch):
     """
     GIVEN: duas execuções concorrentes para o mesmo telefone
