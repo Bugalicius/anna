@@ -5,7 +5,7 @@ import os
 import hashlib as _hashlib
 import asyncio
 import json as _json
-from datetime import datetime
+from datetime import UTC, datetime
 import redis.asyncio as aioredis
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
 from app.meta_api import verify_signature
@@ -17,7 +17,7 @@ APP_SECRET = os.environ.get("META_APP_SECRET", "")
 VERIFY_TOKEN = os.environ.get("WEBHOOK_VERIFY_TOKEN", "")
 
 _DEDUP_TTL = 14400  # 4 horas em segundos
-_DEBOUNCE_TTL = 60
+_DEBOUNCE_TTL = 120
 
 MSG_AUDIO_FALHOU = "Não consegui ouvir seu áudio 😔 Pode me escrever o que precisa? 💚"
 MSG_MIDIA_NAO_COMPROVANTE = "Recebo comprovantes de pagamento por aqui 😊 Posso te ajudar com mais alguma coisa?"
@@ -364,7 +364,7 @@ async def _send_text_direct(phone: str, text: str, message_id: str = "") -> None
 
     meta = MetaAPIClient()
     if message_id:
-        await meta.mark_as_read(message_id)
+        await meta.send_typing_indicator(phone, message_id=message_id)
     await asyncio.sleep(_typing_delay(text))
     await meta.send_text(phone, text)
     try:
@@ -393,6 +393,8 @@ def _merge_debounced_messages(items: list[dict]) -> tuple[dict, dict]:
     )
     first = dict(messages[0])
     first["id"] = "batch:" + _hashlib.sha256("|".join(ids).encode()).hexdigest()[:24]
+    first["_latest_message_id"] = ids[-1] if ids else first["id"]
+    first["_debounced_count"] = len(messages)
     first["type"] = "text"
     first["text"] = {"body": text}
     return first, metadata
@@ -411,10 +413,12 @@ async def process_message_debounced(message: dict, metadata: dict):
 
     redis_url = os.environ.get("REDIS_URL", "redis://redis:6379/0")
     phone = message.get("from", "")
-    token = str(message.get("id") or _hashlib.sha256(repr(message).encode()).hexdigest())
+    token_basis = f"{message.get('id') or ''}:{datetime.now(UTC).timestamp()}"
+    token = _hashlib.sha256(token_basis.encode()).hexdigest()
     queue_key = f"debounce:queue:{phone}"
     token_key = f"debounce:token:{phone}"
-    delay = float(os.environ.get("MESSAGE_DEBOUNCE_SECONDS", "30.0"))
+    flush_key = f"debounce:flush:{phone}"
+    delay = float(os.environ.get("DEBOUNCE_SECONDS", os.environ.get("MESSAGE_DEBOUNCE_SECONDS", "15.0")))
 
     try:
         r = aioredis.Redis.from_url(redis_url, decode_responses=True)
@@ -435,8 +439,13 @@ async def process_message_debounced(message: dict, metadata: dict):
         if latest != token:
             await r.aclose()
             return
+        flush_acquired = await r.set(flush_key, token, nx=True, ex=60)
+        if not flush_acquired:
+            await r.aclose()
+            logger.info("Debounce flush ja em andamento para %s", phone[-4:])
+            return
         raw_items = await r.lrange(queue_key, 0, -1)
-        await r.delete(queue_key, token_key)
+        await r.delete(queue_key, token_key, flush_key)
         await r.aclose()
     except Exception as e:
         logger.warning("Redis debounce flush falhou: %s — processando mensagem atual", e)
@@ -447,6 +456,28 @@ async def process_message_debounced(message: dict, metadata: dict):
     if not items:
         return
     merged_message, merged_metadata = _merge_debounced_messages(items)
+    try:
+        from app.metrics import write_turn_metric
+
+        write_turn_metric(
+            {
+                "event": "debounce_flush",
+                "phone_hash": _hashlib.sha256(phone.encode()).hexdigest()[:64],
+                "count": len(items),
+                "delay_seconds": delay,
+            }
+        )
+    except Exception:
+        pass
+    try:
+        from app.meta_api import MetaAPIClient
+
+        await MetaAPIClient().send_typing_indicator(
+            phone,
+            message_id=str(merged_message.get("_latest_message_id") or ""),
+        )
+    except Exception as e:
+        logger.debug("Typing indicator pre-processamento falhou: %s", e)
     await process_message(merged_message, merged_metadata)
 
 
@@ -462,6 +493,7 @@ async def process_message(message: dict, metadata: dict):
     from datetime import datetime, UTC
 
     meta_id = message.get("id", "")
+    latest_meta_id = message.get("_latest_message_id") or meta_id
     phone = message.get("from", "")
     msg_type = message.get("type", "")
 
@@ -617,7 +649,7 @@ async def process_message(message: dict, metadata: dict):
 
     # Rotear e responder (fora do session para evitar lock longo)
     try:
-        await route_message(phone=phone, phone_hash=phone_hash, text=text, meta_message_id=meta_id)
+        await route_message(phone=phone, phone_hash=phone_hash, text=text, meta_message_id=latest_meta_id)
     except Exception:
         logger.exception("Falha ao rotear mensagem %s", meta_id)
         with SessionLocal() as db:

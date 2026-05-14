@@ -2,6 +2,10 @@ services:
   app:
     build: .
     env_file: .env
+    environment:
+      INACTIVITY_RESET_HOURS: ${INACTIVITY_RESET_HOURS:-1}
+      DEBOUNCE_SECONDS: ${DEBOUNCE_SECONDS:-15}
+      TYPING_INDICATOR_ENABLED: ${TYPING_INDICATOR_ENABLED:-true}
     restart: unless-stopped
     depends_on:
       postgres:

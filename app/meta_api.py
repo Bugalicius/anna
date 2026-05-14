@@ -184,8 +184,34 @@ class MetaAPIClient:
         except Exception:
             pass  # Falha silenciosa — não bloqueia o envio da resposta
 
-    async def send_typing_indicator(self, to: str) -> None:
-        """Exibe 'Digitando...' para o usuário antes de enviar a resposta."""
+    async def send_typing_indicator(self, to: str = "", message_id: str | None = None) -> None:
+        """
+        Marca a mensagem como lida e exibe "digitando...".
+
+        A Cloud API exige um message_id recebido via webhook. Se ele não for um
+        wamid válido, não tenta enviar e não bloqueia a resposta.
+        """
+        enabled = os.environ.get("TYPING_INDICATOR_ENABLED", "true").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        if not enabled:
+            return None
+        message_id = str(message_id or "")
+        if not message_id.startswith("wamid."):
+            return None
+        payload = {
+            "messaging_product": "whatsapp",
+            "status": "read",
+            "message_id": message_id,
+            "typing_indicator": {"type": "text"},
+        }
+        try:
+            await self._post(payload)
+        except Exception as exc:
+            logger.warning("Typing indicator falhou para %s: %s", str(to or "")[-4:], exc)
         return None
 
     async def _post(self, payload: dict) -> dict:

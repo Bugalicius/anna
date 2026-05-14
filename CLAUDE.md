@@ -63,6 +63,18 @@ Novas mudancas devem priorizar `app/conversation/` (orchestrator, state_machine,
   aviso de fora de horario e contagem de erros consecutivos.
 - `logs/metrics.jsonl`: metricas estruturadas por turno.
 
+### Configuracao de Debounce e UX
+
+- `INACTIVITY_RESET_HOURS=1`: reseta o contexto para `inicio` quando o paciente
+  volta depois de 1h sem mensagem.
+- `DEBOUNCE_SECONDS=15`: aguarda 15s apos a ultima mensagem de texto do paciente
+  antes de processar o turno agrupado.
+- `TYPING_INDICATOR_ENABLED=true`: envia o indicador "digitando..." via Meta API
+  com `message_id` valido antes da resposta; falhas sao logadas e nao bloqueiam
+  o envio.
+- O orchestrator usa lock por telefone (`agente:lock:processing:{phone}`) com TTL
+  de 60s para evitar duas execucoes paralelas do pipeline.
+
 ## Regras Importantes
 
 - Nunca expor o numero interno do Breno/Thaynara para pacientes.

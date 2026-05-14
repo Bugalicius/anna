@@ -4,6 +4,10 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     restart: unless-stopped
     env_file: .env
+    environment:
+      INACTIVITY_RESET_HOURS: ${INACTIVITY_RESET_HOURS:-1}
+      DEBOUNCE_SECONDS: ${DEBOUNCE_SECONDS:-15}
+      TYPING_INDICATOR_ENABLED: ${TYPING_INDICATOR_ENABLED:-true}
     ports:
       - "8000:8000"
     depends_on:

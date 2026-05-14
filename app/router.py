@@ -220,7 +220,7 @@ async def _enviar_respostas(
             else:
                 await asyncio.sleep(1.0)
             try:
-                await meta.send_typing_indicator(phone)
+                await meta.send_typing_indicator(phone, message_id=meta_message_id)
             except Exception:
                 pass
             await asyncio.sleep(_typing_delay(msg))

@@ -63,6 +63,35 @@ async def test_send_template_calls_meta_api(client):
     assert payload["template"]["name"] == "follow_up_geral"
 
 
+@pytest.mark.asyncio
+@respx.mock
+async def test_send_typing_indicator_payload(client):
+    route = respx.post(
+        f"https://graph.facebook.com/v19.0/{PHONE_ID}/messages"
+    ).mock(return_value=httpx.Response(200, json={"success": True}))
+
+    await client.send_typing_indicator(to="5531999999999", message_id="wamid.typing")
+
+    assert route.called
+    payload = json.loads(route.calls[0].request.content)
+    assert payload == {
+        "messaging_product": "whatsapp",
+        "status": "read",
+        "message_id": "wamid.typing",
+        "typing_indicator": {"type": "text"},
+    }
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_send_typing_indicator_ignora_message_id_invalido(client):
+    route = respx.post(f"https://graph.facebook.com/v19.0/{PHONE_ID}/messages")
+
+    await client.send_typing_indicator(to="5531999999999", message_id="batch:abc")
+
+    assert not route.called
+
+
 # ── Teste MetaAPIClient sem args ──────────────────────────────────────────────
 
 def test_client_no_args_reads_env():

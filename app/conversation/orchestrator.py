@@ -12,11 +12,12 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from app.conversation_legacy.state import add_message, load_state, save_state
 from app.conversation import response_writer, rules, state_machine
 from app.conversation.config_loader import config
 from app.conversation.interpreter import _extrair_nome, _extrair_preferencia, interpretar
+from app.conversation.locks import acquire_processing_lock, release_processing_lock
 from app.conversation.models import AcaoAutorizada, Mensagem, ResultadoTurno, TipoAcao
+from app.conversation.state import add_message, load_state, maybe_reset_stale_state, save_state
 from app.conversation.tools.registry import call_tool
 
 logger = logging.getLogger(__name__)
@@ -83,6 +84,9 @@ def _ensure_v2_state(state: dict[str, Any], phone: str) -> dict[str, Any]:
     state["appointment"].setdefault("consulta_atual", None)
     state["flags"].setdefault("pagamento_confirmado", False)
     state.setdefault("fora_contexto_count", 0)
+    state.setdefault("fallback_streak", 0)
+    state.setdefault("last_response_hash", None)
+    state.setdefault("last_message_at", None)
     return state
 
 
@@ -1094,11 +1098,145 @@ async def _log_metric(payload: dict[str, Any]) -> None:
         logger.warning("Falha ao registrar métrica v2: %s", exc)
 
 
+def _response_hash(text: str) -> str:
+    return hashlib.sha256((text or "").encode()).hexdigest()[:16]
+
+
+def _is_fallback_like(text: str) -> bool:
+    n = _norm_text(text)
+    termos = (
+        "nao entendi",
+        "entender certinho",
+        "mandar de outro jeito",
+        "mais detalhes",
+        "pode escrever",
+        "pode me mandar",
+    )
+    return any(t in n for t in termos)
+
+
+async def _aplicar_controle_loop_fallback(
+    *,
+    state: dict[str, Any],
+    phone: str,
+    mensagens: list[Mensagem],
+    is_fallback: bool,
+    estado_antes: str,
+    ultima_mensagem: str,
+    tools_chamadas: list[str],
+) -> list[Mensagem]:
+    if not is_fallback:
+        state["fallback_streak"] = 0
+        state["last_response_hash"] = None
+        return mensagens
+
+    resp_text = "\n".join(m.conteudo for m in mensagens if m.conteudo).strip()
+    resp_hash = _response_hash(resp_text)
+    streak = int(state.get("fallback_streak") or 0) + 1
+    repeated = state.get("last_response_hash") == resp_hash
+    state["fallback_streak"] = streak
+    state["last_response_hash"] = resp_hash
+
+    fora_contexto_count = int(state.get("fora_contexto_count") or 0)
+    if (streak < 2 and fora_contexto_count < 2) or not (repeated or _is_fallback_like(resp_text)):
+        return mensagens
+
+    motivo = "fora_contexto_consecutivo" if fora_contexto_count >= 2 else "loop_fallback_2x"
+    tools_chamadas.append("escalar_breno_silencioso")
+    await call_tool(
+        "escalar_breno_silencioso",
+        {
+            "contexto": {
+                "motivo": motivo,
+                "reason": "loop_fallback_2x",
+                "count": max(streak, fora_contexto_count),
+                "telefone": phone,
+                "estado": estado_antes,
+                "ultima_mensagem": ultima_mensagem,
+            }
+        },
+    )
+    state["fallback_streak"] = 0
+    state["last_response_hash"] = None
+    state["estado"] = "aguardando_orientacao_breno"
+    await _log_metric(
+        {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "phone_hash": state.get("phone_hash"),
+            "fluxo": state.get("fluxo_id") or AGENDAMENTO_ID,
+            "estado_antes": estado_antes,
+            "estado_depois": state.get("estado"),
+            "tools_chamadas": ["escalar_breno_silencioso"],
+            "evento": "fallback_loop_escalado",
+            "erro": None,
+        }
+    )
+    return [
+        Mensagem(
+            tipo="texto",
+            conteudo="Deixa eu chamar alguém da equipe pra te dar atenção especial 💚",
+        )
+    ]
+
+
+async def _acquire_processing_lock(phone: str) -> bool:
+    return await acquire_processing_lock(phone)
+
+
+async def _release_processing_lock(phone: str) -> None:
+    await release_processing_lock(phone)
+
+
 async def processar_turno(phone: str, mensagem: dict[str, Any]) -> ResultadoTurno:
     started = time.perf_counter()
     phone_hash = _phone_hash(phone)
-    state = _ensure_v2_state(await load_state(phone_hash, phone), phone)
+    acquired = await _acquire_processing_lock(phone)
+    if not acquired:
+        logger.info("Já existe processamento ativo para %s; turno ignorado nesta janela", phone[-4:])
+        await _log_metric(
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "phone_hash": phone_hash,
+                "evento": "processing_lock_busy",
+                "duracao_ms": int((time.perf_counter() - started) * 1000),
+                "erro": None,
+            }
+        )
+        return ResultadoTurno(
+            sucesso=True,
+            mensagens_enviadas=[],
+            novo_estado=None,
+            fluxo_id=AGENDAMENTO_ID,
+            duracao_ms=int((time.perf_counter() - started) * 1000),
+        )
+
+    try:
+        return await _processar_turno_locked(phone, mensagem)
+    finally:
+        await _release_processing_lock(phone)
+
+
+async def _processar_turno_locked(phone: str, mensagem: dict[str, Any]) -> ResultadoTurno:
+    started = time.perf_counter()
+    phone_hash = _phone_hash(phone)
+    loaded_state = await load_state(phone_hash, phone)
+    estado_original = loaded_state.get("estado")
+    loaded_state = await maybe_reset_stale_state(phone, loaded_state)
+    state = _ensure_v2_state(loaded_state, phone)
     state["phone_hash"] = phone_hash
+    state["last_message_at"] = datetime.now(timezone.utc).isoformat()
+    if state.get("reset_reason") == "inatividade" and estado_original != state.get("estado"):
+        await _log_metric(
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "phone_hash": phone_hash,
+                "fluxo": state.get("fluxo_id") or AGENDAMENTO_ID,
+                "estado_antes": estado_original,
+                "estado_depois": state.get("estado"),
+                "evento": "state_reset_inactivity",
+                "erro": None,
+            }
+        )
 
     # ── COMANDOS INTERNOS (Fluxo 8) ───────────────────────────────────────────
     try:
@@ -1562,22 +1700,28 @@ async def processar_turno(phone: str, mensagem: dict[str, Any]) -> ResultadoTurn
         # ── CONTADOR FORA DE CONTEXTO (Fluxo 10) ─────────────────────────────
         if fora_contexto:
             state["fora_contexto_count"] = int(state.get("fora_contexto_count") or 0) + 1
-            if state["fora_contexto_count"] >= 2:
-                tools_chamadas.append("escalar_breno_silencioso")
-                await call_tool(
-                    "escalar_breno_silencioso",
-                    {
-                        "contexto": {
-                            "motivo": "fora_contexto_consecutivo",
-                            "count": state["fora_contexto_count"],
-                            "telefone": phone,
-                            "estado": estado_antes,
-                            "ultima_mensagem": interpretacao.texto_original,
-                        }
-                    },
-                )
+            mensagens = await _aplicar_controle_loop_fallback(
+                state=state,
+                phone=phone,
+                mensagens=mensagens,
+                is_fallback=True,
+                estado_antes=estado_antes,
+                ultima_mensagem=interpretacao.texto_original,
+                tools_chamadas=tools_chamadas,
+            )
+            if state.get("estado") == "aguardando_orientacao_breno":
+                target = state["estado"]
         else:
             state["fora_contexto_count"] = 0
+            mensagens = await _aplicar_controle_loop_fallback(
+                state=state,
+                phone=phone,
+                mensagens=mensagens,
+                is_fallback=False,
+                estado_antes=estado_antes,
+                ultima_mensagem=interpretacao.texto_original,
+                tools_chamadas=tools_chamadas,
+            )
 
         add_message(state, "user", interpretacao.texto_original)
         add_message(state, "assistant", "\n".join(m.conteudo for m in mensagens if m.conteudo))
