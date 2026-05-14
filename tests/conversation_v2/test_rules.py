@@ -12,6 +12,11 @@ def test_r1_bloqueia_texto_com_breno() -> None:
     assert result.passou is False
 
 
+def test_r1_nao_bloqueia_sobrenome() -> None:
+    result = R1_nunca_expor_breno("Pra começar, qual é o seu nome e sobrenome?")
+    assert result.passou is True
+
+
 def test_r3_bloqueia_valor_divergente() -> None:
     result = R3_nunca_inventar_valor(
         "O valor é R$ 999,00 para esse plano.",
@@ -23,4 +28,3 @@ def test_r3_bloqueia_valor_divergente() -> None:
 def test_r12_bloqueia_nome_generico_consulta() -> None:
     result = R12_validar_nome_nao_generico("consulta")
     assert result.passou is False
-

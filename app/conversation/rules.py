@@ -155,8 +155,14 @@ def validar_distribuicao_slots(
 def R1_nunca_expor_breno(texto: str) -> RuleResult:
     """Bloqueia se texto contém nome ou número do Breno."""
     regra = "R1_nunca_expor_breno"
+    texto_lower = texto.lower()
     for palavra in _PALAVRAS_BRENO:
-        if palavra.lower() in texto.lower():
+        palavra_lower = palavra.lower()
+        if palavra_lower == "breno":
+            if re.search(r"\bbreno\b", texto_lower, flags=re.IGNORECASE):
+                return _bloquear(regra, f"Texto contém referência proibida ao Breno: {palavra!r}")
+            continue
+        if palavra_lower in texto_lower:
             return _bloquear(regra, f"Texto contém referência proibida ao Breno: {palavra!r}")
     return _ok(regra)
 
