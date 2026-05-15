@@ -292,7 +292,12 @@ def R7_nunca_dar_orientacao_clinica(texto: str) -> RuleResult:
         r"\bpode comer\b",
         r"\bnão pode comer\b",
         r"\bcaloria[s]?\b.{0,20}\b(recomendo|indico|ideal)\b",
-        r"\bdieta\b.{0,30}\b(para você|recomendo)\b",
+        # "para você" sozinho removido: bloqueava descrições legítimas do serviço
+        # (ex: "a Thaynara monta a dieta para você"). Mantidos: indicadores de
+        # recomendação direta e prescrição ("deve ser hipocalórica", "recomendo").
+        r"\bdieta\b.{0,30}\b(recomendo|indico|ideal)\b",
+        r"\b(recomendo|indico)\b.{0,30}\bdieta\b",
+        r"\bdieta\b.{0,60}\bdeve ser\b",
         r"\bsuplemento\b.{0,20}\b(recomendo|tome|use)\b",
         r"\bconsuma\b.{0,20}\b(por dia|diariamente)\b",
     ]

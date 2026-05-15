@@ -166,7 +166,9 @@ def _is_aggressive_text(texto: str) -> bool:
 
 def _mentions_pregnancy(texto: str) -> bool:
     n = _norm_text(texto)
-    return any(t in n for t in ("gravida", "gestante", "gestacao", "gravidez"))
+    # Usa \b para evitar falso positivo em palavras que contêm o termo como
+    # prefixo (ex: "gravidade" contém "gravida" como substring).
+    return bool(re.search(r"\b(gravida|gestante|gestacao|gravidez)\b", n))
 
 
 def _mentions_clinical_need(texto: str) -> bool:
@@ -279,9 +281,13 @@ def _mensagens_bioimpedancia_com_status(
 def _underage_from_text(texto: str) -> int | None:
     n = _norm_text(texto)
     patterns = (
+        # "tenho 15 anos" / "minha idade é 15 anos"
         r"\b(?:tenho|idade)\s+(\d{1,2})\s+anos\b",
-        r"\b(?:filha|filho|sobrinha|sobrinho|menina|menino|adolescente)\s+(?:de|tem)\s+(\d{1,2})\s+anos\b",
-        r"\b(\d{1,2})\s+anos\b",
+        # "minha filha de 14 anos" / "a paciente tem 13 anos" / "meu filho tem 13 anos"
+        r"\b(?:filha|filho|sobrinha|sobrinho|menina|menino|adolescente|paciente|crianca|criança)\s+(?:de|tem)\s+(\d{1,2})\s+anos\b",
+        # Padrão genérico "X anos" removido: capturava qualquer contexto
+        # (ex: "minha empresa tem 10 anos", "estou há 5 anos tentando emagrecer")
+        # causando bloqueio falso de pacientes adultos.
     )
     for pattern in patterns:
         match = re.search(pattern, n)
@@ -797,7 +803,11 @@ def _acao_bloqueio_cadastro_se_necessario(
 
     if estado != "aguardando_cadastro":
         return None
-    if idade_num is not None and idade_num < 16 or any(t in texto for t in ("grávida", "gravida", "gestante", "gestação", "gestacao")):
+    # Usa re.search com \b para evitar falso positivo: "gravida" é substring
+    # de "gravidade", então match simples bloquearia "qual a gravidade do caso?"
+    _texto_norm = _norm_text(interpretacao_texto)
+    _e_gestante = bool(re.search(r"\b(gravida|gestante|gestacao|gravidez)\b", _texto_norm))
+    if idade_num is not None and idade_num < 16 or _e_gestante:
         return AcaoAutorizada(
             tipo=TipoAcao.escalar,
             mensagens=[
