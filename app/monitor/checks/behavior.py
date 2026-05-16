@@ -40,7 +40,7 @@ async def check_turn_latency_p95() -> CheckResult:
         check_id="behavior.turn_latency_p95",
         category=CATEGORY,
         status=p95 <= 5000,
-        severity=Severity.ALERT,
+        severity=Severity.WARNING,  # latência alta não indica sistema parado
         description="Latencia p95 de turno abaixo de 5s",
         detail=f"p95={p95:.0f}ms amostras={len(values)}",
         suggested_action="Verificar Gemini/Dietbox e carga do app.",
@@ -126,7 +126,7 @@ async def check_fallback_loop_events() -> CheckResult:
 
 
 async def _guard(check, check_id: str, description: str) -> CheckResult:
-    return await guarded_check(check_id, CATEGORY, Severity.ALERT, description, check)
+    return await guarded_check(check_id, CATEGORY, Severity.WARNING, description, check)
 
 
 CHECKS = [

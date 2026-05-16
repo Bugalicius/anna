@@ -80,7 +80,7 @@ async def check_app_error_words() -> CheckResult:
         check_id="security.app_error_logs",
         category=CATEGORY,
         status=len(hits) == 0,
-        severity=Severity.ALERT,
+        severity=Severity.WARNING,  # erros pontuais no log não indicam sistema parado
         description="Sem ERROR/CRITICAL/Exception nos logs do app em 5min",
         detail=(hits[-1][:700] if hits else "0 linhas com erro"),
         suggested_action="Abrir docker compose logs app --tail=200.",
@@ -120,7 +120,7 @@ CHECKS = [
     lambda: _guard(check_b2b_attempts, "security.b2b_attempts", "Tentativas B2B detectadas", Severity.INFO),
     lambda: _guard(check_restrictions_today, "security.restrictions_today", "Menor de 16 ou gestante detectado hoje", Severity.INFO),
     lambda: _guard(check_spam_same_phone, "security.spam_same_phone", "Menos de 50 mensagens do mesmo phone em 5min", Severity.ALERT),
-    lambda: _guard(check_app_error_words, "security.app_error_logs", "Sem ERROR/CRITICAL/Exception nos logs do app em 5min", Severity.ALERT),
-    lambda: _guard(check_retrying_messages, "security.retrying_messages", "Poucas mensagens em retry/failed nos ultimos 30min", Severity.ALERT),
+    lambda: _guard(check_app_error_words, "security.app_error_logs", "Sem ERROR/CRITICAL/Exception nos logs do app em 5min", Severity.WARNING),
+    lambda: _guard(check_retrying_messages, "security.retrying_messages", "Poucas mensagens em retry/failed nos ultimos 30min", Severity.WARNING),
 ]
 
