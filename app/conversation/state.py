@@ -40,6 +40,11 @@ def init_state_manager(redis_url: str) -> None:
     logger.info("ConversationState Redis inicializado: %s", redis_url)
 
 
+def get_state_redis():
+    """Retorna a instância Redis do state manager (ou None se não inicializado)."""
+    return _state_mgr
+
+
 # ── Estado inicial ────────────────────────────────────────────────────────────
 
 

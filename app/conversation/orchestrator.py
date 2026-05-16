@@ -17,7 +17,7 @@ from app.conversation.config_loader import config
 from app.conversation.interpreter import _extrair_nome, _extrair_preferencia, interpretar
 from app.conversation.locks import acquire_processing_lock, release_processing_lock
 from app.conversation.models import AcaoAutorizada, Mensagem, ResultadoTurno, TipoAcao
-from app.conversation.state import add_message, create_state, load_state, maybe_reset_stale_state, save_state
+from app.conversation.state import add_message, create_state, get_state_redis, load_state, maybe_reset_stale_state, save_state
 from app.conversation.tools.registry import call_tool
 
 logger = logging.getLogger(__name__)
@@ -755,10 +755,9 @@ async def _executar_consultar_slots(state: dict[str, Any]) -> tuple[list[Mensage
     state["slots_pool"] = slots
     if not slots:
         return [Mensagem(tipo="texto", conteudo="No momento não tenho horários disponíveis nesse período. Quer que eu olhe outro horário?")], "aguardando_preferencia_horario"
-    linhas = "\n".join(f"{i}. {_slot_descricao(s)}" for i, s in enumerate(slots[:3], start=1))
     intro = "Encontrei essas opções:" if dados.get("match_exato") else "Não tenho exatamente esse horário, mas tenho:"
     botoes = [{"id": f"slot_{i}", "label": _slot_label(s)[:20]} for i, s in enumerate(slots[:3], start=1)]
-    return [Mensagem(tipo="botoes", conteudo=f"{intro}\n\n{linhas}\n\nQual prefere?", botoes=botoes)], "aguardando_escolha_slot"  # type: ignore[arg-type]
+    return [Mensagem(tipo="botoes", conteudo=f"{intro}\n\nQual prefere?", botoes=botoes)], "aguardando_escolha_slot"  # type: ignore[arg-type]
 
 
 async def _executar_pagamento_pix(state: dict[str, Any], mensagem: dict[str, Any], entities: dict[str, Any]) -> tuple[list[Mensagem], str]:
@@ -964,10 +963,9 @@ async def _buscar_slots_remarcacao(state: dict[str, Any], preferencia: dict[str,
         await call_tool("escalar_breno_silencioso", {"contexto": {"fluxo": REMARCACAO_ID, "state": state}})
         return [Mensagem(tipo="texto", conteudo="No momento não tenho horários disponíveis dentro do prazo. Vou verificar com a equipe e já te respondo.")], "remarcacao_aguardando_breno"
 
-    linhas = "\n".join(f"{i}. {_slot_descricao(s)}" for i, s in enumerate(slots[:3], start=1))
     intro = "Encontrei essas opções dentro do prazo de remarcação:"
     botoes = [{"id": f"slot_{i}", "label": _slot_label(s)[:20]} for i, s in enumerate(slots[:3], start=1)]
-    return [Mensagem(tipo="botoes", conteudo=f"{intro}\n\n{linhas}\n\nQual prefere?", botoes=botoes)], "remarcacao_aguardando_escolha_slot"  # type: ignore[arg-type]
+    return [Mensagem(tipo="botoes", conteudo=f"{intro}\n\nQual prefere?", botoes=botoes)], "remarcacao_aguardando_escolha_slot"  # type: ignore[arg-type]
 
 
 async def _executar_remarcacao(state: dict[str, Any], slot: dict[str, Any]) -> tuple[list[Mensagem], str]:
@@ -1275,6 +1273,22 @@ async def _processar_turno_locked(phone: str, mensagem: dict[str, Any]) -> Resul
     state = _ensure_v2_state(loaded_state, phone)
     state["phone_hash"] = phone_hash
     state["last_message_at"] = datetime.now(timezone.utc).isoformat()
+
+    # ── IDENTIFICAÇÃO DE PACIENTE (base CSV Dietbox) ───────────────────────────
+    if not (state.get("flags") or {}).get("paciente_identificado"):
+        try:
+            from app.conversation.patient_lookup import identificar_paciente as _lookup
+            _paciente = await _lookup(phone, get_state_redis())
+            if _paciente:
+                cd = state.setdefault("collected_data", {})
+                if not cd.get("nome"):
+                    cd["nome"] = _paciente["nome"]
+                fl = state.setdefault("flags", {})
+                fl["paciente_identificado"] = True
+                fl["paciente_origem"] = "csv_dietbox"
+                fl["primeiro_nome_csv"] = _paciente.get("primeiro_nome", "")
+        except Exception as _exc:
+            logger.warning("Falha na identificacao de paciente: %s", _exc)
     if state.get("reset_reason") == "inatividade" and estado_original != state.get("estado"):
         await _log_metric(
             {
@@ -1652,6 +1666,20 @@ async def _processar_turno_locked(phone: str, mensagem: dict[str, Any]) -> Resul
             )
 
         if estado_antes == "inicio":
+            if state.get("flags", {}).get("paciente_identificado"):
+                # Paciente da base CSV — saudacao personalizada, sem perguntar nome
+                _primeiro = state["flags"].get("primeiro_nome_csv") or _primeiro_nome(state)
+                _hora = datetime.now(timezone(timedelta(hours=-3))).hour
+                _saudacao = "Bom dia" if _hora < 12 else ("Boa tarde" if _hora < 18 else "Boa noite")
+                msg_bv = Mensagem(tipo="texto", conteudo=f"{_saudacao}, {_primeiro}! 💚\n\nComo posso te ajudar hoje?")
+                mensagens.append(msg_bv)
+                state["collected_data"]["status_paciente"] = "retorno"
+                state["estado"] = "aguardando_status_paciente"
+                add_message(state, "user", mensagem.get("text") or mensagem.get("body") or "")
+                add_message(state, "assistant", msg_bv.conteudo)
+                await save_state(phone_hash, state)
+                return ResultadoTurno(sucesso=True, mensagens_enviadas=mensagens, novo_estado=state["estado"], fluxo_id=AGENDAMENTO_ID, duracao_ms=int((time.perf_counter() - started) * 1000))
+
             enter_msgs, prox = await _mensagens_on_enter(state, "inicio")
             mensagens.extend(enter_msgs)
             state["estado"] = prox or "aguardando_nome"
