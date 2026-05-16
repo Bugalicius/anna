@@ -32,17 +32,42 @@ MIME_IMAGENS = {"image/jpeg", "image/png", "image/webp"}
 
 _PROMPT_COMPROVANTE = (
     "Analise a imagem e determine se é um comprovante de pagamento PIX brasileiro.\n"
-    "Comprovantes PIX geralmente contêm: 'ID da transação', 'ID do pagamento', "
-    "nome do destinatário, CPF/CNPJ (pode estar parcialmente oculto com •••), "
-    "nome do banco ou instituição (Nubank, Mercado Pago, Bradesco, Itaú, Caixa, "
-    "Inter, PicPay, C6, Santander, BB, etc.), valor em R$, data e horário, "
-    "e texto como 'Pix enviado', 'Pix efetuado', 'Transferência realizada', "
-    "'Pagamento confirmado', 'Recebimento PIX', 'Transação realizada'.\n"
+    "Comprovantes PIX geralmente contêm um ou mais destes elementos:\n"
+    "- Títulos: 'Comprovante de transferência', 'Comprovante de pagamento', 'Pix enviado', "
+    "'Pix efetuado', 'Transferência realizada', 'Pagamento confirmado', 'Recebimento PIX', 'Transação realizada'\n"
+    "- 'Tipo de transferência: Pix' ou 'Tipo: Pix'\n"
+    "- 'ID da transação', 'ID do pagamento' ou código E2E (começa com 'E' seguido de números)\n"
+    "- Nome do destinatário e CPF/CNPJ (pode estar parcialmente oculto com •••)\n"
+    "- Nome do banco: Nubank, Mercado Pago, Bradesco, Itaú, Caixa, Inter, PicPay, C6, Santander, BB, etc.\n"
+    "- Valor em R$ e data/horário da transação\n"
+    "Se a imagem contiver qualquer combinação desses elementos que indique claramente uma transferência PIX, "
+    "classifique como comprovante (eh_comprovante=true).\n"
     "Responda SOMENTE JSON válido sem markdown:\n"
     '{"eh_comprovante":true|false,"valor":number|null,"favorecido":string|null,"texto_extraido":string}'
 )
 MIME_PDFS = {"application/pdf"}
 MIME_AUDIOS = {"audio/ogg", "audio/mpeg", "audio/mp4", "audio/webm", "audio/wav"}
+
+
+def _parse_comprovante_json(raw: str) -> dict:
+    """Tenta json.loads; se falhar por truncamento, extrai campos via regex."""
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # Fallback: extrai campos individuais do JSON parcial
+        eh = re.search(r'"eh_comprovante"\s*:\s*(true|false)', raw)
+        valor = re.search(r'"valor"\s*:\s*([0-9]+(?:\.[0-9]+)?|null)', raw)
+        favorecido = re.search(r'"favorecido"\s*:\s*"([^"]*)"', raw)
+        texto = re.search(r'"texto_extraido"\s*:\s*"(.*)', raw, re.DOTALL)
+        if eh:
+            logger.warning("JSON truncado do LLM — usando fallback regex para comprovante")
+            return {
+                "eh_comprovante": eh.group(1) == "true",
+                "valor": float(valor.group(1)) if valor and valor.group(1) != "null" else None,
+                "favorecido": favorecido.group(1) if favorecido else None,
+                "texto_extraido": texto.group(1)[:500] if texto else "",
+            }
+        raise
 
 
 def _bearer() -> str:
@@ -198,11 +223,11 @@ def analisar_comprovante_pagamento(content: bytes, mime_type: str) -> dict:
             user_text=prompt,
             image_bytes=content,
             mime_type=mime_type,
-            max_tokens=300,
+            max_tokens=800,
         )
         logger.debug("Raw LLM response para análise de comprovante: %s", raw[:300])
         raw = llm_client.strip_json_fences(raw)
-        data = json.loads(raw)
+        data = _parse_comprovante_json(raw)
         valor = data.get("valor")
         logger.debug("Valor bruto extraído do LLM: %s (tipo: %s)", valor, type(valor).__name__)
 
@@ -243,11 +268,11 @@ async def analisar_comprovante_pagamento_async(content: bytes, mime_type: str) -
             user_text=prompt,
             image_bytes=content,
             mime_type=mime_type,
-            max_tokens=300,
+            max_tokens=800,
         )
         logger.debug("Raw LLM response para análise de comprovante: %s", raw[:300])
         raw = llm_client.strip_json_fences(raw)
-        data = json.loads(raw)
+        data = _parse_comprovante_json(raw)
         valor = data.get("valor")
         logger.debug("Valor bruto extraído do LLM: %s (tipo: %s)", valor, type(valor).__name__)
 
