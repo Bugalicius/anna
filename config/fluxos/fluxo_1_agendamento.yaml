@@ -404,7 +404,7 @@ estados:
           mensagem_template: |
             Ótima escolha! Posso te dar uma dica? 💚
 
-            Por +R${diferenca} você sobe pro Plano Premium: 6 consultas em 270 dias, Lilly e encontros coletivos. Além de ser um acompanhamento mais longo, o valor por consulta fica mais em conta.
+            Por +R${diferenca} você sobe pro Plano Premium: 6 consultas em 270 dias e encontros coletivos. Além de ser um acompanhamento mais longo, o valor por consulta fica mais em conta.
 
             Quer manter o Ouro ou prefere o Premium?
           botoes:

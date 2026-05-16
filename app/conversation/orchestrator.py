@@ -742,7 +742,7 @@ def _acao_on_enter_custom(state: dict[str, Any], estado: str) -> AcaoAutorizada 
             texto = (
                 "Ótima escolha! Antes de confirmar, vale comparar com o Premium 💚\n\n"
                 f"Por +R${diff:.0f}, você sobe para o {destino_cfg.nome_publico}: "
-                "6 consultas em 270 dias, com Lilly e encontros coletivos.\n\n"
+                "6 consultas em 270 dias e encontros coletivos.\n\n"
                 f"Além de ser um acompanhamento bem mais longo, o valor por consulta fica menor: "
                 f"aprox. R${origem_por_consulta:.0f} no Ouro vs. R${dest_por_consulta:.0f} no Premium.\n\n"
                 "Quer manter o Ouro ou prefere o Premium?"

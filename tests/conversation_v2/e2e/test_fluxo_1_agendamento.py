@@ -335,6 +335,7 @@ async def test_upsell_ouro_para_premium_usa_argumentos_do_premium():
     assert "6 consultas" in texto
     assert "270 dias" in texto
     assert "valor por consulta fica menor" in texto
+    assert "Lilly" not in texto
     assert "90 dias" not in texto
     assert "manter a consulta única" not in texto.lower()
 
