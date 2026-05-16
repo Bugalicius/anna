@@ -107,6 +107,13 @@ def _extrair_nome(texto: str) -> str | None:
     if not raw:
         return None
     raw = re.sub(r"^(meu nome (e|é)|sou|eu sou|chamo|me chamo)\s+", "", raw, flags=re.I).strip()
+    raw = re.split(r"[,;|/\\]", raw, maxsplit=1)[0].strip()
+    raw = re.sub(
+        r"\b(primeira\s+consulta|primeira\s+vez|sou\s+nov[oa]|nov[oa]|já\s+sou\s+paciente|ja\s+sou\s+paciente|sou\s+paciente|retorno)\b",
+        "",
+        raw,
+        flags=re.I,
+    ).strip()
     raw = re.sub(r"[^A-Za-zÀ-ÿ\s'-]", "", raw).strip()
     if not raw or len(raw) < 2:
         return None
@@ -244,7 +251,10 @@ def _heuristica(mensagem: dict[str, Any], estado_atual: str, state: dict[str, An
     elif estado_atual == "aguardando_objetivo":
         intent = "pergunta_clinica" if any(x in n for x in ("dieta", "comer", "suplement")) else "informar_objetivo"
     elif estado_atual == "aguardando_escolha_plano":
-        intent = "pedir_desconto" if "desconto" in n else "escolher_plano"
+        if any(x in n for x in ("modalidade", "presencial", "online", "videochamada", "diferenca")):
+            intent = "duvida_modalidade"
+        else:
+            intent = "pedir_desconto" if "desconto" in n else "escolher_plano"
     elif estado_atual == "oferecendo_upsell":
         intent = "aceitar_upsell" if any(x in n for x in ("sim", "aceito", "quero", "melhor")) else "recusar_upsell"
     elif estado_atual == "aguardando_modalidade":
@@ -253,7 +263,10 @@ def _heuristica(mensagem: dict[str, Any], estado_atual: str, state: dict[str, An
         intent = "informar_preferencia_horario"
         entities.update(_extrair_preferencia(texto))
     elif estado_atual == "aguardando_escolha_slot":
-        if any(x in n for x in ("outra", "mais", "nao serve", "nenhum", "outro turno")):
+        if any(x in n for x in ("manha", "tarde", "noite", "segunda", "terca", "terça", "quarta", "quinta", "sexta")) and not re.search(r"\b(slot_)?[123]\b", n):
+            intent = "informar_preferencia_horario"
+            entities.update(_extrair_preferencia(texto))
+        elif any(x in n for x in ("outra", "mais", "nao serve", "nenhum", "outro turno")):
             intent = "rejeitar_slots"
         else:
             intent = "escolher_slot"

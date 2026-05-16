@@ -120,6 +120,174 @@ async def test_nome_generico_bloqueado():
     assert any("nome" in m.conteudo.lower() for m in result.mensagens_enviadas)
 
 
+async def test_nome_e_primeira_consulta_na_mesma_mensagem_avanca_para_objetivo():
+    phone = "553100000030"
+    await send(phone, "oi")
+    result = await send(phone, "Maria Silva, primeira consulta")
+    state = await state_for(phone)
+
+    assert result.novo_estado == "aguardando_objetivo"
+    assert state["collected_data"]["nome"] == "Maria Silva"
+    assert state["collected_data"]["status_paciente"] == "novo"
+    assert any("objetivo" in m.conteudo.lower() for m in result.mensagens_enviadas)
+
+
+async def test_nome_e_retorno_na_mesma_mensagem_avanca_para_localizar_cadastro():
+    phone = "553100000031"
+    await send(phone, "oi")
+    result = await send(phone, "João Pedro Souza, já sou paciente")
+    state = await state_for(phone)
+
+    assert result.novo_estado == "aguardando_nome_completo_retorno"
+    assert state["collected_data"]["nome"] == "João Pedro Souza"
+    assert state["collected_data"]["status_paciente"] == "retorno"
+    assert any("localizar seu cadastro" in m.conteudo.lower() for m in result.mensagens_enviadas)
+
+
+async def test_primeira_mensagem_com_nome_status_e_objetivo_vai_para_planos():
+    phone = "553100000032"
+    result = await send(phone, "Oi, sou Mariana Alves, primeira consulta, quero emagrecer")
+    state = await state_for(phone)
+
+    assert result.novo_estado == "aguardando_escolha_plano"
+    assert state["collected_data"]["nome"] == "Mariana Alves"
+    assert state["collected_data"]["status_paciente"] == "novo"
+    assert state["collected_data"]["objetivo"] == "emagrecer"
+    assert any("opções" in m.conteudo.lower() for m in result.mensagens_enviadas)
+
+
+async def test_cadastro_antes_do_comprovante_pix_nao_cai_em_fallback():
+    phone = "553100000033"
+    await seed_state(
+        phone,
+        "aguardando_pagamento_pix",
+        collected_data={"nome": "Maria", "plano": "ouro", "modalidade": "presencial", "forma_pagamento": "pix"},
+    )
+    result = await send(phone, "12/03/1992")
+    state = await state_for(phone)
+
+    assert result.novo_estado == "aguardando_pagamento_pix"
+    assert state.get("fallback_streak") in (None, 0)
+    assert any("comprovante" in m.conteudo.lower() for m in result.mensagens_enviadas)
+
+
+async def test_cadastro_incremental_data_e_email_confirma_usando_whatsapp_atual():
+    phone = "553100000039"
+    await seed_state(
+        phone,
+        "aguardando_cadastro",
+        collected_data={"nome": "Maria Silva", "plano": "ouro", "modalidade": "presencial"},
+        flags={"pagamento_confirmado": True},
+        appointment={"slot_escolhido": SLOTS[0]},
+    )
+    first = await send(phone, "12/03/1992")
+    final = await send(phone, "maria.silva@gmail.com")
+    state = await state_for(phone)
+
+    assert first.novo_estado == "aguardando_cadastro"
+    assert final.novo_estado == "concluido"
+    assert state["collected_data"]["whatsapp_contato"] == phone
+    assert any("consulta foi confirmada" in m.conteudo for m in final.mensagens_enviadas)
+
+
+async def test_cadastro_incremental_data_invalida_pede_formato():
+    phone = "553100000040"
+    await seed_state(
+        phone,
+        "aguardando_cadastro",
+        collected_data={"nome": "Tatiane Ribeiro", "plano": "ouro", "modalidade": "presencial"},
+        flags={"pagamento_confirmado": True},
+        appointment={"slot_escolhido": SLOTS[0]},
+    )
+    result = await send(phone, "32/13/1999")
+
+    assert result.novo_estado == "aguardando_cadastro"
+    assert any("dd/mm/aaaa" in m.conteudo.lower() for m in result.mensagens_enviadas)
+
+
+async def test_cadastro_incremental_email_invalido_pede_formato():
+    phone = "553100000041"
+    await seed_state(
+        phone,
+        "aguardando_cadastro",
+        collected_data={"nome": "Isabela Martins", "plano": "ouro", "modalidade": "online", "data_nascimento": "10/10/1990"},
+        flags={"pagamento_confirmado": True},
+        appointment={"slot_escolhido": SLOTS[0]},
+    )
+    result = await send(phone, "isabela arroba gmail")
+
+    assert result.novo_estado == "aguardando_cadastro"
+    assert any("nome@dominio.com" in m.conteudo.lower() for m in result.mensagens_enviadas)
+
+
+async def test_cartao_paguei_responde_sem_silencio():
+    phone = "553100000034"
+    await seed_state(
+        phone,
+        "aguardando_pagamento_cartao",
+        collected_data={"nome": "João", "plano": "ouro", "modalidade": "online", "forma_pagamento": "cartao"},
+    )
+    result = await send(phone, "paguei")
+
+    assert result.novo_estado == "aguardando_pagamento_cartao"
+    assert any("confirmação do cartão" in m.conteudo.lower() for m in result.mensagens_enviadas)
+
+
+async def test_cartao_dado_cadastral_antes_da_confirmacao_nao_cai_em_fallback():
+    phone = "553100000036"
+    await seed_state(
+        phone,
+        "aguardando_pagamento_cartao",
+        collected_data={"nome": "João", "plano": "ouro", "modalidade": "online", "forma_pagamento": "cartao"},
+    )
+    result = await send(phone, "21/08/1989")
+
+    assert result.novo_estado == "aguardando_pagamento_cartao"
+    assert any("confirmação do cartão" in m.conteudo.lower() for m in result.mensagens_enviadas)
+
+
+async def test_troca_de_cartao_para_pix_envia_chave_pix():
+    phone = "553100000037"
+    await seed_state(
+        phone,
+        "aguardando_pagamento_cartao",
+        collected_data={"nome": "Rafaela", "plano": "ouro", "modalidade": "presencial", "forma_pagamento": "cartao"},
+    )
+    result = await send(phone, "na verdade quero pix")
+    state = await state_for(phone)
+
+    assert result.novo_estado == "aguardando_pagamento_pix"
+    assert state["collected_data"]["forma_pagamento"] == "pix"
+    assert any("chave pix" in m.conteudo.lower() for m in result.mensagens_enviadas)
+
+
+async def test_consulta_individual_escolhe_plano_unica():
+    phone = "553100000038"
+    await seed_state(phone, "aguardando_escolha_plano", collected_data={"nome": "Mariana", "objetivo": "emagrecer"})
+    result = await send(phone, "consulta individual")
+    state = await state_for(phone)
+
+    assert result.novo_estado == "oferecendo_upsell"
+    assert state["collected_data"]["plano"] == "unica"
+    assert any("com retorno" in m.conteudo.lower() for m in result.mensagens_enviadas)
+
+
+async def test_mudar_preferencia_depois_dos_slots_busca_novamente():
+    phone = "553100000035"
+    await seed_state(
+        phone,
+        "aguardando_escolha_slot",
+        collected_data={"nome": "Ana", "plano": "ouro", "modalidade": "presencial"},
+        last_slots_offered=SLOTS,
+    )
+    result = await send(phone, "na verdade prefiro noite")
+    state = await state_for(phone)
+
+    assert result.novo_estado == "aguardando_escolha_slot"
+    assert state["collected_data"]["preferencia_horario"]["turno_extraido"] == "noite"
+    assert any("qual prefere" in m.conteudo.lower() for m in result.mensagens_enviadas)
+
+
 async def test_upsell_aceito_atualiza_plano():
     phone = "553100000004"
     await seed_state(phone, "oferecendo_upsell", collected_data={"nome": "Lia", "plano": "unica"})
@@ -227,4 +395,3 @@ async def test_duvida_durante_fluxo_responde_e_mantem_estado():
     result = await send(phone, "quanto custa?")
     assert result.novo_estado == "aguardando_cadastro"
     assert result.mensagens_enviadas
-

@@ -300,7 +300,7 @@ estados:
     situacoes:
       
       escolheu_unica:
-        trigger: "botao_id=plano_unica OR texto_contem=[única, unica, avulsa, sem retorno]"
+        trigger: "botao_id=plano_unica OR texto_contem=[única, unica, avulsa, sem retorno, consulta individual, individual]"
         action: "oferecer_upsell"
         salva_no_estado:
           collected_data.plano: "unica"

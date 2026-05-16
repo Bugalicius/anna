@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import ExitStack
 import hashlib
 import json
 import os
@@ -29,6 +30,9 @@ def _setup_env() -> Path:
     os.environ["DATABASE_URL"] = f"sqlite:///{db_path.as_posix()}"
     os.environ["REDIS_URL"] = "redis://127.0.0.1:6399/0"
     os.environ["DISABLE_LLM_FOR_TESTS"] = "true"
+    os.environ["ENABLE_TEST_CHAT"] = "true"
+    os.environ["AUTO_CREATE_TABLES"] = "true"
+    os.environ["GEMINI_API_KEY"] = "test-gemini-key"
     return db_path
 
 
@@ -85,7 +89,7 @@ SCENARIOS: list[Scenario] = [
             "prefiro de manhã",
             "1",
             "pix",
-            "paguei",
+            "[comprovante valor=345]",
             "12/03/1992",
             "maria.silva@gmail.com",
         ],
@@ -304,7 +308,7 @@ SCENARIOS: list[Scenario] = [
             "manhã",
             "1",
             "pix",
-            "paguei",
+            "[comprovante valor=345]",
             "32/13/1999",
         ],
         expected_any=["data de nascimento", "DD/MM/AAAA", "mandar novamente"],
@@ -322,7 +326,7 @@ SCENARIOS: list[Scenario] = [
             "tarde",
             "2",
             "pix",
-            "paguei",
+            "[comprovante valor=325]",
             "10/10/1990",
             "isabela arroba gmail",
         ],
@@ -662,6 +666,29 @@ def _hash_phone(phone: str) -> str:
     return hashlib.sha256(phone.encode()).hexdigest()[:64]
 
 
+class FakeMeta:
+    async def send_text(self, *args, **kwargs) -> dict[str, Any]:
+        return {"messages": [{"id": "fake-meta-text"}]}
+
+    async def send_template(self, *args, **kwargs) -> dict[str, Any]:
+        return {"messages": [{"id": "fake-meta-template"}]}
+
+    async def send_interactive_buttons(self, *args, **kwargs) -> dict[str, Any]:
+        return {"messages": [{"id": "fake-meta-buttons"}]}
+
+    async def send_interactive_list(self, *args, **kwargs) -> dict[str, Any]:
+        return {"messages": [{"id": "fake-meta-list"}]}
+
+    async def send_contact(self, *args, **kwargs) -> dict[str, Any]:
+        return {"messages": [{"id": "fake-meta-contact"}]}
+
+    async def send_document(self, *args, **kwargs) -> dict[str, Any]:
+        return {"messages": [{"id": "fake-meta-document"}]}
+
+    async def send_image(self, *args, **kwargs) -> dict[str, Any]:
+        return {"messages": [{"id": "fake-meta-image"}]}
+
+
 def _evaluate(scenario: Scenario, transcript: list[dict[str, Any]]) -> tuple[str, list[str]]:
     text = "\n".join(
         "\n".join(turn["responses"]) for turn in transcript if turn["responses"]
@@ -757,13 +784,29 @@ def main() -> None:
     async def _detectar_tipo_async(telefone):
         return _fake_detectar_tipo_remarcacao(fake_db, telefone)
 
+    async def _no_llm(*args, **kwargs):
+        return None
+
+    async def _lock_ok(*args, **kwargs):
+        return True
+
+    async def _lock_release(*args, **kwargs):
+        return None
+
     patches.extend([
         patch("app.tools.scheduling.consultar_slots_remarcar", side_effect=_consultar_slots_remarcar_async),
         patch("app.tools.patients.detectar_tipo_remarcacao", side_effect=_detectar_tipo_async),
         patch("app.chatwoot_bridge.is_human_handoff_active", return_value=False),
+        patch("app.conversation.alerter_simples.MetaAPIClient", FakeMeta),
+        patch("app.conversation.interpreter._interpretar_gemini", side_effect=_no_llm),
+        patch("app.llm_client.complete_text_async", side_effect=_no_llm),
+        patch("app.conversation.orchestrator._acquire_processing_lock", side_effect=_lock_ok),
+        patch("app.conversation.orchestrator._release_processing_lock", side_effect=_lock_release),
     ])
 
-    with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11]:
+    with ExitStack() as stack:
+        for item in patches:
+            stack.enter_context(item)
         with TestClient(app) as client:
             conv_state._state_mgr = None
             for idx, scenario in enumerate(SCENARIOS, start=1):

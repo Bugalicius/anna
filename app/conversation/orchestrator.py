@@ -204,6 +204,49 @@ def _status_paciente_from_text(texto: str) -> str | None:
     return None
 
 
+def _objetivo_from_text(texto: str) -> str | None:
+    n = _norm_text(texto)
+    if any(t in n for t in ("emagrecer", "perder peso", "perder gordura", "secar")):
+        return "emagrecer"
+    if any(t in n for t in ("ganhar massa", "hipertrofia", "ganhar peso", "massa muscular")):
+        return "ganhar_massa"
+    if "lipedema" in n:
+        return "lipedema"
+    return None
+
+
+def _extrair_nome_primeira_mensagem(texto: str) -> str | None:
+    match = re.search(
+        r"\b(?:sou|eu sou|me chamo|chamo|meu nome (?:e|é))\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s'-]{1,80})",
+        texto,
+        flags=re.I,
+    )
+    if not match:
+        return None
+    trecho = re.split(
+        r"[,;]|\b(?:primeira|primeira vez|primeira consulta|novo|nova|já sou|ja sou|paciente|retorno|quero|gostaria|preciso)\b",
+        match.group(1),
+        maxsplit=1,
+        flags=re.I,
+    )[0].strip()
+    nome = _extrair_nome(trecho)
+    if not nome or not rules.R12_validar_nome_nao_generico(nome).passou:
+        return None
+    return nome
+
+
+def _looks_like_cadastro(texto: str) -> bool:
+    return bool(
+        re.search(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b", texto)
+        or re.search(r"\b[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}\b", texto, re.I)
+    )
+
+
+def _looks_like_cadastro_attempt(texto: str) -> bool:
+    n = _norm_text(texto)
+    return _looks_like_cadastro(texto) or any(t in n for t in ("arroba", "gmail", "hotmail", "email", "e-mail"))
+
+
 def _bioimpedancia_answer() -> str:
     try:
         from app.knowledge_base import kb
@@ -275,6 +318,30 @@ def _mensagens_bioimpedancia_com_status(
             tipo="texto",
             conteudo="Que bom te ver de novo! 💚 Pra eu localizar seu cadastro, pode me mandar seu nome completo?",
         ),
+    ], "aguardando_nome_completo_retorno"
+
+
+def _mensagens_nome_com_status(state: dict[str, Any], status: str) -> tuple[list[Mensagem], str]:
+    if status == "novo":
+        primeiro = _primeiro_nome(state)
+        return [
+            Mensagem(tipo="texto", conteudo=f"Que bom te receber, {primeiro}! 💚"),
+            Mensagem(
+                tipo="botoes",
+                conteudo="Antes de te apresentar nossos planos, me conta: qual seu principal objetivo agora?",
+                botoes=[  # type: ignore[list-item]
+                    {"id": "obj_emagrecer", "label": "Emagrecer"},
+                    {"id": "obj_ganhar_massa", "label": "Ganhar massa"},
+                    {"id": "obj_lipedema", "label": "Tratar lipedema"},
+                    {"id": "obj_outro", "label": "Outro objetivo"},
+                ],
+            ),
+        ], "aguardando_objetivo"
+    return [
+        Mensagem(
+            tipo="texto",
+            conteudo="Que bom te ver de novo! 💚 Pra eu localizar seu cadastro, pode me mandar seu nome completo?",
+        )
     ], "aguardando_nome_completo_retorno"
 
 
@@ -791,6 +858,99 @@ async def _executar_pagamento_pix(state: dict[str, Any], mensagem: dict[str, Any
         return [Mensagem(tipo="texto", conteudo=f"Recebi pagamento integral de R$ {valor_pago:.2f}. Tudo quitado.")], "aguardando_cadastro"
     restante = valor_total - valor_pago
     return [Mensagem(tipo="texto", conteudo=f"Recebi seu sinal de R$ {valor_pago:.2f}. Falta R$ {restante:.2f} para acertar no dia da consulta.")], "aguardando_cadastro"
+
+
+def _parse_data_nascimento(texto: str) -> tuple[str | None, bool]:
+    match = re.search(r"\b(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b", texto)
+    if not match:
+        return None, False
+    dia, mes, ano_raw = int(match.group(1)), int(match.group(2)), int(match.group(3))
+    ano = ano_raw + 2000 if ano_raw < 100 and ano_raw <= date.today().year % 100 else ano_raw
+    if ano < 100:
+        ano += 1900
+    try:
+        datetime.strptime(f"{dia:02d}/{mes:02d}/{ano}", "%d/%m/%Y")
+    except ValueError:
+        return None, True
+    return f"{dia:02d}/{mes:02d}/{ano}", True
+
+
+def _cadastro_missing(cd: dict[str, Any]) -> list[str]:
+    missing: list[str] = []
+    if len(str(cd.get("nome") or cd.get("nome_completo") or "").split()) < 2:
+        missing.append("nome completo")
+    if not cd.get("data_nascimento"):
+        missing.append("data de nascimento")
+    if not cd.get("email"):
+        missing.append("e-mail")
+    if not cd.get("whatsapp_contato"):
+        missing.append("WhatsApp")
+    return missing
+
+
+async def _processar_cadastro_incremental(
+    state: dict[str, Any],
+    phone: str,
+    texto: str,
+    entidades: dict[str, Any],
+) -> tuple[list[Mensagem], str] | None:
+    cd = state.setdefault("collected_data", {})
+    if not cd.get("whatsapp_contato"):
+        cd["whatsapp_contato"] = phone
+
+    data_nasc, viu_data = _parse_data_nascimento(texto)
+    if viu_data and not data_nasc:
+        return [
+            Mensagem(
+                tipo="texto",
+                conteudo="A data de nascimento parece inválida. Pode mandar no formato DD/MM/AAAA?",
+            )
+        ], "aguardando_cadastro"
+    if data_nasc:
+        nasc = datetime.strptime(data_nasc, "%d/%m/%Y").date()
+        idade = (date.today() - nasc).days // 365
+        if idade < 16:
+            state.setdefault("flags", {})["restricao_atendimento"] = "menor_16"
+            return [
+                Mensagem(
+                    tipo="texto",
+                    conteudo=(
+                        "Infelizmente a Thaynara não realiza atendimento para menores de 16 anos no momento. "
+                        "Vou avisar a equipe para te orientar por aqui."
+                    ),
+                )
+            ], "concluido_escalado"
+        cd["data_nascimento"] = data_nasc
+
+    email = entidades.get("email")
+    if email:
+        cd["email"] = email
+    elif any(t in _norm_text(texto) for t in ("arroba", "gmail", "hotmail", "email", "e-mail")):
+        return [
+            Mensagem(
+                tipo="texto",
+                conteudo="O e-mail parece inválido. Pode mandar no formato nome@dominio.com?",
+            )
+        ], "aguardando_cadastro"
+
+    nome = entidades.get("nome_completo")
+    if nome and len(str(nome).split()) >= 2:
+        cd["nome"] = nome
+        cd["nome_completo"] = nome
+
+    whatsapp = entidades.get("whatsapp_extraido")
+    if whatsapp:
+        cd["whatsapp_contato"] = whatsapp
+
+    missing = _cadastro_missing(cd)
+    if not missing:
+        return await _criar_agendamento_e_confirmar(state)
+
+    if data_nasc or email or nome or whatsapp:
+        faltantes = ", ".join(missing)
+        return [Mensagem(tipo="texto", conteudo=f"Anotei 💚 Falta só: {faltantes}. Pode mandar?")], "aguardando_cadastro"
+
+    return None
 
 
 def _acao_bloqueio_cadastro_se_necessario(
@@ -1681,6 +1841,33 @@ async def _processar_turno_locked(phone: str, mensagem: dict[str, Any]) -> Resul
                 await save_state(phone_hash, state)
                 return ResultadoTurno(sucesso=True, mensagens_enviadas=mensagens, novo_estado=state["estado"], fluxo_id=AGENDAMENTO_ID, duracao_ms=int((time.perf_counter() - started) * 1000))
 
+            texto_inicio = _texto_mensagem(mensagem)
+            nome_inicio = _extrair_nome_primeira_mensagem(texto_inicio)
+            status_inicio = _status_paciente_from_text(texto_inicio)
+            objetivo_inicio = _objetivo_from_text(texto_inicio)
+            if nome_inicio and status_inicio:
+                state["collected_data"]["nome"] = nome_inicio
+                state["collected_data"]["status_paciente"] = status_inicio
+                if status_inicio == "novo" and objetivo_inicio:
+                    state["collected_data"]["objetivo"] = objetivo_inicio
+                    mensagens.append(Mensagem(tipo="texto", conteudo=f"Prazer, {_primeiro_nome(state)}! 💚"))
+                    enter_msgs, prox = await _mensagens_on_enter(state, "apresentando_planos")
+                    mensagens.extend(enter_msgs)
+                    state["estado"] = prox or "aguardando_escolha_plano"
+                else:
+                    mensagens, target = _mensagens_nome_com_status(state, status_inicio)
+                    state["estado"] = target
+                add_message(state, "user", texto_inicio)
+                add_message(state, "assistant", "\n".join(m.conteudo for m in mensagens if m.conteudo))
+                await save_state(phone_hash, state)
+                return ResultadoTurno(
+                    sucesso=True,
+                    mensagens_enviadas=mensagens,
+                    novo_estado=state["estado"],
+                    fluxo_id=AGENDAMENTO_ID,
+                    duracao_ms=int((time.perf_counter() - started) * 1000),
+                )
+
             enter_msgs, prox = await _mensagens_on_enter(state, "inicio")
             mensagens.extend(enter_msgs)
             state["estado"] = prox or "aguardando_nome"
@@ -1697,12 +1884,115 @@ async def _processar_turno_locked(phone: str, mensagem: dict[str, Any]) -> Resul
             interpretacao.texto_original,
         )
 
+        if (
+            estado_antes == "aguardando_nome"
+            and interpretacao.intent == "informar_nome"
+            and interpretacao.validacoes.get("validacao_nome_passou")
+        ):
+            status_informado = _status_paciente_from_text(interpretacao.texto_original)
+            nome_informado = entidades.get("nome_extraido") or _extrair_nome(interpretacao.texto_original)
+            if status_informado and nome_informado:
+                state["collected_data"]["nome"] = nome_informado
+                state["collected_data"]["status_paciente"] = status_informado
+                mensagens, target = _mensagens_nome_com_status(state, status_informado)
+                state["estado"] = target
+                add_message(state, "user", mensagem.get("text") or mensagem.get("body") or "")
+                add_message(state, "assistant", "\n".join(m.conteudo for m in mensagens if m.conteudo))
+                await save_state(phone_hash, state)
+                return ResultadoTurno(
+                    sucesso=True,
+                    mensagens_enviadas=mensagens,
+                    novo_estado=state["estado"],
+                    fluxo_id=AGENDAMENTO_ID,
+                    duracao_ms=int((time.perf_counter() - started) * 1000),
+                )
+
+        if estado_antes == "aguardando_cadastro":
+            cadastro = await _processar_cadastro_incremental(
+                state,
+                phone,
+                interpretacao.texto_original,
+                entidades,
+            )
+            if cadastro:
+                mensagens, target = cadastro
+                state["estado"] = target
+                add_message(state, "user", mensagem.get("text") or mensagem.get("body") or "")
+                add_message(state, "assistant", "\n".join(m.conteudo for m in mensagens if m.conteudo))
+                await save_state(phone_hash, state)
+                return ResultadoTurno(
+                    sucesso=True,
+                    mensagens_enviadas=mensagens,
+                    novo_estado=state["estado"],
+                    fluxo_id=AGENDAMENTO_ID,
+                    duracao_ms=int((time.perf_counter() - started) * 1000),
+                )
+
         acao = _acao_bloqueio_cadastro_se_necessario(estado_antes, interpretacao.texto_original, entidades)
         if acao is None and estado_antes == "aguardando_pagamento_pix" and entidades.get("valor_pago") is not None:
             acao = AcaoAutorizada(
                 tipo=TipoAcao.executar_tool,
                 tool_a_executar="analisar_comprovante",
                 proximo_estado="validando_comprovante",
+            )
+        if acao is None and estado_antes == "aguardando_pagamento_pix" and _looks_like_cadastro_attempt(interpretacao.texto_original):
+            acao = AcaoAutorizada(
+                tipo=TipoAcao.enviar_mensagem,
+                mensagens=[
+                    Mensagem(
+                        tipo="texto",
+                        conteudo="Antes do cadastro, preciso confirmar o pagamento. Pode me mandar o comprovante do PIX confirmado? 💚",
+                    )
+                ],
+                proximo_estado="aguardando_pagamento_pix",
+            )
+        if acao is None and estado_antes == "aguardando_pagamento_cartao":
+            texto_cartao = _norm_text(interpretacao.texto_original)
+            if "pix" in texto_cartao:
+                state["collected_data"]["forma_pagamento"] = "pix"
+                mensagens, target = await _mensagens_on_enter(state, "aguardando_pagamento_pix")
+                state["estado"] = target or "aguardando_pagamento_pix"
+                add_message(state, "user", mensagem.get("text") or mensagem.get("body") or "")
+                add_message(state, "assistant", "\n".join(m.conteudo for m in mensagens if m.conteudo))
+                await save_state(phone_hash, state)
+                return ResultadoTurno(
+                    sucesso=True,
+                    mensagens_enviadas=mensagens,
+                    novo_estado=state["estado"],
+                    fluxo_id=AGENDAMENTO_ID,
+                    duracao_ms=int((time.perf_counter() - started) * 1000),
+                )
+            if _looks_like_cadastro_attempt(interpretacao.texto_original):
+                acao = AcaoAutorizada(
+                    tipo=TipoAcao.enviar_mensagem,
+                    mensagens=[
+                        Mensagem(
+                            tipo="texto",
+                            conteudo=(
+                                "Ainda preciso aguardar a confirmação do cartão antes do cadastro. "
+                                "Assim que confirmar, eu sigo com seus dados por aqui 💚"
+                            ),
+                        )
+                    ],
+                    proximo_estado="aguardando_pagamento_cartao",
+                )
+        if acao is None and estado_antes == "aguardando_escolha_slot" and interpretacao.intent == "informar_preferencia_horario":
+            pref = _extrair_preferencia(interpretacao.texto_original)
+            pref["descricao"] = interpretacao.texto_original
+            state["collected_data"]["preferencia_horario"] = pref
+            state["last_slots_offered"] = []
+            state["slots_rejeitados"] = []
+            mensagens, target = await _executar_consultar_slots(state)
+            state["estado"] = target
+            add_message(state, "user", mensagem.get("text") or mensagem.get("body") or "")
+            add_message(state, "assistant", "\n".join(m.conteudo for m in mensagens if m.conteudo))
+            await save_state(phone_hash, state)
+            return ResultadoTurno(
+                sucesso=True,
+                mensagens_enviadas=mensagens,
+                novo_estado=state["estado"],
+                fluxo_id=AGENDAMENTO_ID,
+                duracao_ms=int((time.perf_counter() - started) * 1000),
             )
         if acao is None and estado_antes == "oferecendo_upsell":
             texto_norm = _norm_text(interpretacao.texto_original)
@@ -1758,6 +2048,37 @@ async def _processar_turno_locked(phone: str, mensagem: dict[str, Any]) -> Resul
                 texto_original=interpretacao.texto_original,
                 validacoes=interpretacao.validacoes,
                 contexto_extra=_contexto_template(state, entidades),
+            )
+        if estado_antes == "aguardando_escolha_plano" and acao and acao.situacao_nome == "pergunta_modalidade":
+            acao = AcaoAutorizada(
+                tipo=TipoAcao.enviar_mensagem,
+                mensagens=[
+                    Mensagem(
+                        tipo="texto",
+                        conteudo=(
+                            "Você pode escolher presencial ou online. No presencial, a consulta acontece na Aura Clinic. "
+                            "No online, é por videochamada no WhatsApp, com orientações para fotos e medidas antes da consulta. "
+                            "Agora me conta: qual plano faz mais sentido pra você?"
+                        ),
+                    )
+                ],
+                proximo_estado="aguardando_escolha_plano",
+                situacao_nome="pergunta_modalidade",
+            )
+        if estado_antes == "aguardando_pagamento_cartao" and acao and acao.situacao_nome == "paciente_disse_pagou":
+            acao = AcaoAutorizada(
+                tipo=TipoAcao.enviar_mensagem,
+                mensagens=[
+                    Mensagem(
+                        tipo="texto",
+                        conteudo=(
+                            "Perfeito, vou aguardar a confirmação do cartão por aqui. "
+                            "Assim que confirmar, sigo com seu cadastro para finalizar o agendamento 💚"
+                        ),
+                    )
+                ],
+                proximo_estado="aguardando_pagamento_cartao",
+                situacao_nome="paciente_disse_pagou",
             )
         # ── FORA DE CONTEXTO (Fluxo 10) ──────────────────────────────────────
         fora_contexto = acao is None
