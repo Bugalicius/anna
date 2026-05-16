@@ -40,7 +40,7 @@ _ID_LOCAL_PRESENCIAL: str | None = None
 _ID_LOCAL_ONLINE: str | None = None
 _TODOS_IDS_LOCAIS: list[str] = []   # todos os locais conhecidos (para query extra)
 
-TOKEN_CACHE_PATH = Path(__file__).parent.parent.parent / "dietbox_token_cache.json"
+TOKEN_CACHE_PATH = Path(__file__).parent.parent.parent / "logs" / "dietbox_token_cache.json"
 
 
 def _parse_agenda_datetime(value: str, timezone_name: str | None = None) -> datetime | None:

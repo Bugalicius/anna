@@ -134,11 +134,32 @@ class Alerter:
 
         from app.meta_api import MetaAPIClient
 
+        # Template garante entrega independente da janela 24h da Meta.
+        # send_text é best-effort (funciona só se a janela estiver aberta).
+        client = MetaAPIClient()
+        sent = False
+        if self.settings.alert_template_name:
+            try:
+                await client.send_template(
+                    self.settings.alerts_to,
+                    self.settings.alert_template_name,
+                    self.settings.alert_template_language,
+                )
+                sent = True
+            except Exception as exc:
+                logger.exception("Falha ao enviar template monitor check_id=%s: %s", alert.check_id, exc)
+
         try:
-            await MetaAPIClient().send_text(self.settings.alerts_to, text)
+            await client.send_text(self.settings.alerts_to, text)
             logger.warning("Alerta monitor enviado check_id=%s severity=%s", alert.check_id, alert.severity.value)
             return True
         except Exception as exc:
+            if sent:
+                logger.warning(
+                    "Alerta monitor enviado via template (send_text falhou) check_id=%s: %s",
+                    alert.check_id, exc,
+                )
+                return True
             logger.exception("Falha ao enviar alerta monitor check_id=%s: %s", alert.check_id, exc)
             return False
 

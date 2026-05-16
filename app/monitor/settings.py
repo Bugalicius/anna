@@ -28,6 +28,8 @@ class MonitorSettings:
     active_start_hour: int
     active_end_hour: int
     enable_external_checks: bool
+    alert_template_name: str
+    alert_template_language: str
 
 
 def get_settings() -> MonitorSettings:
@@ -47,4 +49,6 @@ def get_settings() -> MonitorSettings:
         active_start_hour=int(os.environ.get("MONITOR_ACTIVE_START_HOUR", "8")),
         active_end_hour=int(os.environ.get("MONITOR_ACTIVE_END_HOUR", "22")),
         enable_external_checks=_bool_env("MONITOR_EXTERNAL_CHECKS_ENABLED", True),
+        alert_template_name=os.environ.get("ESCALATION_TEMPLATE_NAME", ""),
+        alert_template_language=os.environ.get("ESCALATION_TEMPLATE_LANGUAGE", "pt_BR"),
     )
