@@ -65,6 +65,33 @@ async def test_bug1_contexto_nao_expira(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_bug1b_pagamento_confirmado_nao_reseta_por_inatividade():
+    """
+    GIVEN: paciente ja pagou e esta em cadastro
+    WHEN: volta depois de horas
+    THEN: estado critico nao volta para inicio.
+    """
+    from app.conversation.state import maybe_reset_stale_state
+
+    old = datetime.now(timezone.utc) - timedelta(hours=5)
+    state = {
+        "phone": "5531999990101",
+        "phone_hash": "hash",
+        "fluxo_id": "agendamento_paciente_novo",
+        "estado": "aguardando_cadastro",
+        "flags": {"pagamento_confirmado": True},
+        "collected_data": {"nome": "Maria"},
+        "history": [],
+        "last_message_at": old.isoformat(),
+    }
+
+    reset = await maybe_reset_stale_state("5531999990101", state)
+
+    assert reset["estado"] == "aguardando_cadastro"
+    assert reset.get("reset_reason") is None
+
+
+@pytest.mark.asyncio
 async def test_bug2_loop_fallback_escala(monkeypatch):
     """
     GIVEN: paciente já recebeu a mesma resposta de fallback duas vezes

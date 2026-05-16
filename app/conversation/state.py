@@ -333,6 +333,22 @@ async def maybe_reset_stale_state(phone: str, state: dict[str, Any]) -> dict[str
     if last_dt is None:
         return state
 
+    estado = str(state.get("estado") or "")
+    flags = state.get("flags") or {}
+    estados_protegidos = {
+        "aguardando_pagamento_pix",
+        "aguardando_pagamento_cartao",
+        "aguardando_cadastro",
+        "criando_agendamento",
+    }
+    if (
+        estado in estados_protegidos
+        or estado.startswith("remarcacao_")
+        or estado.startswith("cancelamento_")
+        or bool(flags.get("pagamento_confirmado"))
+    ):
+        return state
+
     now = datetime.now(UTC)
     if now - last_dt <= timedelta(hours=INACTIVITY_RESET_HOURS):
         return state

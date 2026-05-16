@@ -391,62 +391,12 @@ async def processar_resposta_breno(
 
 async def enviar_lembretes_pendentes(meta_client) -> int:
     """
-    Verifica escalações pendentes e envia lembretes ao Breno + aviso ao paciente.
-    Chamado pelo APScheduler a cada 5 minutos.
+    Lembretes de escalação desativados na v2.9.
 
-    Schedule de lembretes (D-09):
-    - Primeira hora: a cada 15 min (reminder_count 0..3)
-    - Após primeira hora: a cada 1h
-
-    Após 1h sem resposta (D-10): avisa paciente uma vez (quando reminder_count atingir 4).
+    As escalações agora são alertas simples e pontuais; não há reenvio automático
+    para o Breno.
     """
-    from app.database import SessionLocal
-    from app.models import PendingEscalation
-
-    now = datetime.now(BRT)
-    enviados = 0
-
-    with SessionLocal() as db:
-        pendentes = (
-            db.query(PendingEscalation)
-            .filter_by(status="aguardando")
-            .filter(PendingEscalation.next_reminder_at <= now)
-            .all()
-        )
-
-        for esc in pendentes:
-            esc.reminder_count += 1
-            tempo_decorrido = now - esc.created_at
-
-            # D-10: após 1h sem resposta (reminder_count == 4), avisa paciente
-            if esc.reminder_count == 4:
-                try:
-                    await meta_client.send_text(esc.phone_e164, _MSG_TIMEOUT_1H)
-                except Exception as e:
-                    logger.error("Falha ao avisar paciente sobre timeout: %s", e)
-
-            # Define próximo lembrete
-            if esc.reminder_count < 4:
-                # Primeira hora: a cada 15 min
-                esc.next_reminder_at = now + timedelta(minutes=15)
-            else:
-                # Após primeira hora: a cada 1h
-                esc.next_reminder_at = now + timedelta(hours=1)
-
-            # Enviar lembrete ao Breno (número interno)
-            lembrete = (
-                f"⏰ *LEMBRETE #{esc.reminder_count}* — escalação pendente há "
-                f"{_formatar_tempo(tempo_decorrido)}\n\n{esc.contexto}"
-            )
-            try:
-                await meta_client.send_text(_NUMERO_INTERNO, lembrete)
-                enviados += 1
-            except Exception as e:
-                logger.error("Falha ao enviar lembrete ao Breno: %s", e)
-
-            db.commit()
-
-    return enviados
+    return 0
 
 
 # ── Compatibilidade — função legada usada em router.py ───────────────────────

@@ -186,11 +186,11 @@ async def test_processar_resposta_breno_relay_e_atualiza():
     mock_faq.assert_called_once()
 
 
-# ── Test 5: schedule de lembretes — 15min x4, depois 1h ──────────────────────
+# ── Test 5: lembretes desativados ─────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_enviar_lembretes_schedule_15min():
-    """D-09: primeiro 4 lembretes a cada 15min."""
+async def test_enviar_lembretes_pendentes_desativado():
+    """v2.9: escalações são alertas pontuais, sem lembretes automáticos."""
     from app.escalation import enviar_lembretes_pendentes
 
     meta = _make_meta_client()
@@ -200,60 +200,9 @@ async def test_enviar_lembretes_schedule_15min():
     with patcher:
         enviados = await enviar_lembretes_pendentes(meta)
 
-    # Lembrete enviado ao Breno
-    assert enviados == 1
-    assert meta.send_text.called
-
-    # reminder_count foi incrementado
-    assert esc_mock.reminder_count == 1
-
-    # Próximo lembrete: dentro de 15min (reminder_count < 4)
-    now = datetime.now(BRT)
-    diff = esc_mock.next_reminder_at - now
-    assert 10 * 60 <= diff.total_seconds() <= 20 * 60  # entre 10 e 20 min
-
-
-@pytest.mark.asyncio
-async def test_enviar_lembretes_apos_4_intervalo_1h():
-    """D-09: reminder_count >= 4 → próximo lembrete em 1h."""
-    from app.escalation import enviar_lembretes_pendentes
-
-    meta = _make_meta_client()
-    esc_mock = _make_pending_esc(reminder_count=4)
-
-    patcher, db_mock = _patch_db(esc_mock)
-    with patcher:
-        await enviar_lembretes_pendentes(meta)
-
-    # Próximo lembrete: dentro de ~1h
-    now = datetime.now(BRT)
-    diff = esc_mock.next_reminder_at - now
-    assert 50 * 60 <= diff.total_seconds() <= 70 * 60  # entre 50 e 70 min
-
-
-# ── Test 6: após 1h → paciente avisado ───────────────────────────────────────
-
-@pytest.mark.asyncio
-async def test_timeout_1h_avisa_paciente():
-    """D-10: no 4º lembrete (reminder_count chega a 4), paciente recebe aviso."""
-    from app.escalation import enviar_lembretes_pendentes
-
-    meta = _make_meta_client()
-    # reminder_count=3 → após incremento fica 4 → aciona aviso ao paciente
-    esc_mock = _make_pending_esc(reminder_count=3, phone_e164="5531999990005")
-
-    patcher, db_mock = _patch_db(esc_mock)
-    with patcher:
-        await enviar_lembretes_pendentes(meta)
-
-    # send_text deve ter sido chamado ao menos 2 vezes:
-    # 1. aviso ao paciente, 2. lembrete ao Breno
-    assert meta.send_text.call_count >= 2
-
-    # Verificar que paciente recebeu aviso
-    all_calls = [str(c) for c in meta.send_text.call_args_list]
-    paciente_avisado = any("5531999990005" in c for c in all_calls)
-    assert paciente_avisado, "Paciente deveria ter recebido aviso após 1h"
+    assert enviados == 0
+    assert not meta.send_text.called
+    assert esc_mock.reminder_count == 0
 
 
 # ── Test 7: número interno NUNCA exposto ao paciente ─────────────────────────

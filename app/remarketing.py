@@ -377,18 +377,8 @@ async def _enviar_remarketing(
 
 
 async def _check_escalation_reminders() -> None:
-    """Job APScheduler: verifica lembretes de escalação pendentes a cada 5 minutos."""
-    from app.meta_api import MetaAPIClient
-    from app.escalation import enviar_lembretes_pendentes
-
-    meta = MetaAPIClient()
-
-    try:
-        enviados = await enviar_lembretes_pendentes(meta)
-        if enviados > 0:
-            logger.info("Lembretes de escalação enviados: %d", enviados)
-    except Exception as e:
-        logger.error("Falha no job de lembretes de escalação: %s", e)
+    """Lembretes de escalação desativados na v2.9."""
+    return None
 
 
 # ── Helper testavel para logica de dispatch ───────────────────────────────────
@@ -663,10 +653,6 @@ def create_scheduler() -> AsyncIOScheduler:
     scheduler.add_job(
         _dispatch_due_messages, "interval", minutes=1,
         id="remarketing_dispatcher", replace_existing=True,
-    )
-    scheduler.add_job(
-        _check_escalation_reminders, "interval", minutes=5,
-        id="escalation_reminders", replace_existing=True,
     )
     # ── Confirmação de presença ───────────────────────────────────────────────
     scheduler.add_job(
