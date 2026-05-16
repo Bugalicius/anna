@@ -1715,6 +1715,23 @@ async def _processar_turno_locked(phone: str, mensagem: dict[str, Any]) -> Resul
                         "flags.upsell_aceito": False,
                     },
                 )
+        if acao is None and estado_antes == "aguardando_status_paciente" and state.get("flags", {}).get("paciente_identificado"):
+            # Paciente identificado pelo CSV quer marcar/remarcar — vai direto para busca Dietbox
+            _texto_norm_csv = _norm_text(interpretacao.texto_original or "")
+            _quer_agendar = interpretacao.intent in {"agendar", "saudacao", "saudacao_sem_info"} or any(
+                t in _texto_norm_csv for t in ("marcar", "agendar", "consulta", "quero")
+            )
+            if _quer_agendar:
+                state["collected_data"]["status_paciente"] = "retorno"
+                state["fluxo_id"] = REMARCACAO_ID
+                _tool_msgs, _target = await _identificar_consulta(state, REMARCACAO_ID, state["collected_data"].get("nome"))
+                mensagens.extend(_tool_msgs)
+                state["estado"] = _target
+                add_message(state, "user", mensagem.get("text") or mensagem.get("body") or "")
+                add_message(state, "assistant", "\n".join(m.conteudo for m in mensagens if m.conteudo))
+                await save_state(phone_hash, state)
+                return ResultadoTurno(sucesso=True, mensagens_enviadas=mensagens, novo_estado=state["estado"], fluxo_id=REMARCACAO_ID, duracao_ms=int((time.perf_counter() - started) * 1000))
+
         if acao is None:
             acao = state_machine.proxima_acao(
                 estado_atual=estado_antes,
