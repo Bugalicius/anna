@@ -21,6 +21,10 @@ _DEBOUNCE_TTL = 120
 
 MSG_AUDIO_FALHOU = "Não consegui ouvir seu áudio 😔 Pode me escrever o que precisa? 💚"
 MSG_MIDIA_NAO_COMPROVANTE = "Recebo comprovantes de pagamento por aqui 😊 Posso te ajudar com mais alguma coisa?"
+MSG_IMAGEM_PARECE_NAO_COMPROVANTE_PIX = (
+    "Hmm, essa imagem não parece ser um comprovante de pagamento 😅\n"
+    "Pode me mandar a tela do PIX confirmado?"
+)
 MSG_LOCATION_NAO_SUPORTADO = "Recebo mensagens de texto por aqui 😊 Como posso te ajudar?"
 
 
@@ -405,6 +409,28 @@ def _merge_debounced_messages(items: list[dict]) -> tuple[dict, dict]:
     return first, metadata
 
 
+async def _alertar_breno_imagem_nao_identificada(phone: str, phone_hash: str) -> None:
+    """Alerta Breno quando imagem em aguardando_pagamento_pix não é identificada como comprovante."""
+    try:
+        from app.conversation.state import load_state as _load_state
+        _st = await _load_state(phone_hash)
+        cd = _st.get("collected_data", {})
+        nome = cd.get("nome") or "Paciente"
+        plano = cd.get("plano") or "—"
+        breno = os.environ.get("BRENO_PHONE", "5531992059211")
+        from app.meta_api import MetaAPIClient
+        meta = MetaAPIClient()
+        await meta.send_text(
+            breno,
+            f"⚠️ Imagem não reconhecida como comprovante\n"
+            f"👤 {nome} ({phone[-4:]})\n"
+            f"📋 Estado: aguardando_pagamento_pix | Plano: {plano}\n"
+            f"Verificar e confirmar manualmente se necessário.",
+        )
+    except Exception as exc:
+        logger.warning("Falha ao alertar Breno sobre imagem não identificada: %s", exc)
+
+
 async def process_message_debounced(message: dict, metadata: dict):
     """
     Aguarda uma pequena janela antes de rotear textos.
@@ -580,7 +606,17 @@ async def process_message(message: dict, metadata: dict):
             except Exception as e:
                 logger.error("Falha ao processar anexo Chatwoot %s: %s", meta_id, e)
         if msg_type == "image" and not eh_comprovante:
-            await _send_text_direct(phone, MSG_MIDIA_NAO_COMPROVANTE, meta_id)
+            try:
+                from app.conversation.state import load_state as _load_state
+                _st = await _load_state(phone_hash)
+                _estado_atual = str(_st.get("estado") or "")
+            except Exception:
+                _estado_atual = ""
+            if _estado_atual == "aguardando_pagamento_pix":
+                await _send_text_direct(phone, MSG_IMAGEM_PARECE_NAO_COMPROVANTE_PIX, meta_id)
+                asyncio.create_task(_alertar_breno_imagem_nao_identificada(phone, phone_hash))
+            else:
+                await _send_text_direct(phone, MSG_MIDIA_NAO_COMPROVANTE, meta_id)
             return
     else:
         text = message.get("text", {}).get("body", "") or "[mídia]"

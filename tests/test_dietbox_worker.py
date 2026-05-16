@@ -166,6 +166,46 @@ def test_slots_sexta_sem_noite():
     assert "08:00" in sexta
 
 
+def test_compromisso_cinza_bloqueia_slot():
+    """
+    DADO: Dietbox retorna evento "Corrida" (tipo pessoal, desmarcada=True) no horário 09:00
+    QUANDO: sistema consulta slots disponíveis para esse horário
+    ENTÃO: 09:00 NÃO aparece como disponível — qualquer evento bloqueia o slot.
+    """
+    from app.agents.dietbox_worker import consultar_slots_disponiveis
+
+    from datetime import date
+    amanha = date.today() + timedelta(days=1)
+    dia_semana = amanha.weekday()
+    from app.agents.dietbox_worker import HORARIOS_POR_DIA
+    horarios = HORARIOS_POR_DIA.get(dia_semana, [])
+    if "09:00" not in horarios:
+        pytest.skip("Próximo dia útil não contém 09:00")
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "Data": [{
+            "inicio": f"{amanha.isoformat()}T09:00:00",
+            "fim": f"{amanha.isoformat()}T10:00:00",
+            "titulo": "Corrida",
+            "desmarcada": True,  # evento cinza/pessoal — antes era ignorado, agora deve bloquear
+        }]
+    }
+
+    with patch("app.agents.dietbox_worker._headers", return_value={}), \
+         patch("requests.get", return_value=mock_resp), \
+         patch("app.agents.dietbox_worker._carregar_locais"), \
+         patch("app.agents.dietbox_worker._ID_LOCAL_PRESENCIAL", "LOCAL-001"):
+
+        slots = consultar_slots_disponiveis(modalidade="presencial", dias_a_frente=3)
+
+    datetimes = [s["datetime"] for s in slots]
+    assert not any(f"{amanha.isoformat()}T09:00" in dt for dt in datetimes), (
+        "Slot 09:00 apareceu como disponível mesmo com compromisso cinza no horário"
+    )
+
+
 # ── buscar_paciente_por_telefone ──────────────────────────────────────────────
 
 def test_busca_paciente_encontrado():

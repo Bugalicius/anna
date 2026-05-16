@@ -29,6 +29,18 @@ _GRAPH_BASE = "https://graph.facebook.com/v19.0"
 
 # MIME types aceitos por categoria
 MIME_IMAGENS = {"image/jpeg", "image/png", "image/webp"}
+
+_PROMPT_COMPROVANTE = (
+    "Analise a imagem e determine se é um comprovante de pagamento PIX brasileiro.\n"
+    "Comprovantes PIX geralmente contêm: 'ID da transação', 'ID do pagamento', "
+    "nome do destinatário, CPF/CNPJ (pode estar parcialmente oculto com •••), "
+    "nome do banco ou instituição (Nubank, Mercado Pago, Bradesco, Itaú, Caixa, "
+    "Inter, PicPay, C6, Santander, BB, etc.), valor em R$, data e horário, "
+    "e texto como 'Pix enviado', 'Pix efetuado', 'Transferência realizada', "
+    "'Pagamento confirmado', 'Recebimento PIX', 'Transação realizada'.\n"
+    "Responda SOMENTE JSON válido sem markdown:\n"
+    '{"eh_comprovante":true|false,"valor":number|null,"favorecido":string|null,"texto_extraido":string}'
+)
 MIME_PDFS = {"application/pdf"}
 MIME_AUDIOS = {"audio/ogg", "audio/mpeg", "audio/mp4", "audio/webm", "audio/wav"}
 
@@ -181,11 +193,7 @@ def analisar_comprovante_pagamento(content: bytes, mime_type: str) -> dict:
         return {"eh_comprovante": False, "valor": None, "texto_extraido": "", "favorecido": None}
 
     try:
-        prompt = (
-            "Analise a imagem e responda SOMENTE JSON válido com os campos "
-            '{"eh_comprovante":true|false,"valor":number|null,"favorecido":string|null,"texto_extraido":string}. '
-            "Se não parecer comprovante bancário/PIX, use eh_comprovante=false."
-        )
+        prompt = _PROMPT_COMPROVANTE
         raw = llm_client.complete_with_image(
             user_text=prompt,
             image_bytes=content,
@@ -230,11 +238,7 @@ async def analisar_comprovante_pagamento_async(content: bytes, mime_type: str) -
         return {"eh_comprovante": False, "valor": None, "texto_extraido": "", "favorecido": None}
 
     try:
-        prompt = (
-            "Analise a imagem e responda SOMENTE JSON válido com os campos "
-            '{"eh_comprovante":true|false,"valor":number|null,"favorecido":string|null,"texto_extraido":string}. '
-            "Se não parecer comprovante bancário/PIX, use eh_comprovante=false."
-        )
+        prompt = _PROMPT_COMPROVANTE
         raw = await llm_client.complete_with_image_async(
             user_text=prompt,
             image_bytes=content,

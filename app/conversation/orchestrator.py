@@ -722,7 +722,7 @@ async def _mensagens_on_enter(state: dict[str, Any], estado: str) -> tuple[list[
             return [
                 Mensagem(
                     tipo="texto",
-                    conteudo=f"Segue o link: {url}\n\nPode parcelar em até 10x sem juros. Após o pagamento, te confirmo aqui.",
+                    conteudo=f"Segue o link: {url}\n\nParcelamento disponível. Após o pagamento, te confirmo aqui.",
                 )
             ], None
         return [

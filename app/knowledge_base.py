@@ -220,7 +220,7 @@ FAQ_ESTATICO: list[dict[str, str]] = [
     },
     {
         "pergunta": "Aceita plano de saúde?",
-        "resposta": "No momento o atendimento é particular. Mas temos parcelamento em até 10x no cartão 💚",
+        "resposta": "No momento o atendimento é particular. Mas temos parcelamento disponível no cartão 💚",
     },
     {
         "pergunta": "Quanto tempo dura a consulta?",

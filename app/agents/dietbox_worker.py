@@ -284,8 +284,6 @@ def consultar_slots_disponiveis(
     # API retorna horários sem timezone (já em BRT) — nunca converter com astimezone
     ocupados: set[str] = set()
     for item in ocupados_raw:
-        if item.get("desmarcada"):
-            continue
         timezone_item = item.get("timezone")
         inicio_item = item.get("inicio", "") or item.get("Start", "") or item.get("start", "")
         fim_item = item.get("fim", "") or item.get("End", "") or item.get("end", "")
