@@ -263,7 +263,20 @@ def _heuristica(mensagem: dict[str, Any], estado_atual: str, state: dict[str, An
         intent = "informar_preferencia_horario"
         entities.update(_extrair_preferencia(texto))
     elif estado_atual == "aguardando_escolha_slot":
-        if any(x in n for x in ("manha", "tarde", "noite", "segunda", "terca", "terça", "quarta", "quinta", "sexta")) and not re.search(r"\b(slot_)?[123]\b", n):
+        slot_por_texto = None
+        if state:
+            for idx, slot in enumerate(state.get("last_slots_offered") or [], start=1):
+                data_fmt = _norm(str(slot.get("data_fmt") or ""))
+                hora = _norm(str(slot.get("hora") or ""))
+                dt = _norm(str(slot.get("datetime") or ""))
+                if (data_fmt and data_fmt in n) or (hora and data_fmt.split(",", 1)[0] in n and hora in n) or (dt and dt[:10] in n):
+                    slot_por_texto = f"slot_{idx}"
+                    break
+        if slot_por_texto:
+            intent = "escolher_slot"
+            entities["slot_match"] = slot_por_texto
+            entities["match_texto_com_slots"] = True
+        elif any(x in n for x in ("manha", "tarde", "noite", "segunda", "terca", "terça", "quarta", "quinta", "sexta")) and not re.search(r"\b(slot_)?[123]\b", n):
             intent = "informar_preferencia_horario"
             entities.update(_extrair_preferencia(texto))
         elif any(x in n for x in ("outra", "mais", "nao serve", "nenhum", "outro turno")):

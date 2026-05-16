@@ -302,6 +302,21 @@ async def test_mudar_preferencia_depois_dos_slots_busca_novamente():
     assert any("qual prefere" in m.conteudo.lower() for m in result.mensagens_enviadas)
 
 
+async def test_escolher_slot_por_label_com_dia_e_hora_salva_slot():
+    phone = "553100000043"
+    await seed_state(
+        phone,
+        "aguardando_escolha_slot",
+        collected_data={"nome": "Ana", "plano": "ouro", "modalidade": "online"},
+        last_slots_offered=SLOTS,
+    )
+    result = await send(phone, "quarta, 20/05/2026 18h")
+    state = await state_for(phone)
+
+    assert result.novo_estado == "aguardando_forma_pagamento"
+    assert state["appointment"]["slot_escolhido"] == SLOTS[2]
+
+
 async def test_upsell_aceito_atualiza_plano():
     phone = "553100000004"
     await seed_state(phone, "oferecendo_upsell", collected_data={"nome": "Lia", "plano": "unica"})
