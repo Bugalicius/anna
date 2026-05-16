@@ -75,19 +75,17 @@ mudancas devem priorizar `app/conversation/` (orchestrator, state_machine, rules
 
 ### Monitoramento
 
-- Servico Docker: `monitor`, comando `python -m app.monitor.main`.
-- Roda checks a cada `MONITOR_INTERVAL_SECONDS` (padrao 60s) e grava JSONL em
-  `logs/monitor/YYYY-MM-DD.jsonl`.
-- Alertas WhatsApp vao para `MONITOR_ALERTS_TO` (padrao `BRENO_PHONE`) usando
-  `app.meta_api.MetaAPIClient`.
-- Dedup Redis:
-  - critico: `MONITOR_CRITICAL_DEDUP_MINUTES` (padrao 5)
-  - alerta: `MONITOR_ALERT_DEDUP_MINUTES` (padrao 30)
-  - persistente: status a cada `MONITOR_STATUS_UPDATE_MINUTES` (padrao 60)
-- Dry-run:
-  `MONITOR_DRY_RUN=true docker compose run --rm monitor python -m app.monitor.main --once`
-- Check individual:
-  `docker compose run --rm monitor python -m app.monitor.main --once --check redis`
+- O monitor Docker antigo esta desativado. O codigo permanece em `app/monitor/`
+  apenas como referencia.
+- Alertas simples ficam em `app/conversation/alerter_simples.py`:
+  - loop de mensagem repetida;
+  - duvida clinica;
+  - escalacao geral.
+
+## Monitoramento de uptime
+
+UptimeRobot monitora `https://anna.vps-kinghost.net/health` a cada 5 minutos.
+Configurar em: https://uptimerobot.com (gratuito)
 
 ## Regras Importantes
 

@@ -1201,6 +1201,7 @@ async def _aplicar_controle_loop_fallback(
                 "telefone": phone,
                 "estado": estado_antes,
                 "ultima_mensagem": ultima_mensagem,
+                "resposta_repetida": resp_text,
             }
         },
     )
