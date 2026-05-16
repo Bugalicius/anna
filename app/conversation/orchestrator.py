@@ -1716,21 +1716,34 @@ async def _processar_turno_locked(phone: str, mensagem: dict[str, Any]) -> Resul
                     },
                 )
         if acao is None and estado_antes == "aguardando_status_paciente" and state.get("flags", {}).get("paciente_identificado"):
-            # Paciente identificado pelo CSV quer marcar/remarcar — vai direto para busca Dietbox
+            # Paciente identificado pelo CSV — rotear pelo intent real (qualquer mensagem)
+            _intent_csv = interpretacao.intent or ""
             _texto_norm_csv = _norm_text(interpretacao.texto_original or "")
-            _quer_agendar = interpretacao.intent in {"agendar", "saudacao", "saudacao_sem_info"} or any(
+            _nome_csv = state["collected_data"].get("nome")
+
+            _cancelar = _intent_csv in {"cancelar", "cancelamento"} or any(
+                t in _texto_norm_csv for t in ("cancelar", "cancelamento", "desmarcar")
+            )
+            _remarcar = _intent_csv in {"remarcar", "remarcacao"} or any(
+                t in _texto_norm_csv for t in ("remarcar", "remarcacao", "mudar horario", "mudar data")
+            )
+            _agendar = _intent_csv in {"agendar", "saudacao", "saudacao_sem_info"} or any(
                 t in _texto_norm_csv for t in ("marcar", "agendar", "consulta", "quero")
             )
-            if _quer_agendar:
+            # duvida_operacional e duvida_sobre_thaynara já têm handler no YAML — deixa state_machine tratar
+            _deixa_yaml = _intent_csv in {"duvida_operacional", "duvida_sobre_thaynara", "desistir"}
+
+            if not _deixa_yaml and (_cancelar or _remarcar or _agendar):
                 state["collected_data"]["status_paciente"] = "retorno"
-                state["fluxo_id"] = REMARCACAO_ID
-                _tool_msgs, _target = await _identificar_consulta(state, REMARCACAO_ID, state["collected_data"].get("nome"))
+                _fluxo_destino = CANCELAMENTO_ID if _cancelar else REMARCACAO_ID
+                state["fluxo_id"] = _fluxo_destino
+                _tool_msgs, _target = await _identificar_consulta(state, _fluxo_destino, _nome_csv)
                 mensagens.extend(_tool_msgs)
                 state["estado"] = _target
                 add_message(state, "user", mensagem.get("text") or mensagem.get("body") or "")
                 add_message(state, "assistant", "\n".join(m.conteudo for m in mensagens if m.conteudo))
                 await save_state(phone_hash, state)
-                return ResultadoTurno(sucesso=True, mensagens_enviadas=mensagens, novo_estado=state["estado"], fluxo_id=REMARCACAO_ID, duracao_ms=int((time.perf_counter() - started) * 1000))
+                return ResultadoTurno(sucesso=True, mensagens_enviadas=mensagens, novo_estado=state["estado"], fluxo_id=_fluxo_destino, duracao_ms=int((time.perf_counter() - started) * 1000))
 
         if acao is None:
             acao = state_machine.proxima_acao(
