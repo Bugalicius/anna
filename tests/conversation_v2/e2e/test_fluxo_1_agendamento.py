@@ -325,6 +325,20 @@ async def test_upsell_aceito_atualiza_plano():
     assert state["collected_data"]["plano"] == "com_retorno"
 
 
+async def test_upsell_ouro_para_premium_usa_argumentos_do_premium():
+    phone = "553100000044"
+    await seed_state(phone, "aguardando_escolha_plano", collected_data={"nome": "Lia", "objetivo": "emagrecer"})
+    result = await send(phone, "ouro")
+    texto = "\n".join(m.conteudo for m in result.mensagens_enviadas)
+
+    assert result.novo_estado == "oferecendo_upsell"
+    assert "6 consultas" in texto
+    assert "270 dias" in texto
+    assert "valor por consulta fica menor" in texto
+    assert "90 dias" not in texto
+    assert "manter a consulta única" not in texto.lower()
+
+
 async def test_modalidade_ja_mencionada_pula_pergunta_modalidade():
     phone = "553100000005"
     await seed_state(phone, "aguardando_escolha_plano", collected_data={"nome": "Lia"})

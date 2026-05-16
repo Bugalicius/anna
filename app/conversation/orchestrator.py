@@ -722,15 +722,31 @@ def _acao_on_enter_custom(state: dict[str, Any], estado: str) -> AcaoAutorizada 
         origem_val = origem_cfg.valores.pix_online if modalidade == "online" else origem_cfg.valores.pix_presencial
         dest_val = destino_cfg.valores.pix_online if modalidade == "online" else destino_cfg.valores.pix_presencial
         diff = dest_val - origem_val
-        texto = (
-            f"Ótima escolha! Uma dica rápida antes de confirmar 💚\n\n"
-            f"Por apenas +R${diff:.0f} você garante o plano {destino_cfg.nome_publico}, "
-            f"que inclui uma segunda consulta 45 dias depois da primeira.\n\n"
-            f"Esse intervalo não é à toa: em 90 dias de acompanhamento contínuo, "
-            f"o corpo tem tempo de passar por uma reeducação alimentar de verdade, "
-            f"e os resultados costumam ser bem mais duradouros do que em consulta única.\n\n"
-            f"Quer aproveitar ou manter a consulta única?"
-        )
+        if plano == "unica":
+            texto = (
+                "Ótima escolha! Posso te dar uma dica rápida antes de confirmar? 💚\n\n"
+                f"Por +R${diff:.0f}, você sobe para o {destino_cfg.nome_publico}: "
+                "1 consulta + 1 retorno em 30 dias. Isso dá mais segurança para ajustar o plano depois da primeira fase.\n\n"
+                "Quer manter a Consulta Única ou prefere o Com Retorno?"
+            )
+        elif plano == "com_retorno":
+            texto = (
+                "Ótima escolha! Posso te mostrar uma opção com mais acompanhamento? 💚\n\n"
+                f"Por +R${diff:.0f}, você sobe para o {destino_cfg.nome_publico}: "
+                "3 consultas em 130 dias, com a Lilly inclusa para dar mais suporte entre as consultas.\n\n"
+                "Quer manter o Com Retorno ou prefere o Ouro?"
+            )
+        else:
+            origem_por_consulta = origem_val / max(int(origem_cfg.consultas or 1), 1)
+            dest_por_consulta = dest_val / max(int(destino_cfg.consultas or 1), 1)
+            texto = (
+                "Ótima escolha! Antes de confirmar, vale comparar com o Premium 💚\n\n"
+                f"Por +R${diff:.0f}, você sobe para o {destino_cfg.nome_publico}: "
+                "6 consultas em 270 dias, com Lilly e encontros coletivos.\n\n"
+                f"Além de ser um acompanhamento bem mais longo, o valor por consulta fica menor: "
+                f"aprox. R${origem_por_consulta:.0f} no Ouro vs. R${dest_por_consulta:.0f} no Premium.\n\n"
+                "Quer manter o Ouro ou prefere o Premium?"
+            )
         return AcaoAutorizada(
             tipo=TipoAcao.enviar_mensagem,
             mensagens=[Mensagem(tipo="botoes", conteudo=texto, botoes=[
