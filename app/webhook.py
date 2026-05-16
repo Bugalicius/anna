@@ -618,6 +618,26 @@ async def process_message(message: dict, metadata: dict):
             else:
                 await _send_text_direct(phone, MSG_MIDIA_NAO_COMPROVANTE, meta_id)
             return
+    elif msg_type == "contacts":
+        # vCard enviado pelo paciente — extrair dados e passar como texto estruturado
+        contacts_list = message.get("contacts", [])
+        parts: list[str] = []
+        for c in contacts_list[:1]:  # só primeiro contato
+            name = (c.get("name") or {}).get("formatted_name", "")
+            phones = c.get("phones", [])
+            phone_c = phones[0].get("phone", "") if phones else ""
+            birthday = c.get("birthday", "")  # formato YYYY-MM-DD
+            if name:
+                parts.append(f"Nome: {name}")
+            if birthday:
+                try:
+                    d, m, y = birthday.split("-")[2], birthday.split("-")[1], birthday.split("-")[0]
+                    parts.append(f"Data de nascimento: {d}/{m}/{y}")
+                except Exception:
+                    parts.append(f"Data de nascimento: {birthday}")
+            if phone_c:
+                parts.append(f"WhatsApp: {phone_c}")
+        text = "[contato compartilhado] " + " | ".join(parts) if parts else "[contato]"
     else:
         text = message.get("text", {}).get("body", "") or "[mídia]"
 
