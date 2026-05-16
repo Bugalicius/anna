@@ -220,6 +220,20 @@ async def test_cadastro_incremental_email_invalido_pede_formato():
     assert any("nome@dominio.com" in m.conteudo.lower() for m in result.mensagens_enviadas)
 
 
+async def test_cadastro_completo_sem_slot_nao_confirma_sem_horario():
+    phone = "553100000042"
+    await seed_state(
+        phone,
+        "aguardando_cadastro",
+        collected_data={"nome": "Ana Teste", "data_nascimento": "31/01/1990", "plano": "unica", "modalidade": "presencial"},
+        flags={"pagamento_confirmado": True},
+    )
+    result = await send(phone, "ana.teste@gmail.com")
+
+    assert result.novo_estado == "aguardando_preferencia_horario"
+    assert any("falta escolher o horário" in m.conteudo.lower() for m in result.mensagens_enviadas)
+
+
 async def test_cartao_paguei_responde_sem_silencio():
     phone = "553100000034"
     await seed_state(

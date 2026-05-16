@@ -944,6 +944,16 @@ async def _processar_cadastro_incremental(
 
     missing = _cadastro_missing(cd)
     if not missing:
+        if not (state.get("appointment") or {}).get("slot_escolhido"):
+            return [
+                Mensagem(
+                    tipo="texto",
+                    conteudo=(
+                        "Cadastro anotado 💚 Agora falta escolher o horário da consulta. "
+                        "Me fala qual período funciona melhor pra você?"
+                    ),
+                )
+            ], "aguardando_preferencia_horario"
         return await _criar_agendamento_e_confirmar(state)
 
     if data_nasc or email or nome or whatsapp:
@@ -2100,6 +2110,10 @@ async def _processar_turno_locked(phone: str, mensagem: dict[str, Any]) -> Resul
 
         _aplicar_efeitos_especiais(state, acao)
         _aplicar_salvar_no_estado(state, acao.salvar_no_estado)
+        if estado_antes == "aguardando_escolha_slot" and acao.situacao_nome in {"escolheu_slot_botao", "escolheu_slot_texto"}:
+            slot_escolhido = entidades.get("slot_correspondente") or entidades.get("slot_match")
+            if isinstance(slot_escolhido, dict):
+                state.setdefault("appointment", {})["slot_escolhido"] = slot_escolhido
         target = acao.proximo_estado or _acao_navegacao(acao)
 
         if acao.tool_a_executar == "consultar_slots":
