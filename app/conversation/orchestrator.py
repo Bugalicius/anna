@@ -656,8 +656,13 @@ def _acao_on_enter_custom(state: dict[str, Any], estado: str) -> AcaoAutorizada 
         dest_val = destino_cfg.valores.pix_online if modalidade == "online" else destino_cfg.valores.pix_presencial
         diff = dest_val - origem_val
         texto = (
-            f"Ótima escolha! Posso te dar uma dica? Por +R${diff:.0f} você sobe para "
-            f"{destino_cfg.nome_publico}. Quer trocar ou manter sua escolha?"
+            f"Ótima escolha! Uma dica rápida antes de confirmar 💚\n\n"
+            f"Por apenas +R${diff:.0f} você garante o plano {destino_cfg.nome_publico}, "
+            f"que inclui uma segunda consulta 45 dias depois da primeira.\n\n"
+            f"Esse intervalo não é à toa: em 90 dias de acompanhamento contínuo, "
+            f"o corpo tem tempo de passar por uma reeducação alimentar de verdade, "
+            f"e os resultados costumam ser bem mais duradouros do que em consulta única.\n\n"
+            f"Quer aproveitar ou manter a consulta única?"
         )
         return AcaoAutorizada(
             tipo=TipoAcao.enviar_mensagem,
